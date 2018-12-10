@@ -43,6 +43,8 @@ contract('Runtime', function () {
         OP.JUMPDEST, OP.PUSH1, '03', OP.JUMP, // 0x08. Jump to 0x03
         OP.JUMPDEST, // 0x0c
       ];
+      // pc:          00,    01, 02,   03,       04,       05,    06, 07,   08,       09,    0a, 0b,   0c
+      // instruction: PUSH1, 08, JUMP, JUMPDEST, GASLIMIT, PUSH1, 0C, JUMP, JUMPDEST, PUSH1, 03, JUMP, JUMPDEST
       const data = '0x';
 
       const executeTill = async (stopAt) =>
@@ -52,8 +54,11 @@ contract('Runtime', function () {
       
       assert.equal(await executeTill(2), 2);
       assert.equal(await executeTill(3), 3);
+      // assert.equal(await executeTill(3), 8)
+      
       assert.equal(await executeTill(5), 5);
       assert.equal(await executeTill(12), 12);
+      // assert.equal(await executeTill(12), 3)
     });
   });
 
