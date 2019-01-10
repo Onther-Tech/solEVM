@@ -381,20 +381,18 @@ contract EthereumRuntime is EVMConstants {
     }
 
     // solhint-disable-next-line code-complexity, function-max-lines, security/no-assign-params
-    function _run(EVM memory evm, uint pc, uint pcEnd) internal pure {
+    function _run(EVM memory evm, uint pc, uint pcStepCount) internal pure {
 
         uint pcNext = 0;
+        uint stepRun = 0;
         uint errno = NO_ERROR;
         bytes memory code = evm.code;
-        if (pcEnd == 0) {
-            pcEnd = code.length;
-        }
 
         if (evm.gas > evm.context.gasLimit) {
             errno = ERROR_OUT_OF_GAS;
         }
 
-        while (errno == NO_ERROR && pc < pcEnd) {
+        while (errno == NO_ERROR && pc < code.length && (pcStepCount == 0 || stepRun < pcStepCount)) {
             uint opcode = uint(code[pc]);
             Instruction memory ins = evm.handlers.ins[opcode];
 
@@ -456,6 +454,7 @@ contract EthereumRuntime is EVMConstants {
             if (errno == NO_ERROR) {
                 pc = pcNext;
             }
+            stepRun = stepRun + 1;
         }
         evm.errno = errno;
         // to be used if errno is non-zero
