@@ -261,6 +261,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     const gasFee = gasLeft.sub(runState.gasLeft).toNumber();
     const memStore = runState.memProof.data;
     const mem = [];
+    const storage = [[]];
 
     let i = 0;
     while (i < memStore.length) {
@@ -287,6 +288,23 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       isCallDataRequired = true;
     }
 
+    if( opcodeName === 'SLOAD' ){
+      let stateManager = runState.stateManager;
+      let address = runState.address;
+      let key = new BN(compactStack);
+      key = key.toArrayLike(Buffer, 'be', 32)      
+      let elem = [];
+      // elem.push(1);
+      // elem.push(2);
+      stateManager.getContractStorage(address, key, function(err, val){
+        elem.push(key);
+        elem.push(val);
+        storage[0]= elem;
+      });
+      
+      
+    }
+        
     runState.context.steps.push({
       memReadLow: memProof.readLow,
       memReadHigh: memProof.readHigh,
@@ -306,6 +324,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       pc: pc,
       errno: errno,
       gasRemaining: gasRemaining,
+      storage: storage[0]
     });
   }
 
@@ -451,13 +470,16 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
-  async handleSLOAD (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
-  }
+  // async handleSLOAD (runState) {
+  //   throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+  // }
 
-  async handleSSTORE (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
-  }
+  // async handleSSTORE (runState) {
+  //   var stateManager = runState.stateManager;
+  //   var address = runState.address;
+    
+  //   // throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+  // }
 
   async handleBALANCE (runState) {
     throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
