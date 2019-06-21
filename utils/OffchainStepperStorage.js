@@ -200,6 +200,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     let stack = prevStep.stack || toHex(runState.stack);
     let pc = runState.programCounter;
     let gasLeft = runState.gasLeft.addn(0);
+    let storage = prevStep.storage || [];
     let exceptionError;
 
     const memProof = runState.memProof;
@@ -261,8 +262,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     const gasFee = gasLeft.sub(runState.gasLeft).toNumber();
     const memStore = runState.memProof.data;
     const mem = [];
-    const storage = [[]];
-
+    
     let i = 0;
     while (i < memStore.length) {
       let hexVal = Buffer.from(memStore.slice(i, i += 32)).toString('hex');
@@ -289,20 +289,12 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     }
 
     if( opcodeName === 'SLOAD' ){
-      let stateManager = runState.stateManager;
-      let address = runState.address;
-      let key = new BN(compactStack);
-      key = key.toArrayLike(Buffer, 'be', 32)      
-      let elem = [];
-      // elem.push(1);
-      // elem.push(2);
-      stateManager.getContractStorage(address, key, function(err, val){
-        elem.push(key);
-        elem.push(val);
-        storage[0]= elem;
-      });
-      
-      
+      try {
+        storage = await this.getStorageValue(runState, compactStack);
+      } catch (error) {
+        console.log(error);
+      }
+         
     }
         
     runState.context.steps.push({
@@ -324,8 +316,38 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       pc: pc,
       errno: errno,
       gasRemaining: gasRemaining,
-      storage: storage[0]
+      storage: storage
     });
+  }
+
+  async getStorageValue(runState, compactStack) {
+    let stateManager = runState.stateManager;
+    let address = runState.address;
+    let key = compactStack[0];
+    key = Buffer.from(key.replace('0x', ''), 'hex');
+                
+    return new Promise(
+      function (resolve, reject) {
+            
+        const cb = function (err, result) {
+            if (err) {
+              reject(err)
+              return;
+            }
+
+            let elem = [];
+            result = result.length ? new BN(result) : new BN(0);
+            elem.push(key);
+            elem.push(result);
+            resolve(elem);
+        };
+        
+        stateManager.getContractStorage(address, key, cb);   
+
+        return;
+              
+      }
+    )
   }
 
   async run ({ code, data, stack, mem, gasLimit, blockGasLimit, gasRemaining, pc, stepCount }) {
