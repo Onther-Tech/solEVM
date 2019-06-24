@@ -1,5 +1,5 @@
 const OffchainStepper = require('../../utils/OffchainStepperStorage');
-const Merkelizer = require('../../utils/Merkelizer');
+const Merkelizer = require('../../utils/MerkelizerStorage');
 const OP = require('../../utils/constants');
 
 const code = [
@@ -58,8 +58,8 @@ const code = [
 (async function(){
     steps = await stepper.run({ code, data });
     console.log(steps)
-    // const solverMerkle = await new Merkelizer().run(steps, code, data);
-    // solverMerkle.printTree();
+    const solverMerkle = await new Merkelizer().run(steps, code, data);
+    console.log(solverMerkle.printTree());
 
     
 })();

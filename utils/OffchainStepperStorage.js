@@ -276,7 +276,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     while (mem.length < memSize) {
       mem.push(OP.ZERO_HASH);
     }
-
+    
     stack = toHex(runState.stack);
     let isMemoryRequired = false;
     if (memProof.readHigh !== -1 || memProof.writeHigh !== -1) {
@@ -296,7 +296,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       }
          
     }
-        
+    
     runState.context.steps.push({
       memReadLow: memProof.readLow,
       memReadHigh: memProof.readHigh,
@@ -336,7 +336,11 @@ module.exports = class OffchainStepper extends VM.MetaVM {
             }
 
             let elem = [];
+
+            key = '0x' + key.toString('hex');
             result = result.length ? new BN(result) : new BN(0);
+            result = '0x' + result.toString(16).padStart(64, '0')
+            
             elem.push(key);
             elem.push(result);
             resolve(elem);
