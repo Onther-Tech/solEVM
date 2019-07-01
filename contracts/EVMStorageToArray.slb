@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-library EVMStorage {
+library EVMStorageToArray {
 
     struct StorageSlot {
         uint addr;
@@ -17,7 +17,7 @@ library EVMStorage {
         uint size;
     }
 
-    function toArray(Storage memory self) internal pure returns (bytes32[] memory arr) {
+    function toArrayForHash(Storage memory self) internal pure returns (bytes32[] memory arr) {
         assembly {
             // Storage.size * 32
             let size := mul(mload(add(self, 0x20)), 0x20)
@@ -30,8 +30,12 @@ library EVMStorage {
             mstore(arr, div(size, 0x20))
 
             let dest := add(arr, 0x20)
-            // Memory.next
-            let ptr := mload(add(self, 0x20))
+
+            // Storage.head
+            let head := mload(self)
+
+            // Element.next
+            let ptr := mload(head)
 
             // clear memory
             for { let i := 0 } lt(i, size) { i := add(i, 0x20) } {
@@ -40,12 +44,21 @@ library EVMStorage {
 
             // copy all slots
             for { } ptr { } {
-                let d := add(dest, mul(mload(add(ptr, 0x20)), 0x20))
+                // copy address
+                let d := add(dest, mul(mload(ptr), 0x20))
+                let addr := mload(add(ptr, 0x20))
 
-                mstore(d, mload(ptr))
+                mstore(d, mload(addr))
+
+                // copy value
+                let d2 := add(dest, add(mul(mload(ptr), 0x20), 0x20))
+                let slot := mload(add(ptr, 0x20))
+                let val := mload(add(slot, 0x20))
+
+                mstore(d2, mload(val))
 
                 // MemoryElement.value
-                ptr := mload(add(ptr, 0x40))
+                ptr := mload(ptr)
             }
         }
     }
