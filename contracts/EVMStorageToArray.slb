@@ -19,8 +19,8 @@ library EVMStorageToArray {
 
     function toArrayForHash(Storage memory self) internal pure returns (bytes32[] memory arr) {
         assembly {
-            // Storage.size * 32
-            let size := mul(mload(add(self, 0x20)), 0x20)
+            // Storage.size * 32 * 2
+            let size := mul(mul(mload(add(self, 0x20)), 0x20), 0x2)
 
             // allocate size + WORD_SIZE
             arr := mload(0x40)
@@ -32,10 +32,7 @@ library EVMStorageToArray {
             let dest := add(arr, 0x20)
 
             // Storage.head
-            let head := mload(self)
-
-            // Element.next
-            let ptr := mload(head)
+            let ptr := mload(self)
 
             // clear memory
             for { let i := 0 } lt(i, size) { i := add(i, 0x20) } {
@@ -43,21 +40,21 @@ library EVMStorageToArray {
             }
 
             // copy all slots
-            for { } ptr { } {
+            for { let i := 0 } lt(i, size) { i := add(i, 0x40) } {
                 // copy address
-                let d := add(dest, mul(mload(ptr), 0x20))
-                let addr := mload(add(ptr, 0x20))
+                let d := add(dest, i)
+                let slot := mload(add(ptr, 0x20))
+                let addr := mload(slot)
 
-                mstore(d, mload(addr))
+                mstore(d, addr)
 
                 // copy value
-                let d2 := add(dest, add(mul(mload(ptr), 0x20), 0x20))
-                let slot := mload(add(ptr, 0x20))
+                let d2 := add(d, 0x20)
                 let val := mload(add(slot, 0x20))
 
-                mstore(d2, mload(val))
+                mstore(d2, val)
 
-                // MemoryElement.value
+                // Element._next
                 ptr := mload(ptr)
             }
         }
