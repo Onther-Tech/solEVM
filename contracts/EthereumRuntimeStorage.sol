@@ -6,10 +6,10 @@ import { EVMCode } from "./EVMCode.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMMemory } from "./EVMMemory.slb";
 import { EVMStorage } from "./EVMStorage.slb";
-import { HydratedRuntime } from "./HydratedRuntime.sol";
+import { HydratedRuntimeStorage } from "./HydratedRuntimeStorage.sol";
 
 
-contract EthereumRuntimeStorage is HydratedRuntime {
+contract EthereumRuntimeStorage is HydratedRuntimeStorage {
 
     struct EVMPreimage {
         address code;

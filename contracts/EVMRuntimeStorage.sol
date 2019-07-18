@@ -7,14 +7,14 @@ import { EVMMemory } from "./EVMMemory.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMUtils } from "./EVMUtils.slb";
 import { EVMCode } from "./EVMCode.slb";
-import { EVMStorage } from "./EVMStorage.slb";
+import { EVMStorageToArray } from "./EVMStorageToArray.slb";
 
 
 contract EVMRuntimeStorage is EVMConstants {
     using EVMMemory for EVMMemory.Memory;
     using EVMStack for EVMStack.Stack;
     using EVMCode for EVMCode.Code;
-    using EVMStorage for EVMStorage.Storage;
+    using EVMStorageToArray for EVMStorageToArray.Storage;
 
     struct Context {
         address origin;
@@ -45,7 +45,7 @@ contract EVMRuntimeStorage is EVMConstants {
         Context context;
         EVMMemory.Memory mem;
         EVMStack.Stack stack;
-        EVMStorage.Storage tStorage;
+        EVMStorageToArray.Storage tStorage;
 
         address caller;
         address target;

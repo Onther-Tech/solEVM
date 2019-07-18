@@ -17,6 +17,41 @@ library EVMStorageToArray {
         uint size;
     }
 
+    function fromArrayForHash(bytes32[] memory storageIn) internal pure returns (Storage memory stor) {
+        assembly {
+            let src := add(storageIn, 0x20)
+            // storageIn.length / 2
+            let size := div(mload(storageIn), 0x2)
+            let ptr := mload(0x40)
+
+            // update free memory pointer, we allocate size * sizeof(StorageSlot)
+            mstore(0x40, add(ptr, mul(size, 0x80)))
+            // set Storage.head
+            mstore(stor, ptr)
+            // set Storage.size
+            mstore(add(stor, 0x20), size)
+           
+            for { let i := 0 } lt(i, size) { i := add(i, 1) } {
+               
+                // Element._next
+                mstore(ptr, add(ptr, 0x80))
+                // Element.slot
+                mstore(add(ptr, 0x20), add(ptr, 0x40))
+                // StorageSlot.addr
+                mstore(add(ptr, 0x40), mload(src))
+                // StorageSlot.val
+                mstore(add(ptr, 0x60), mload(add(src, 0x20)))
+                // update ptr
+                let n := add(ptr, 0x80)
+                let s := add(src, 0x40)
+                ptr := n
+                src := s
+            }
+            // reset the last next value
+            mstore(sub(ptr, 0x80), 0)
+        }
+    }
+
     function toArrayForHash(Storage memory self) internal pure returns (bytes32[] memory arr) {
         assembly {
             // Storage.size * 32 * 2
