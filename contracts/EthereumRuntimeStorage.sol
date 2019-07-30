@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import { EVMCode } from "./EVMCode.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMMemory } from "./EVMMemory.slb";
-import { EVMStorage } from "./EVMStorage.slb";
+import { EVMStorageToArray } from "./EVMStorageToArray.slb";
 import { HydratedRuntimeStorage } from "./HydratedRuntimeStorage.sol";
 
 
@@ -66,6 +66,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         evm.code = EVMCode.fromAddress(img.code);
         evm.stack = EVMStack.fromArray(img.stack);
         evm.mem = EVMMemory.fromArray(img.mem);
+        //evm.tStorage = EVMStorageToArray.fromArrayForHash(img.tStorage);
 
         _run(evm, img.pc, img.stepCount);
 
@@ -80,6 +81,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         resultState.errno = evm.errno;
         resultState.mem = EVMMemory.toArray(evm.mem);
         resultState.stack = EVMStack.toArray(evm.stack);
+        //resultState.tStorage = EVMStorageToArray.toArrayForHash(evm.tStorage);
         resultState.pc = evm.pc;
         resultState.hashValue = hashValue;
 
@@ -111,6 +113,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             dataHash,
             hydratedState.stackHash,
             hydratedState.memHash,
+            // hydratedState.tStorageHash,
             evm.mem.size,
             evm.stack.size,
             evm.pc,
