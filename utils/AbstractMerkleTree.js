@@ -124,9 +124,9 @@ module.exports = class AbstractMerkleTree {
       res += `level ${i}: `;
       for (let y = 0; y < row.length; y++) {
         const e = row[y];
-        const h = e.hash.substring(2, 6);
-        const hl = e.left.hash.substring(2, 6);
-        const hr = e.right.hash.substring(2, 6);
+        const h = e.hash;
+        const hl = e.left.hash;
+        const hr = e.right.hash;
 
         res += ` [ ${h} (l:${hl} r:${hr}) ] `;
       }

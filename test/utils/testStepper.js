@@ -4,13 +4,13 @@ const OP = require('../../utils/constants');
 
 const code = [
     OP.PUSH1, '03',
-    OP.PUSH1, '05',
-    OP.SSTORE,
-    OP.PUSH1, '05',
-    OP.SLOAD,
-    OP.PUSH1, '02',
-    OP.MSTORE,
-    OP.PUSH1, '03',
+    // OP.PUSH1, '05',
+    // OP.SSTORE,
+    // OP.PUSH1, '05',
+    // OP.SLOAD,
+    // OP.PUSH1, '02',
+    // OP.MSTORE,
+    // OP.PUSH1, '03',
     // OP.PUSH1, 'ff',
     // OP.PUSH1, '00',
     // OP.MSTORE,
@@ -38,7 +38,7 @@ const code = [
     // OP.PUSH1, '00',
     // OP.RETURN,
   ];
-  const data = '0x00010203040506070809';
+  const data = '0x';
 
 // const code = [
 //     OP.PUSH1, '08', OP.JUMP, // jump to 0x08

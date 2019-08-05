@@ -19,15 +19,44 @@ contract('Runtime', function () {
     // codepointers: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C
     // execution order: 0, 1, 2, 8, 9, A, B, 3, 4, 5, 6, 7, C
     const code = [
-      OP.PUSH1, '08', OP.JUMP, // jump to 0x08
-      OP.JUMPDEST, OP.GASLIMIT, OP.PUSH1, '0C', OP.JUMP, // 0x03. Jump to 0x0c
-      OP.JUMPDEST, OP.PUSH1, '03', OP.JUMP, // 0x08. Jump to 0x03
-      OP.JUMPDEST, // 0x0c
+      OP.PUSH1, '03',
+      OP.PUSH1, '05',
+      // OP.SSTORE,
+      // OP.PUSH1, '05',
+      // OP.SLOAD,
+      // OP.PUSH1, '02',
+      // OP.MSTORE,
+      // OP.PUSH1, '03',
+      // OP.PUSH1, 'ff',
+      // OP.PUSH1, '00',
+      // OP.MSTORE,
+      // OP.PUSH1, '00',
+      // OP.MLOAD,
+      // OP.PUSH1, '00',
+      // OP.MSTORE,
+      // OP.PUSH1, 'ff',
+      // OP.POP,
+      // OP.PUSH1, '00',
+      // OP.PUSH1, '01',
+      // OP.DUP1,
+      // OP.SWAP1,
+      // OP.CALLDATASIZE,
+      // OP.CALLDATACOPY,
+      // OP.GASLIMIT,
+      // OP.PUSH1, '01',
+      // OP.MSTORE,
+      // OP.PUSH1, '00',
+      // OP.PUSH1, '01',
+      // OP.PUSH1, '00',
+      // OP.PUSH1, '01',
+      // OP.SHA3,
+      // OP.PUSH1, '20',
+      // OP.PUSH1, '00',
+      // OP.RETURN,
     ];
     const data = '0x';
     const codeContract = await deployCode(code);
-    storage = [0x0000000000000000000000000000000000000000000000000000000000000005,
-    0000000000000000000000000000000000000000000000000000000000000003];
+    
     const executeStep = async (stepCount) =>
       (await rt.execute(
         {
@@ -35,9 +64,8 @@ contract('Runtime', function () {
           data: data,
           pc: 0,
           stepCount: stepCount,
-          storage: storage,
         }
-      )).pc;
+      )).hashValue;
     const result = await executeStep(1);
     console.log(result);
   });
