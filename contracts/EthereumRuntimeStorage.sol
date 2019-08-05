@@ -66,7 +66,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         evm.code = EVMCode.fromAddress(img.code);
         evm.stack = EVMStack.fromArray(img.stack);
         evm.mem = EVMMemory.fromArray(img.mem);
-        //evm.tStorage = EVMStorageToArray.fromArrayForHash(img.tStorage);
+        evm.tStorage = EVMStorageToArray.fromArrayForHash(img.tStorage);
 
         _run(evm, img.pc, img.stepCount);
 
@@ -81,7 +81,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         resultState.errno = evm.errno;
         resultState.mem = EVMMemory.toArray(evm.mem);
         resultState.stack = EVMStack.toArray(evm.stack);
-        //resultState.tStorage = EVMStorageToArray.toArrayForHash(evm.tStorage);
+        resultState.tStorage = EVMStorageToArray.toArrayForHash(evm.tStorage);
         resultState.pc = evm.pc;
         resultState.hashValue = hashValue;
 
@@ -113,7 +113,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             dataHash,
             hydratedState.stackHash,
             hydratedState.memHash,
-            // hydratedState.tStorageHash,
+            hydratedState.tStorageHash,
             evm.mem.size,
             evm.stack.size,
             evm.pc,
