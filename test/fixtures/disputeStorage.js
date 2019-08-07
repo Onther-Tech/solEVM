@@ -37,7 +37,7 @@ module.exports = (callback) => {
       OP.RETURN,
     ];
     const data = '0x00010203040506070809';
-
+    
     let steps;
     let copy;
     let merkle;
