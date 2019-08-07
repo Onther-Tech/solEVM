@@ -200,7 +200,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     let stack = prevStep.stack || toHex(runState.stack);
     let pc = runState.programCounter;
     let gasLeft = runState.gasLeft.addn(0);
-    let storage = prevStep.storage || [];
+    let tStorage = prevStep.tStorage || [];
     let exceptionError;
 
     const memProof = runState.memProof;
@@ -290,7 +290,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
 
     if( opcodeName === 'SLOAD' ){
       try {
-        storage = await this.getStorageValue(runState, compactStack);
+        tStorage = await this.getStorageValue(runState, compactStack);
       } catch (error) {
         console.log(error);
       }
@@ -316,7 +316,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       pc: pc,
       errno: errno,
       gasRemaining: gasRemaining,
-      storage: storage
+      tStorage: tStorage
     });
   }
 

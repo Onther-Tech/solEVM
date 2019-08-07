@@ -1,7 +1,7 @@
 pragma solidity ^0.5.2;
 pragma experimental ABIEncoderV2;
 
-import "./Enforcer.sol";
+import "./EnforcerStorage.sol";
 import "./HydratedRuntimeStorage.sol";
 import "./MerkelizerStorage.slb";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -56,7 +56,7 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
 
     uint256 public timeoutDuration;
 
-    Enforcer public enforcer;
+    EnforcerStorage public enforcer;
 
     mapping (bytes32 => Dispute) public disputes;
 
@@ -83,7 +83,7 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
     }
 
     function setEnforcer(address _enforcer) public onlyOwner() {
-        enforcer = Enforcer(_enforcer);
+        enforcer = EnforcerStorage(_enforcer);
     }
 
     /**
@@ -204,6 +204,7 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
         bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
         bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
+        
         bytes32 inputHash = executionState.stateHash(
             executionState.stackHash(proofs.stackHash),
             memHash,
@@ -311,15 +312,15 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
     }
     
     function getStateHash(
-        MerkelizerStorage.ExecutionState memory executionState,
-        HydratedState memory hydratedState,
-        bytes32 dataHash
+        MerkelizerStorage.ExecutionState memory _executionState,
+        HydratedState memory _hydratedState,
+        bytes32 _dataHash
     ) internal returns (bytes32) {
-        return executionState.stateHash(
-            hydratedState.stackHash,
-            hydratedState.memHash,
-            dataHash,
-            hydratedState.tStorageHash
+        return _executionState.stateHash(
+            _hydratedState.stackHash,
+            _hydratedState.memHash,
+            _dataHash,
+            _hydratedState.tStorageHash
         );
     }
 

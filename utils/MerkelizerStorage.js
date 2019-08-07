@@ -13,7 +13,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         compactStack: [],
         stack: [],
         mem: [],
-        storage: [],
+        tStorage: [],
         returnData: '0x',
         pc: 0,
         errno: 0,
@@ -60,14 +60,14 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
     );
   }
 
-  static storageHash (storage) {
+  static storageHash (tStorage) {
     return ethers.utils.solidityKeccak256(
       ['bytes32[]'],
-      [storage]
+      [tStorage]
     );
   }
 
-  static stateHash (execution, stackHash, memHash, dataHash, storageHash, customEnvironmentHash) {
+  static stateHash (execution, stackHash, memHash, tStorageHash, dataHash, customEnvironmentHash) {
     // TODO: compact returnData
 
     if (!stackHash || stackHash === ZERO_HASH) {
@@ -82,8 +82,8 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
       dataHash = this.dataHash(execution.data);
     }
 
-    if (!storageHash || storageHash === ZERO_HASH) {
-      storageHash = this.storageHash(execution.storage);
+    if (!tStorageHash || tStorageHash === ZERO_HASH) {
+      tStorageHash = this.storageHash(execution.tStorage);
     }
 
     if (!customEnvironmentHash) {
@@ -96,7 +96,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         stackHash,
         memHash,
         dataHash,
-        storageHash,
+        tStorageHash,
         customEnvironmentHash,
         execution.returnData,
         execution.pc,
@@ -120,7 +120,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
     let prevLeaf = { right: initialState };
     let len = executions.length;
     let memHash;
-    let storageHash;
+    let tStorageHash;
 
     for (let i = 0; i < len; i++) {
       const exec = executions[i];
@@ -140,11 +140,11 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem) || ZERO_HASH;
       }
       
-      if (!storageHash) {
-        storageHash = this.constructor.storageHash(exec.storage) || ZERO_HASH;
+      if (!tStorageHash) {
+        tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
       }
-
-      const hash = this.constructor.stateHash(exec, stackHash, memHash, storageHash);
+          
+      const hash = this.constructor.stateHash(exec, stackHash, memHash, tStorageHash);
       const llen = leaves.push(
         {
           left: prevLeaf.right,
@@ -152,6 +152,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
             hash: hash,
             stackHash,
             memHash,
+            tStorageHash,
             executionState: executions[i],
           },
           hash: this.constructor.hash(prevLeaf.right.hash, hash),
