@@ -309,6 +309,8 @@ module.exports = class OffchainStepper extends VM.MetaVM {
 
     if ( opcodeName === 'SLOAD' ){
       isStorageDataRequired = true;
+      let newStorageData = await this.getStorageValue(runState, compactStack);
+      tStorage = tStorage.concat(newStorageData);
     }
     
     runState.context.steps.push({
@@ -339,7 +341,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
   async getStorageValue(runState, compactStack) {
     let stateManager = runState.stateManager;
     let address = runState.address;
-    let key = compactStack[1];
+    let key = compactStack[compactStack.length - 1];
     key = Buffer.from(key.replace('0x', ''), 'hex');
                 
     return new Promise(
