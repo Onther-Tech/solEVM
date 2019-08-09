@@ -291,7 +291,8 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     let isStorageDataRequired = false;
     if( opcodeName === 'SSTORE' ){
       try {
-        tStorage = await this.getStorageValue(runState, compactStack);
+        let newStorageData = await this.getStorageValue(runState, compactStack);
+        tStorage = tStorage.concat(newStorageData);
         isStorageDataRequired = true;
       } catch (error) {
         console.log(error);
