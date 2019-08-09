@@ -22,6 +22,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         memSize: 0,
         tStorageSize: 0,
         customEnvironmentHash: customEnvironmentHash || ZERO_HASH,
+        isStorageReset: 0
       },
     };
 

@@ -29,6 +29,7 @@ module.exports = class ProofHelper {
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
+        isStorageReset: execState.isStorageReset ? true : false
       },
     };
   }

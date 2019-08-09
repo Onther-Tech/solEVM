@@ -289,10 +289,18 @@ module.exports = class OffchainStepper extends VM.MetaVM {
     }
 
     let isStorageDataRequired = false;
+    let isStorageReset = false;
     if( opcodeName === 'SSTORE' ){
       try {
         let newStorageData = await this.getStorageValue(runState, compactStack);
-        tStorage = tStorage.concat(newStorageData);
+        for (let i = 0; i < tStorage.length - 1; i++){
+          if ( i % 2 == 0 && tStorage[i] == newStorageData[0] ){
+            isStorageReset = true;
+          }
+        }
+        if (!isStorageReset){
+          tStorage = tStorage.concat(newStorageData);
+        }
         isStorageDataRequired = true;
       } catch (error) {
         console.log(error);
@@ -314,6 +322,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       isCallDataRequired: isCallDataRequired,
       isMemoryRequired: isMemoryRequired,
       isStorageDataRequired: isStorageDataRequired,
+      isStorageReset: isStorageReset,
       gasFee: gasFee,
       data: runState.context.data,
       stack: stack,
