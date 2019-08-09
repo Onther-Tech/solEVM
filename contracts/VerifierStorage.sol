@@ -9,7 +9,14 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 contract VerifierStorage is Ownable, HydratedRuntimeStorage {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
-    
+
+    // dev
+    bytes32 public inputHash;
+    bytes32 public hash;
+    bytes32 public initialStateHash;
+    bytes32 public beforeStorageHash;
+    bytes32 public afterStorageHash;
+
     struct Proofs {
         bytes32 stackHash;
         bytes32 memHash;
@@ -101,7 +108,7 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
         // TODO: should be the bytes32 root hash later on
         bytes memory callData
     ) public onlyEnforcer() returns (bytes32 disputeId) {
-        bytes32 initialStateHash = MerkelizerStorage.initialStateHash(callData, customEnvironmentHash);
+        initialStateHash = MerkelizerStorage.initialStateHash(callData, customEnvironmentHash);
 
         disputeId = keccak256(
             abi.encodePacked(
@@ -204,8 +211,9 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
         bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
         bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
-        
-        bytes32 inputHash = executionState.stateHash(
+        // bytes32[] memory arg = new bytes32[](0);
+        // bytes32 tStorageHash = keccak256(abi.encodePacked(arg));
+        inputHash = executionState.stateHash(
             executionState.stackHash(proofs.stackHash),
             memHash,
             dataHash,
@@ -243,6 +251,8 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
         hydratedState.stackHash = proofs.stackHash;
         hydratedState.memHash = memHash;
         hydratedState.tStorageHash = tStorageHash;
+
+        beforeStorageHash = hydratedState.tStorageHash;
 
         evm.context = Context(
             DEFAULT_CALLER,
@@ -290,7 +300,9 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
             executionState.memSize = evm.mem.size;
         }
 
-        bytes32 hash = getStateHash(executionState, hydratedState, dataHash);
+        afterStorageHash = hydratedState.tStorageHash;
+
+        hash = getStateHash(executionState, hydratedState, dataHash);
 
         if (hash != dispute.solver.right && hash != dispute.challenger.right) {
             return;
