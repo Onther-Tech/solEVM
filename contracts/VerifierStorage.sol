@@ -261,7 +261,8 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
             0,
             0,
             0,
-            0
+            0,
+            executionState.isStorageReset
         );
 
         evm.data = executionState.data;
@@ -272,7 +273,7 @@ contract VerifierStorage is Ownable, HydratedRuntimeStorage {
         evm.stack = EVMStack.fromArray(executionState.stack);
         evm.mem = EVMMemory.fromArray(executionState.mem);
         evm.tStorage = EVMStorageToArray.fromArrayForHash(executionState.tStorage);
-
+        
         _run(evm, executionState.pc, 1);
 
         if (evm.errno != NO_ERROR && evm.errno != ERROR_STATE_REVERTED) {

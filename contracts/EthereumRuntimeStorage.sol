@@ -54,7 +54,8 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             0,
             0,
             0,
-            0
+            0,
+            false
         );
 
         evm.data = img.data;

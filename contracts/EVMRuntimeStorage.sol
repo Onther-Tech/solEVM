@@ -24,6 +24,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint blockNumber;
         uint time;
         uint difficulty;
+        bool isStorageReset;
     }
 
     // what we do not track  (not complete list)
@@ -341,7 +342,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleSSTORE;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_SSET;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 86) {
                 opcodeHandler = handleJUMP;
                 stackIn = 1;
@@ -1495,6 +1496,22 @@ contract EVMRuntimeStorage is EVMConstants {
     function handleSSTORE(EVM memory state) internal {
         uint addr = state.stack.pop();
         uint val = state.stack.pop();
+        uint gasFee;
+
+        if ( !state.context.isStorageReset ){
+            gasFee = GAS_SSET;
+        } else {
+            gasFee = GAS_SRESET;
+        }
+
+        if (gasFee > state.gas) {
+            state.gas = 0;
+            state.errno = ERROR_OUT_OF_GAS;
+            return;
+        }
+
+        state.gas -= gasFee;
+
         state.tStorage.store(addr, val);
     }
 
