@@ -140,10 +140,8 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem) || ZERO_HASH;
       }
       
-      if (!tStorageHash) {
-        tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
-      }
-          
+      tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
+                
       const hash = this.constructor.stateHash(exec, stackHash, memHash, tStorageHash);
       const llen = leaves.push(
         {

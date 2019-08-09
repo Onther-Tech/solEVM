@@ -288,13 +288,18 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       isCallDataRequired = true;
     }
 
-    if( opcodeName === 'SLOAD' ){
+    let isStorageDataRequired = false;
+    if( opcodeName === 'SSTORE' ){
       try {
         tStorage = await this.getStorageValue(runState, compactStack);
+        isStorageDataRequired = true;
       } catch (error) {
         console.log(error);
       }
-         
+    }
+
+    if ( opcodeName === 'SLOAD' ){
+      isStorageDataRequired = true;
     }
     
     runState.context.steps.push({
@@ -307,6 +312,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
       opcodeName: opcodeName,
       isCallDataRequired: isCallDataRequired,
       isMemoryRequired: isMemoryRequired,
+      isStorageDataRequired: isStorageDataRequired,
       gasFee: gasFee,
       data: runState.context.data,
       stack: stack,
@@ -323,7 +329,7 @@ module.exports = class OffchainStepper extends VM.MetaVM {
   async getStorageValue(runState, compactStack) {
     let stateManager = runState.stateManager;
     let address = runState.address;
-    let key = compactStack[0];
+    let key = compactStack[1];
     key = Buffer.from(key.replace('0x', ''), 'hex');
                 
     return new Promise(

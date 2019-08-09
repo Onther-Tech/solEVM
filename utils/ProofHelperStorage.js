@@ -13,7 +13,7 @@ module.exports = class ProofHelper {
       ),
       memHash: execState.isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: execState.isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
-      tStorageHash: Merkelizer.storageHash(prevOutput.tStorage)
+      tStorageHash: execState.isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage)
     };
 
     return {
@@ -22,7 +22,7 @@ module.exports = class ProofHelper {
         data: (execState.isCallDataRequired ? prevOutput.data : '0x'),
         stack: execState.compactStack,
         mem: execState.isMemoryRequired ? prevOutput.mem : [],
-        tStorage: [],
+        tStorage: execState.isStorageDataRequired ? prevOutput.tStorage : [],
         customEnvironmentHash: ZERO_HASH,
         returnData: prevOutput.returnData,
         pc: prevOutput.pc,
