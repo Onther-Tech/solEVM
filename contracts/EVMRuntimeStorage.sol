@@ -341,7 +341,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleSSTORE;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_SSET;
             } else if (opcode == 86) {
                 opcodeHandler = handleJUMP;
                 stackIn = 1;
