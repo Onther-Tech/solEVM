@@ -20,6 +20,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         gasRemaining: DEFAULT_GAS,
         stackSize: 0,
         memSize: 0,
+        tStorageSize: 0,
         customEnvironmentHash: customEnvironmentHash || ZERO_HASH,
       },
     };
@@ -129,6 +130,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
       // convenience
       exec.stackSize = exec.stack.length;
       exec.memSize = exec.mem.length;
+      exec.tStorageSize = exec.tStorage.length;
 
       // memory is changed if either written to or if it was expanded
       let memoryChanged = exec.memWriteLow !== -1;
@@ -140,8 +142,15 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem) || ZERO_HASH;
       }
       
-      tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
-                
+      let tStorageChanged = false;
+      if (!tStorageChanged) {
+        tStorageChanged = prevLeaf.right.executionState.tStorageSize !== exec.tStorageSize;
+      }
+
+      if (!tStorageHash || tStorageChanged) {
+        tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
+      }
+                      
       const hash = this.constructor.stateHash(exec, stackHash, memHash, tStorageHash);
       const llen = leaves.push(
         {
