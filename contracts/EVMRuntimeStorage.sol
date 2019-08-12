@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 
 import { EVMConstants } from "./EVMConstants.sol";
+import {EVMAccounts} from "./EVMAccounts.slb";
 import { EVMMemory } from "./EVMMemory.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMUtils } from "./EVMUtils.slb";
@@ -49,7 +50,8 @@ contract EVMRuntimeStorage is EVMConstants {
         EVMStorageToArray.Storage tStorage;
 
         address caller;
-        address target;
+        EVMAccounts.Account target;
+        //address target;
     }
 
     // solhint-disable-next-line code-complexity, function-max-lines, security/no-assign-params
@@ -1269,12 +1271,14 @@ contract EVMRuntimeStorage is EVMConstants {
 
     // 0x3X
     function handleADDRESS(EVM memory state) internal {
-        state.stack.push(uint(state.target));
+        state.stack.push(uint(state.target.addr));
     }
 
     // not supported, we are stateless
     function handleBALANCE(EVM memory state) internal {
-        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
+        uint addr = state.stack.pop();
+        state.stack.push(state.accounts.get(address(addr)).balance);
+        // state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     function handleORIGIN(EVM memory state) internal {
