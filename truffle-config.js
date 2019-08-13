@@ -1,3 +1,4 @@
+'use strict';
 
 module.exports = {
   compilers: {
@@ -13,33 +14,23 @@ module.exports = {
     },
   },
   networks: {
-    development: {
-      host: 'localhost',
-      port: 8545,
-      network_id: '*', // eslint-disable-line camelcase
-      gas: 0xfffffffffffff,
-      gasPrice: 0x01,
+    goerli: {
+      url: 'https://goerli.infura.io/v3/' + process.env.INFURA_API_KEY,
+      network_id: '5', // eslint-disable-line camelcase
+      gas: 6465030,
+      gasPrice: 10000000000,
     },
     ganache: {
-      host: 'localhost',
-      port: 8545,
+      url: 'http://localhost:8111',
       network_id: '*', // eslint-disable-line camelcase
-      gas: 0xfffffffffffff,
-      gasPrice: 0x01,
+      gas: 7000000,
+      gasPrice: 1,
     },
-    coverage: {
-      host: 'localhost',
-      port: 8555,
+    geth: {
+      url: 'http://localhost:8222',
       network_id: '*', // eslint-disable-line camelcase
-      gas: 0xfffffffffffff,
-      gasPrice: 0x01,
-    },
-    gasPrice: {
-      host: 'localhost',
-      port: 8545,
-      network_id: '*', // eslint-disable-line camelcase
-      gas: 0xfffffffffffff,
-      gasPrice: 3 * (10 ** 9),
+      gas: 7000000,
+      gasPrice: 1,
     },
   },
 };

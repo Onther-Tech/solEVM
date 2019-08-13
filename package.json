@@ -16,33 +16,28 @@
   "main": "utils/index.js",
   "scripts": {
     "test": "yarn test:contracts && yarn test:utils",
-    "test:contracts": "scripts/test.sh test/contracts/*",
+    "test:contracts": "yarn compile:contracts && scripts/test.sh test/contracts/*",
     "test:utils": "mocha test/utils/",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:sol": "solhint contracts/*.{sol,slb}",
+    "lint:sol": "solhint contracts/**/*{.sol,.slb}",
     "lint:all": "yarn lint && yarn lint:sol",
     "lint:all:fix": "yarn lint:fix && yarn lint:sol",
-    "console": "truffle console",
-    "compile:contracts": "truffle compile",
-    "version": "scripts/version.js",
-    "coverage": "scripts/coverage.sh"
+    "compile:contracts": "scripts/compile.js",
+    "coverage": "scripts/start_geth.sh && RPC_PORT=8333 yarn develatus-apparatus"
   },
   "devDependencies": {
-    "eslint": "^4.11.0",
-    "eslint-config-standard": "^10.2.1",
-    "eslint-plugin-import": "^2.8.0",
-    "eslint-plugin-node": "^5.2.1",
-    "eslint-plugin-promise": "^3.6.0",
-    "eslint-plugin-standard": "^3.0.1",
+    "develatus-apparatus": "https://github.com/pinkiebell/develatus-apparatus.git#0.1.1",
+    "eslint": "=6.0.1",
     "ganache-cli": "=6.4.0",
     "mocha": "=6.1.4",
-    "solhint": "^1.2.1",
-    "truffle": "=5.0.22"
+    "solc": "=0.5.2",
+    "solhint": "=2.1.0"
   },
   "dependencies": {
-    "ethereumjs-vm": "https://github.com/pinkiebell/ethereumjs-vm.git#release/v2.6.0-r5",
-    "ethers": "^4.0.13",
-    "openzeppelin-solidity": "=2.1.1"
+    "ethereumjs-util": "=6.1.0",
+    "ethers": "=4.0.33",
+    "keccak": "=2.0.0",
+    "rustbn.js": "=0.2.0"
   }
 }

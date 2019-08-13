@@ -1,25 +1,63 @@
-const OffchainStepper = require('./OffchainStepper.js');
+'use strict';
+
+const ethers = require('ethers');
+
+const HydratedRuntime = require('./HydratedRuntime.js');
 const Merkelizer = require('./Merkelizer.js');
 const ProofHelper = require('./ProofHelper.js');
+const FragmentTree = require('./FragmentTree');
 const { ZERO_HASH } = require('./constants.js');
 
 module.exports = class ExecutionPoker {
-  constructor (enforcer, verifier, wallet, gasLimit, logTag) {
+  constructor (enforcer, verifier, wallet, gasLimit = 0xfffffffffffff, logTag = 'unkn') {
     this.enforcer = enforcer.connect(wallet);
     this.verifier = verifier.connect(wallet);
     this.wallet = wallet;
-    this.gasLimit = gasLimit || 0xfffffffffffff;
-    this.logTag = logTag || 'unkn';
+    this.gasLimit = gasLimit;
+    this.logTag = logTag;
+    // TODO: this needs to be garbage collected
+    this.taskParams = {};
+    this.taskCallData = {};
     this.disputes = {};
     this.solutions = {};
 
     this.enforcer.on(
-      this.enforcer.filters.Registered(),
-      async (execId, addr, code, data, tx) => {
-        if (addr !== this.wallet.address) {
-          this.validateExecution(execId, code, data);
+      this.enforcer.filters.Requested(),
+      async (taskHash, parameters, callData, tx) => {
+        const params = {
+          origin: parameters[0],
+          target: parameters[1],
+          blockHash: parameters[2],
+          blockNumber: parameters[3],
+          time: parameters[4],
+          txGasLimit: parameters[5],
+          customEnvironmentHash: parameters[6],
+          codeHash: parameters[7],
+          dataHash: parameters[8],
+        };
+        this.taskParams[taskHash] = params;
+        this.taskCallData[params.dataHash] = callData;
+
+        const receipt = await tx.getTransactionReceipt();
+
+        if (receipt.from === this.wallet.address) {
+          this.log('task request', { taskHash, params });
+          this.registerExecution(taskHash, params);
         } else {
-          this.log('execution registered', execId);
+          this.log('task requested', { taskHash, params });
+        }
+      }
+    );
+
+    this.enforcer.on(
+      this.enforcer.filters.Registered(),
+      async (taskHash, solverPathRoot, executionDepth, resultBytes, tx) => {
+        const receipt = await tx.getTransactionReceipt();
+
+        if (receipt.from === this.wallet.address) {
+          this.log('execution result registered', taskHash);
+        } else {
+          this.validateExecution(taskHash, solverPathRoot, executionDepth, resultBytes);
         }
       }
     );
@@ -65,51 +103,79 @@ module.exports = class ExecutionPoker {
     console.log(this.logTag, ':', ...args);
   }
 
-  async registerExecution (contractAddr, data) {
-    // make the last step invalid
-    const res = await this.computeCall(contractAddr, data, true);
+  async requestExecution (evmParameter, callData) {
+    let tx = await this.enforcer.request(evmParameter, callData);
+
+    tx = await tx.wait();
+
+    const taskHash = tx.events[0].args.taskHash;
+
+    return { taskHash, evmParameter };
+  }
+
+  async registerExecution (taskHash, evmParams) {
+    const res = await this.computeCall(evmParams);
+    const { resultProof, returnData } = res.merkle.computeResultProof();
     const bondAmount = await this.enforcer.bondAmount();
 
     this.log('registering execution:', res.steps.length, 'steps');
 
+    // paranoia, better safe than sorry
+    if (!res.merkle.verifyResultProof(resultProof, returnData, res.merkle.root.hash)) {
+      throw new Error('Computed resultProof is invalid. Please file a bug report.');
+    }
+
     let tx = await this.enforcer.register(
-      contractAddr,
-      data,
+      taskHash,
       res.merkle.root.hash,
-      res.merkle.depth,
-      ZERO_HASH,
+      resultProof,
+      returnData,
       { value: bondAmount }
     );
 
     tx = await tx.wait();
 
-    let evt = tx.events[0].args;
+    const evt = tx.events[0].args;
+    const executionId = ethers.utils.solidityKeccak256(
+      ['bytes32', 'bytes32'],
+      [taskHash, evt.solverPathRoot]
+    );
 
-    this.solutions[evt.executionId] = res;
+    this.solutions[executionId] = res;
   }
 
-  async validateExecution (execId, contractAddr, data) {
-    this.log('validating execution', execId);
-
-    const execution = await this.enforcer.executions(execId);
-    const res = await this.computeCall(contractAddr, data);
-
-    const solverHash = execution.endHash;
-    const challengerHash = res.merkle.root.hash;
+  async validateExecution (taskHash, solverHash, executionDepth, resultBytes) {
+    const executionId = ethers.utils.solidityKeccak256(
+      ['bytes32', 'bytes32'],
+      [taskHash, solverHash]
+    );
+    this.log('validating execution result', executionId);
 
     // TODO: MerkleTree resizing
     // check execution length and resize tree if necessary
+    const taskParams = this.taskParams[taskHash];
+    const res = await this.computeCall(taskParams);
 
-    console.log('solverHash', solverHash);
-    console.log('challengerHash', challengerHash);
+    // TODO: handle the bigger case too
+    if (executionDepth < res.merkle.depth) {
+      // scale down
+      res.merkle.tree[0] = res.merkle.tree[0].slice(0, 2 ** (executionDepth.toNumber() - 1));
+      // recalculate tree
+      res.merkle.recal();
+    }
 
-    if (solverHash !== challengerHash) {
+    const challengerHash = res.merkle.root.hash;
+
+    this.log('solverHash', solverHash);
+    this.log('challengerHash', challengerHash);
+
+    if (solverHash !== challengerHash || this.alwaysChallenge) {
       const bondAmount = await this.enforcer.bondAmount();
 
       let tx = await this.enforcer.dispute(
-        contractAddr,
-        data,
+        solverHash,
         challengerHash,
+        taskParams,
         { value: bondAmount, gasLimit: this.gasLimit }
       );
 
@@ -131,6 +197,7 @@ module.exports = class ExecutionPoker {
       merkle: res.merkle,
       depth: res.merkle.depth,
       computationPath: res.merkle.root,
+      codeFragmentTree: res.codeFragmentTree,
     };
 
     this.disputes[disputeId] = obj;
@@ -146,7 +213,7 @@ module.exports = class ExecutionPoker {
       this.log('submitting for l=' +
         obj.computationPath.left.hash + ' r=' + obj.computationPath.right.hash);
 
-      await this.submitProof(disputeId, obj.computationPath);
+      await this.submitProof(disputeId, obj);
       return;
     }
 
@@ -197,11 +264,11 @@ module.exports = class ExecutionPoker {
 
     tx = await tx.wait();
 
-    this.log('gas used', tx.gasUsed.toString());
+    this.log('gas used', tx.gasUsed.toString(), tx.hash);
   }
 
-  async submitProof (disputeId, computationPath) {
-    const args = ProofHelper.constructProof(computationPath);
+  async submitProof (disputeId, disputeObj) {
+    const args = ProofHelper.constructProof(disputeObj.computationPath, disputeObj);
 
     this.log('submitting proof - proofs', args.proofs);
     this.log('submitting proof - executionState', args.executionInput);
@@ -220,8 +287,9 @@ module.exports = class ExecutionPoker {
     return tx;
   }
 
-  async computeCall (addr, data, invalidateLastStep) {
-    let bytecode = await this.wallet.provider.getCode(addr);
+  async computeCall (evmParams) {
+    let bytecode = await this.getCodeForParams(evmParams);
+    let data = await this.getDataForParams(evmParams);
     let code = [];
     let len = bytecode.length;
 
@@ -229,14 +297,25 @@ module.exports = class ExecutionPoker {
       code.push(bytecode.substring(i, i += 2));
     }
 
-    const stepper = new OffchainStepper();
-    const steps = await stepper.run({ code, data });
-    if (invalidateLastStep) {
-      this.log('making one execution step invalid');
-      steps[steps.length - 1].gasRemaining = 22;
+    let codeFragmentTree;
+    // code is not on chain-🍕
+    if (!evmParams.codeHash.endsWith('000000000000000000000000')) {
+      codeFragmentTree = new FragmentTree().run(bytecode);
     }
-    const merkle = new Merkelizer().run(steps, addr, data);
 
-    return { steps, merkle };
+    const runtime = new HydratedRuntime();
+    const steps = await runtime.run({ code, data });
+    const merkle = new Merkelizer().run(steps, bytecode, data, evmParams.customEnvironmentHash);
+
+    return { steps, merkle, codeFragmentTree };
+  }
+
+  async getCodeForParams (evmParams) {
+    const addr = evmParams.codeHash.substring(0, 42);
+    return this.wallet.provider.getCode(addr);
+  }
+
+  async getDataForParams (evmParams) {
+    return this.taskCallData[evmParams.dataHash];
   }
 };

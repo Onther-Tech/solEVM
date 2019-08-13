@@ -1,3 +1,4 @@
+'use strict';
 
 const ethers = require('ethers');
 const { ZERO_HASH } = require('./constants');
@@ -86,7 +87,7 @@ module.exports = class AbstractMerkleTree {
       let last = this.tree[level - 1];
       let cur = [];
 
-      if (last.length === 1) {
+      if (last.length <= 1 && level > 1) {
         // done
         break;
       }

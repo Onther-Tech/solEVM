@@ -1,63 +1,22 @@
 pragma solidity ^0.5.2;
 pragma experimental ABIEncoderV2;
 
-import "./Enforcer.sol";
+import "./interfaces/IVerifier.sol";
 import "./HydratedRuntime.sol";
 import "./Merkelizer.slb";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract Verifier is Ownable, HydratedRuntime {
+contract Verifier is IVerifier, HydratedRuntime {
     using Merkelizer for Merkelizer.ExecutionState;
 
     struct Proofs {
         bytes32 stackHash;
         bytes32 memHash;
         bytes32 dataHash;
+        uint256 codeByteLength;
+        bytes32[] codeFragments;
+        bytes32[] codeProof;
     }
-
-    struct ComputationPath {
-        bytes32 left;
-        bytes32 right;
-    }
-
-    // 256x32 bytes as the memory limit
-    uint constant internal MAX_MEM_WORD_COUNT = 256;
-
-    uint8 constant internal SOLVER_RESPONDED = 1 << 0;
-    uint8 constant internal CHALLENGER_RESPONDED = 1 << 1;
-    uint8 constant internal SOLVER_VERIFIED = 1 << 2;
-    uint8 constant internal CHALLENGER_VERIFIED = 1 << 3;
-    uint8 constant internal START_OF_EXECUTION = 1 << 4;
-    uint8 constant internal END_OF_EXECUTION = 1 << 5;
-    uint8 constant internal INITIAL_STATE = START_OF_EXECUTION | END_OF_EXECUTION;
-
-    struct Dispute {
-        bytes32 executionId;
-        bytes32 initialStateHash;
-        address codeContractAddress;
-        address challengerAddr;
-
-        bytes32 solverPath;
-        bytes32 challengerPath;
-        uint256 treeDepth;
-        bytes32 witness;
-
-        ComputationPath solver;
-        ComputationPath challenger;
-
-        uint8 state;
-
-        uint256 timeout; // currently is block number
-    }
-
-    event DisputeNewRound(bytes32 indexed disputeId, uint256 timeout, bytes32 solverPath, bytes32 challengerPath);
-
-    uint256 public timeoutDuration;
-
-    Enforcer public enforcer;
-
-    mapping (bytes32 => Dispute) public disputes;
 
     /**
       * @dev Throw if not called by enforcer
@@ -72,17 +31,26 @@ contract Verifier is Ownable, HydratedRuntime {
       */
     modifier onlyPlaying(bytes32 disputeId) {
         Dispute storage dispute = disputes[disputeId];
-        require(dispute.timeout >= block.number, "game timed out");
+        require(dispute.timeout >= block.timestamp, "game timed out");
         require((dispute.state & SOLVER_VERIFIED == 0) && (dispute.state & CHALLENGER_VERIFIED == 0), "dispute resolved");
         _;
     }
 
-    constructor(uint256 timeout) public Ownable() {
+    /// @param timeout The time (in seconds) the participants have to react to `submitRound, submitProof`.
+    /// 30 minutes is a good value for common use-cases.
+    constructor(uint256 timeout) public {
         timeoutDuration = timeout;
     }
 
-    function setEnforcer(address _enforcer) public onlyOwner() {
-        enforcer = Enforcer(_enforcer);
+    // Due to the reverse dependency with Enforcer<>Verifier
+    // we have to first deploy both contracts and peg it to one another.
+    // Verifier gets deployed first, so Enforcer can be deployed with Verifier's
+    // address in constructor, but Verifier itself needs to informed about Enforcer's address
+    // after deployment. Checking if `enforcer` is `address(0)` here does the job.
+    function setEnforcer(address _enforcer) public {
+        require(address(enforcer) == address(0));
+
+        enforcer = IEnforcer(_enforcer);
     }
 
     /**
@@ -95,12 +63,12 @@ contract Verifier is Ownable, HydratedRuntime {
         uint256 executionDepth,
         // optional for implementors
         bytes32 customEnvironmentHash,
-        address challenger,
-        address codeContractAddress,
         // TODO: should be the bytes32 root hash later on
-        bytes memory callData
+        bytes32 codeHash,
+        bytes32 dataHash,
+        address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
-        bytes32 initialStateHash = Merkelizer.initialStateHash(callData, customEnvironmentHash);
+        bytes32 initialStateHash = Merkelizer.initialStateHash(dataHash, customEnvironmentHash);
 
         disputeId = keccak256(
             abi.encodePacked(
@@ -119,7 +87,7 @@ contract Verifier is Ownable, HydratedRuntime {
         disputes[disputeId] = Dispute(
             executionId,
             initialStateHash,
-            codeContractAddress,
+            codeHash,
             challenger,
             solverHashRoot,
             challengerHashRoot,
@@ -219,44 +187,34 @@ contract Verifier is Ownable, HydratedRuntime {
             }
         }
 
-        if ((dispute.state & END_OF_EXECUTION) != 0) {
-            address codeAddress = dispute.codeContractAddress;
-            uint pos = executionState.pc;
-            uint8 opcode;
+        EVM memory evm;
+        evm.code = verifyCode(
+            dispute.codeHash,
+            proofs.codeFragments,
+            proofs.codeProof,
+            proofs.codeByteLength
+        );
 
-            assembly {
-                extcodecopy(codeAddress, 31, pos, 1)
-                opcode := mload(0)
-            }
+        if ((dispute.state & END_OF_EXECUTION) != 0) {
+            uint8 opcode = evm.code.getOpcodeAt(executionState.pc);
 
             if (opcode != OP_REVERT && opcode != OP_RETURN && opcode != OP_STOP) {
                 return;
             }
         }
 
-        EVM memory evm;
         HydratedState memory hydratedState = initHydratedState(evm);
 
         hydratedState.stackHash = proofs.stackHash;
         hydratedState.memHash = memHash;
 
-        evm.context = Context(
-            DEFAULT_CALLER,
-            0,
-            DEFAULT_BLOCK_GAS_LIMIT,
-            0,
-            0,
-            0,
-            0
-        );
-
         evm.data = executionState.data;
         evm.gas = executionState.gasRemaining;
-        evm.code = EVMCode.fromAddress(dispute.codeContractAddress);
         evm.caller = DEFAULT_CALLER;
         evm.target = DEFAULT_CONTRACT_ADDRESS;
         evm.stack = EVMStack.fromArray(executionState.stack);
         evm.mem = EVMMemory.fromArray(executionState.mem);
+        evm.returnData = executionState.returnData;
 
         _run(evm, executionState.pc, 1);
 
@@ -327,7 +285,7 @@ contract Verifier is Ownable, HydratedRuntime {
         Dispute storage dispute = disputes[disputeId];
 
         require(dispute.timeout > 0, "dispute not exist");
-        require(dispute.timeout < block.number, "not timed out yet");
+        require(dispute.timeout < block.timestamp, "not timed out yet");
         require(
             (dispute.state & SOLVER_VERIFIED) == 0 && (dispute.state & CHALLENGER_VERIFIED) == 0,
             "already notified enforcer"
@@ -356,7 +314,7 @@ contract Verifier is Ownable, HydratedRuntime {
       * @dev refresh timeout of dispute
       */
     function getTimeout() internal view returns (uint256) {
-        return block.number + timeoutDuration;
+        return block.timestamp + timeoutDuration;
     }
 
     /**
@@ -418,5 +376,83 @@ contract Verifier is Ownable, HydratedRuntime {
             }
         }
         emit DisputeNewRound(disputeId, dispute.timeout, dispute.solverPath, dispute.challengerPath);
+    }
+
+    /// @dev Verify FragmentTree for contract bytecode.
+    /// `codeFragments` must be power of two and consists of `slot/pos`, `value`.
+    /// If `codeHash`'s last 12 bytes are zero, `codeHash` assumed to be a contract address
+    /// and returns with `EVMCode.fromAddress(...)`.
+    /// @return EVMCode.Code
+    function verifyCode(
+        bytes32 codeHash,
+        bytes32[] memory codeFragments,
+        bytes32[] memory codeProofs,
+        uint256 codeByteLength
+        // solhint-disable-next-line function-max-lines
+    ) internal view returns (EVMCode.Code memory) {
+        // it's a contract address, pull code from there
+        if ((uint256(codeHash) & 0xffffffffffffffffffffffff) == 0) {
+            return EVMCode.fromAddress(address(bytes20(codeHash)));
+        }
+
+        // Codes will be supplied by the user
+        // TODO: we should support compressed-proofs in the future
+        // to save quite a bit of computation
+
+        // Enforce max. leaveCount here? :)
+        uint256 leaveCount = ((codeByteLength + 31) / 32);
+        require(leaveCount > 0);
+        leaveCount = leaveCount + leaveCount % 2;
+
+        // calculate tree depth
+        uint256 treeDepth = 0;
+        for (; leaveCount != 1; leaveCount >>= 1) {
+            treeDepth++;
+        }
+
+        require(codeFragments.length % 2 == 0);
+        require(codeProofs.length == ((codeFragments.length / 2) * (treeDepth)));
+
+        assembly {
+            // save memory slots, we are gonna use them
+            let tmp := mload(0x40)
+            mstore(0x40, codeByteLength)
+
+            let codeFragLen := mload(codeFragments)
+            let codeFrags := add(codeFragments, 0x20)
+            let proofs := add(codeProofs, 0x20)
+            for { let x := 0 } lt(x, codeFragLen) { x := add(x, 2) } {
+                let fragPtr := add(codeFrags, mul(x, 0x20))
+                let slot := mload(fragPtr)
+
+                mstore(0x00, mload(add(fragPtr, 0x20)))
+                mstore(0x20, slot)
+
+                let hash := keccak256(0x00, 0x60)
+
+                for { let i := 0 } lt(i, treeDepth) { i := add(i, 1) } {
+                    mstore(0x00, mload(proofs))
+                    mstore(0x20, hash)
+
+                    if iszero(mod(slot, 2)) {
+                        mstore(0x00, hash)
+                        mstore(0x20, mload(proofs))
+                    }
+
+                    hash := keccak256(0x00, 0x40)
+                    slot := shr(slot, 1)
+                    proofs := add(proofs, 0x20)
+                }
+
+                // require hash == codeHash
+                if iszero(eq(hash, codeHash)) {
+                    revert(0, 0)
+                }
+            }
+            // restore memory slots
+            mstore(0x40, tmp)
+        }
+
+        return EVMCode.fromArray(codeFragments, codeByteLength);
     }
 }
