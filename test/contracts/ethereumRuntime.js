@@ -1,14 +1,20 @@
+'use strict';
+
+const fs = require('fs');
+const assert = require('assert');
+
 const { getCode, deployContract, deployCode } =
   require('./../helpers/utils');
 const fixtures = require('./../fixtures/runtime');
+const runtimeGasUsed = require('./../fixtures/runtimeGasUsed');
 const Runtime = require('./../../utils/EthereumRuntimeAdapter');
 const OP = require('./../../utils/constants');
 
 const { PUSH1, BLOCK_GAS_LIMIT } = OP;
 
-const EthereumRuntime = artifacts.require('EthereumRuntime.sol');
+const EthereumRuntime = require('./../../build/contracts/EthereumRuntime.json');
 
-contract('Runtime', function () {
+describe('Runtime', function () {
   let rt;
 
   before(async () => {
@@ -67,11 +73,15 @@ contract('Runtime', function () {
       assert.deepEqual(stack, ['0x0000000000000000000000000000000000000000000000000000000000000008']);
     });
 
+    const gasUsedValues = [];
     let totalGasUsed = 0;
+    let totalGasUsedBaseline = 0;
 
     fixtures.forEach(async (fixture, index) => {
       const { code, pc, opcodeUnderTest } = getCode(fixture);
-      it(fixture.description || opcodeUnderTest, async () => {
+      const testName = fixture.description || opcodeUnderTest;
+
+      it(testName, async () => {
         const stack = fixture.stack || [];
         const mem = fixture.memory || [];
         const data = fixture.data || '0x';
@@ -88,12 +98,34 @@ contract('Runtime', function () {
           mem,
         };
         const res = await rt.execute(args);
-
         const gasUsed = (await (await rt.execute(args, true)).wait()).gasUsed.toNumber();
+
         totalGasUsed += gasUsed;
-        console.log(fixture.description || opcodeUnderTest, 'gasUsed', gasUsed);
-        if (index + 1 === fixtures.length) {
-          console.log('totalGasUsed', totalGasUsed);
+        gasUsedValues[index] = gasUsed;
+        console.log(testName, 'gasUsed', gasUsed);
+
+        const gasUsedBaseline = runtimeGasUsed[index];
+
+        if (gasUsedBaseline !== undefined) {
+          // The max increase in gas usage
+          const maxAllowedDiff = 5000;
+
+          // Skip gas accounting if we do coverage.
+          // Ther other hack is for ganache. It has wrong gas accounting with some precompiles 🤦
+          if (process.env.COVERAGE || gasUsed >= 0xf810000000000) {
+            console.log(
+              `Skipping gas accounting for ${testName} because of broken gas accounting (ganache) or coverage`
+            );
+          } else {
+            totalGasUsedBaseline += gasUsedBaseline;
+
+            assert.ok(
+              gasUsed <= (gasUsedBaseline + maxAllowedDiff),
+              `gasUsed(${gasUsed}) should be not more than baseline(${gasUsedBaseline}) + ${maxAllowedDiff}`
+            );
+          }
+        } else {
+          console.log(`*** No gasUsed-baseline for ${testName} ***`);
         }
 
         if (fixture.result.stack) {
@@ -126,6 +158,17 @@ contract('Runtime', function () {
             assert.equal(oogState.stack[0], 0);
           } else {
             assert.equal(oogState.errno, OP.ERROR_OUT_OF_GAS, 'Not out of gas');
+          }
+        }
+
+        if (index + 1 === fixtures.length) {
+          console.log(`totalGasUsed new: ${totalGasUsed} old: ${totalGasUsedBaseline}`);
+
+          if (totalGasUsed < totalGasUsedBaseline || fixtures.length !== runtimeGasUsed.length) {
+            const path = './test/fixtures/runtimeGasUsed.js';
+
+            console.log(`*** New fixtures or low gas usage record. Writing results to ${path}. ***`);
+            fs.writeFileSync(path, `'use strict';\nmodule.exports = ${JSON.stringify(gasUsedValues, null, 2)};`);
           }
         }
       });

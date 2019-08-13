@@ -1,8 +1,9 @@
+'use strict';
+
 const OP = require('./../../utils/constants');
 // TODO make a util contract
 const ethers = require('ethers');
 const { PUSH1 } = OP;
-let utilsContract;
 
 const Utils = {};
 
@@ -67,12 +68,12 @@ Utils.getCode = (fixture) => {
   return { code, codeSize, pc: ~~pc, opcodeUnderTest };
 };
 
-Utils.provider =
-  typeof web3 !== 'undefined' ? new ethers.providers.Web3Provider(web3.currentProvider) : undefined;
+Utils.provider = new ethers.providers.JsonRpcProvider(`http://localhost:${process.env.RPC_PORT}`);
+Utils.provider.pollingInterval = 30;
 
 Utils.client = async () => {
   if (Utils.clientName === undefined) {
-    Utils.clientName = await web3.eth.getNodeInfo();
+    Utils.clientName = await Utils.provider.send('web3_clientVersion', []);
   }
   return Utils.clientName;
 };
@@ -83,6 +84,17 @@ Utils.txOverrides = {
 };
 
 Utils.deployContract = async function (truffleContract, ...args) {
+  // wait for RPC
+  while (true) {
+    try {
+      await Utils.provider.getBlockNumber();
+      break;
+    } catch (e) {
+      // ignore
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
   let _factory = new ethers.ContractFactory(
     truffleContract.abi,
     truffleContract.bytecode,
@@ -130,20 +142,16 @@ for (var i = 0; i < 10; i++) {
   Utils.wallets.push(wallet);
 }
 
-// TODO find better way to handle this
 Utils.onchainWait = async function onchainWait (t) {
-  if ((await Utils.client()).startsWith('Ganache')) {
-    await Utils.wallets[0].provider.send('evm_mine', []);
-  } else {
-    if (utilsContract === undefined) {
-      const verifierMock = artifacts.require('./mocks/VerifierMock.sol');
-      utilsContract = await Utils.deployContract(verifierMock, 10);
-    }
-    for (let i = 0; i < t; i++) {
-      let tx = await utilsContract.dummy();
-      tx = await tx.wait();
-    }
+  for (let i = 0; i < t; i++) {
+    let tx = await Utils.wallets[0].sendTransaction({ to: Utils.wallets[0].address });
+    tx = await tx.wait();
   }
+};
+
+Utils.sleep = async function sleep (seconds) {
+  seconds = seconds + 1;
+  await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 };
 
 module.exports = Utils;
