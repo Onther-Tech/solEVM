@@ -14,7 +14,6 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
     struct EVMPreimage {
         address code;
         bytes data;
-        uint gasLimit;
         uint pc;
         uint8 errno;
         uint gasRemaining;
@@ -28,7 +27,6 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
     struct EVMResult {
         uint gas;
         bytes data;
-        bytes lastRet;
         bytes returnData;
         uint8 errno;
         bytes32[] mem;
@@ -46,23 +44,13 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
 
         initHydratedState(evm);
 
-        evm.context = Context(
-            DEFAULT_CALLER,
-            0,
-            // block gas limit
-            img.gasLimit,
-            0,
-            0,
-            0,
-            0,
-            false
-        );
-
         evm.data = img.data;
         evm.gas = img.gasRemaining;
 
         evm.caller = DEFAULT_CALLER;
         evm.target = DEFAULT_CONTRACT_ADDRESS;
+        evm.returnData = img.returnData;
+        evm.errno = img.errno;
 
         evm.code = EVMCode.fromAddress(img.code);
         evm.stack = EVMStack.fromArray(img.stack);
@@ -71,13 +59,11 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
 
         _run(evm, img.pc, img.stepCount);
 
-        Context memory context = evm.context;
-        bytes32 hashValue = stateHash(evm, context);
+        bytes32 hashValue = stateHash(evm);
         EVMResult memory resultState;
 
         resultState.gas = evm.gas;
         resultState.data = evm.data;
-        resultState.lastRet = evm.lastRet;
         resultState.returnData = evm.returnData;
         resultState.errno = evm.errno;
         resultState.mem = EVMMemory.toArray(evm.mem);
@@ -89,21 +75,11 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         return resultState;
     }
 
-    function stateHash(EVM memory evm, Context memory context) internal view returns (bytes32) {
-        bytes32 contextHash = keccak256(abi.encodePacked(
-            context.origin,
-            context.gasPrice,
-            context.gasLimit,
-            context.coinBase,
-            context.blockNumber,
-            context.time
-        ));
-
+    function stateHash(EVM memory evm) internal view returns (bytes32) {
         bytes32 dataHash = keccak256(abi.encodePacked(
             evm.gas,
-            evm.code.toBytes(),
+            evm.code.toBytes(0, evm.code.length),
             evm.data,
-            evm.lastRet,
             evm.returnData,
             evm.errno
         ));
@@ -118,7 +94,11 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             evm.mem.size,
             evm.stack.size,
             evm.pc,
-            contextHash
+            evm.caller,
+            evm.target,
+            evm.blockNumber,
+            evm.blockTime,
+            evm.blockHash
         ));
 
         return hashValue;
