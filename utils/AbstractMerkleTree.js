@@ -128,13 +128,14 @@ module.exports = class AbstractMerkleTree {
         const h = e.hash.substring(2, 6);
         const hl = e.left ? e.left.hash.substring(2, 6) : '?';
         const hr = e.right ? e.right.hash.substring(2, 6) : '?';
-
+                
         res += ` [ ${h} (l:${hl} r:${hr}) ] `;
       }
 
       res += '\n';
     }
-
+    let depth = this.tree.length;
+    res += `${depth}`;
     return res;
   }
 };

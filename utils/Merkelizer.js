@@ -6,7 +6,7 @@ const createKeccakHash = require('keccak');
 const AbstractMerkleTree = require('./AbstractMerkleTree');
 const { ZERO_HASH } = require('./constants');
 
-module.exports = class Merkelizer extends AbstractMerkleTree {
+module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
   static initialStateHash (code, callData, customEnvironmentHash) {
@@ -18,19 +18,23 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         compactStack: [],
         stack: [],
         mem: [],
+        tStorage: [],
         returnData: '0x',
         pc: 0,
         errno: 0,
         gasRemaining: DEFAULT_GAS,
         stackSize: 0,
         memSize: 0,
+        tStorageSize: 0,
+        isStorageReset: false,
         customEnvironmentHash: customEnvironmentHash,
         stackHash: this.stackHash([]),
         memHash: this.memHash([]),
         dataHash: this.dataHash(callData),
+        tStorageHash: this.storageHash([]),
       },
     };
-
+    
     res.hash = this.stateHash(res.executionState);
 
     return res;
@@ -89,9 +93,21 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
     );
   }
 
+  static storageHash (tStorage) {
+    const len = tStorage.length;
+    const hash = createKeccakHash('keccak256');
+
+    for (let i = 0; i < len; i++) {
+      hash.update(Buffer.from(tStorage[i].replace('0x', ''), 'hex'));
+    }
+
+    return `0x${hash.digest().toString('hex')}`;
+  }
+
   static preStateHash (execution) {
     return ethers.utils.solidityKeccak256(
       [
+        'bytes32',
         'bytes32',
         'bytes32',
         'bytes32',
@@ -105,6 +121,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
         execution.stackHash,
         execution.memHash,
         execution.dataHash,
+        execution.tStorageHash,
         execution.customEnvironmentHash,
         execution.pc,
         execution.gasRemaining,
@@ -144,11 +161,12 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
     let prevLeaf = { right: initialState };
     let len = executions.length;
     let memHash;
+    let tStorageHash;
 
     for (let i = 0; i < len; i++) {
       const exec = executions[i];
       const stackHash = exec.stackHash;
-
+      
       // memory is changed if either written to or if it was expanded
       let memoryChanged = exec.memWriteLow !== -1;
       if (!memoryChanged && prevLeaf.right.executionState) {
@@ -160,13 +178,26 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
       }
 
       // convenience
-      exec.memSize = exec.mem.length;
-      exec.data = callData;
-      exec.dataHash = callDataHash;
-      exec.memHash = memHash;
-      // TODO: the runtime should ultimately support and supply that
-      exec.customEnvironmentHash = customEnvironmentHash;
+      exec.tStorageSize = exec.tStorage.length;
+      let tStorageChanged = false;
+      if (!tStorageChanged) {
+        tStorageChanged = prevLeaf.right.executionState.tStorageSize !== exec.tStorageSize;
+      }
 
+      if (!tStorageHash || tStorageChanged) {
+        tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
+      }
+
+       // convenience
+       exec.memSize = exec.mem.length;
+       exec.data = callData;
+       exec.dataHash = callDataHash;
+       exec.memHash = memHash;
+       exec.tStorageHash = tStorageHash;
+       
+       // TODO: the runtime should ultimately support and supply that
+       exec.customEnvironmentHash = customEnvironmentHash;
+                      
       const hash = this.constructor.stateHash(exec);
       const llen = leaves.push(
         {
@@ -175,6 +206,7 @@ module.exports = class Merkelizer extends AbstractMerkleTree {
             hash: hash,
             stackHash,
             memHash,
+            tStorageHash,
             executionState: executions[i],
           },
           hash: this.constructor.hash(prevLeaf.right.hash, hash),

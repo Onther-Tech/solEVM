@@ -16,11 +16,11 @@ module.exports = class ProofHelper {
     if (execState.callDataReadHigh !== -1 || execState.callDataWriteHigh !== -1) {
       isCallDataRequired = true;
     }
-
     const proofs = {
       stackHash: execState.compactStackHash,
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
+      tStorageHash: execState.isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
@@ -72,12 +72,14 @@ module.exports = class ProofHelper {
         data: isCallDataRequired ? prevOutput.data : '0x',
         stack: execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
+        tStorage: execState.isStorageDataRequired ? prevOutput.tStorage : [],
         customEnvironmentHash: prevOutput.customEnvironmentHash,
         returnData: prevOutput.returnData,
         pc: prevOutput.pc,
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
+        isStorageReset: execState.isStorageReset ? true : false
       },
     };
   }
