@@ -27,7 +27,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.callData = runState.callDataProof.proxy;
     runState.memory = runState.memProof.proxy;
     runState.code = runState.codeProof.proxy;
-
+    
     return runState;
   }
 
@@ -79,6 +79,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     );
 
     const step = {
+      opCodeName: runState.opName,
+      stack: toHex(runState.stack),
       callDataReadLow: callDataProof.readLow,
       callDataReadHigh: callDataProof.readHigh,
       codeReads: codeReads,
@@ -86,12 +88,35 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       pc: pc,
       errno: runState.errno,
       gasRemaining: runState.gasLeft.toNumber(),
+      tStorage: runState.tStorage,
     };
 
     this.calculateMemProof(runState, step);
     this.calculateStackProof(runState, step);
-
+    this.getStorageData(runState, step);
+    
     runState.steps.push(step);
+  }
+
+  getStorageData (runState, step){
+    const opcodeName = runState.opName;
+    
+    let isStorageDataRequired = false;
+    let isStorageReset = false;
+    if( opcodeName === 'SSTORE' ){
+      step.tStorage = runState.tStorage;
+      isStorageReset = runState.isStorageReset;
+      isStorageDataRequired = true;
+    }
+
+    if ( opcodeName === 'SLOAD' ){
+      step.tStorage = runState.tStorage;
+      isStorageDataRequired = true;
+    }
+
+    step.isStorageReset = isStorageReset;
+    step.isStorageDataRequired = isStorageDataRequired;
+    step.tStorageSize = step.tStorage.length;
   }
 
   calculateMemProof (runState, step) {

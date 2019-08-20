@@ -151,6 +151,8 @@ module.exports = class EVMRuntime {
       blockNumber: obj.blockNumber || Buffer.alloc(0),
       memory: [],
       stack: [],
+      tStorage: obj.tStorage || [],
+      isStorageReset: false,
       gasLeft: new BN(obj.gasLimit),
       memoryWordCount: new BN(0),
       highestMemCost: new BN(0),
@@ -213,7 +215,7 @@ module.exports = class EVMRuntime {
     return runState;
   }
 
-  async run ({ code, data, stack, mem, gasLimit, gasRemaining, pc, stepCount }) {
+  async run ({ code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }) {
     data = data || '0x';
 
     if (Array.isArray(code)) {
@@ -234,6 +236,7 @@ module.exports = class EVMRuntime {
       pc: pc | 0,
       mem,
       stack,
+      tStorage: tStorage,
       gasRemaining,
     });
 
@@ -715,11 +718,63 @@ module.exports = class EVMRuntime {
   }
 
   async handleSLOAD (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    if ( runState.stack[runState.stack.length - 1].isZero() ) {
+      return;
+    }
+    let addr = runState.stack.pop();
+    
+    addr = '0x' + addr.toString(16).padStart(64, '0');
+    let val = '0x' + new BN(0).toString(16).padStart(64, '0');
+    let isAllocated = false;
+
+    for (let i = 0; i < runState.tStorage.length - 1; i++){
+      if ( i % 2 == 0 && runState.tStorage[i] == addr ){
+        val = runState.tStorage[i+1].replace('0x', '');
+        isAllocated = true;
+        break;
+      } 
+    }
+    
+    if ( !isAllocated ) {
+      runState.tStorage.push(addr);
+      runState.tStorage.push(val);
+    } else {
+      runState.stack.push(new BN(val, 'hex'));
+    }
+    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
   async handleSSTORE (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    let addr = runState.stack.pop();
+    let val = runState.stack.pop();
+
+    addr = '0x' + addr.toString(16).padStart(64, '0');
+    val = '0x' + val.toString(16).padStart(64, '0');
+
+    let newStorageData = [];
+    newStorageData.push(addr);
+    newStorageData.push(val);
+    let index;
+
+    for (let i = 0; i < runState.tStorage.length - 1; i++){
+      if ( i % 2 == 0 && runState.tStorage[i] == newStorageData[0] ){
+        runState.isStorageReset = true;
+        index = i;
+        return index;
+      } else {
+        runState.isStorageReset = false;
+      }
+    }
+   
+    if ( !runState.isStorageReset ){
+      this.subGas(runState, new BN(20000));
+      runState.tStorage = runState.tStorage.concat(newStorageData);
+    } else {
+      this.subGas(runState, new BN(5000));
+      runState.tStorage[index+1] = newStorageData[1];
+    }
+        
+    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
   async handleJUMP (runState) {
