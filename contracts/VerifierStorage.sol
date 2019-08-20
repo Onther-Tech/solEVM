@@ -15,6 +15,8 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
     bytes32 public initialStateHash;
     bytes32 public beforeStorageHash;
     bytes32 public afterStorageHash;
+    bytes32 public dataHash;
+    bytes32 public alive = bytes32(uint(9));
 
     struct Proofs {
         bytes32 stackHash;
@@ -174,9 +176,8 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         if (executionState.mem.length > executionState.memSize) {
             return;
         }
-
         // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-        bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
+        dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
         bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
         // bytes32[] memory arg = new bytes32[](0);
@@ -213,7 +214,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
                 return;
             }
         }
-        
+         alive = bytes32(uint(1));
         HydratedState memory hydratedState = initHydratedState(evm);
 
         hydratedState.stackHash = proofs.stackHash;
@@ -230,6 +231,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         evm.mem = EVMMemory.fromArray(executionState.mem);
         evm.returnData = executionState.returnData;
         evm.tStorage = EVMStorageToArray.fromArrayForHash(executionState.tStorage);
+        evm.isStorageReset = executionState.isStorageReset;
         
         _run(evm, executionState.pc, 1);
 

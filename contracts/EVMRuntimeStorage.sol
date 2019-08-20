@@ -17,17 +17,6 @@ contract EVMRuntimeStorage is EVMConstants {
     using EVMCode for EVMCode.Code;
     using EVMStorageToArray for EVMStorageToArray.Storage;
 
-    struct Context {
-        address origin;
-        uint gasPrice;
-        uint gasLimit;
-        uint coinBase;
-        uint blockNumber;
-        uint time;
-        uint difficulty;
-        bool isStorageReset;
-    }
-
     // what we do not track  (not complete list)
     // call depth: as we do not support stateful things like call to other contracts
     // staticExec: same as above, we only support precompiles, higher implementations still can intercept calls
@@ -40,15 +29,18 @@ contract EVMRuntimeStorage is EVMConstants {
         uint pc;
 
         bytes data;
-        bytes lastRet;
         bytes returnData;
 
         EVMCode.Code code;
-        Context context;
         EVMMemory.Memory mem;
         EVMStack.Stack stack;
         EVMStorageToArray.Storage tStorage;
 
+        bool isStorageReset;
+        uint256 blockNumber;
+        uint256 blockHash;
+        uint256 blockTime;
+        // caller is also origin, as we do not support calling other contracts
         address caller;
         //EVMAccounts.Account target;
         address target;
@@ -58,10 +50,6 @@ contract EVMRuntimeStorage is EVMConstants {
     function _run(EVM memory evm, uint pc, uint pcStepCount) internal {
         uint pcNext = 0;
         uint stepRun = 0;
-
-        if (evm.gas > evm.context.gasLimit) {
-            evm.errno = ERROR_OUT_OF_GAS;
-        }
 
         while (evm.errno == NO_ERROR && pc < evm.code.length && (pcStepCount == 0 || stepRun < pcStepCount)) {
             uint stackIn;
@@ -124,7 +112,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleEXP;
                 stackIn = 2;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_EXP;
             } else if (opcode == 11) {
                 opcodeHandler = handleSIGNEXTEND;
                 stackIn = 0;
@@ -204,7 +192,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleSHA3;
                 stackIn = 2;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_SHA3;
             } else if (opcode == 48) {
                 opcodeHandler = handleADDRESS;
                 stackIn = 0;
@@ -244,7 +232,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleCALLDATACOPY;
                 stackIn = 3;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 56) {
                 opcodeHandler = handleCODESIZE;
                 stackIn = 0;
@@ -254,7 +242,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleCODECOPY;
                 stackIn = 3;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 58) {
                 opcodeHandler = handleGASPRICE;
                 stackIn = 0;
@@ -269,7 +257,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleEXTCODECOPY;
                 stackIn = 4;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_EXTCODE;
             } else if (opcode == 61) {
                 opcodeHandler = handleRETURNDATASIZE;
                 stackIn = 0;
@@ -279,7 +267,7 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleRETURNDATACOPY;
                 stackIn = 3;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 63) {
                 opcodeHandler = handleEXTCODEHASH;
                 stackIn = 1;
@@ -324,17 +312,17 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleMLOAD;
                 stackIn = 1;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 82) {
                 opcodeHandler = handleMSTORE;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 83) {
                 opcodeHandler = handleMSTORE8;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_VERYLOW;
             } else if (opcode == 84) {
                 opcodeHandler = handleSLOAD;
                 stackIn = 1;
@@ -544,67 +532,72 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleLOG;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_LOG;
             } else if (opcode == 161) {
                 opcodeHandler = handleLOG;
                 stackIn = 3;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_LOG;
             } else if (opcode == 162) {
                 opcodeHandler = handleLOG;
                 stackIn = 4;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_LOG;
             } else if (opcode == 163) {
                 opcodeHandler = handleLOG;
                 stackIn = 5;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_LOG;
             } else if (opcode == 164) {
                 opcodeHandler = handleLOG;
                 stackIn = 6;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_LOG;
             } else if (opcode == 240) {
                 opcodeHandler = handleCREATE;
                 stackIn = 3;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_CREATE;
             } else if (opcode == 241) {
                 opcodeHandler = handleCALL;
                 stackIn = 7;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_CALL;
             } else if (opcode == 242) {
                 opcodeHandler = handleCALLCODE;
                 stackIn = 7;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_CALL;
             } else if (opcode == 243) {
                 opcodeHandler = handleRETURN;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_ZERO;
             } else if (opcode == 244) {
                 opcodeHandler = handleDELEGATECALL;
                 stackIn = 6;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_CALL;
+            } else if (opcode == 245) {
+                opcodeHandler = handleCREATE2;
+                stackIn = 4;
+                stackOut = 1;
+                gasFee = GAS_CREATE;
             } else if (opcode == 250) {
                 opcodeHandler = handleSTATICCALL;
                 stackIn = 6;
                 stackOut = 1;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_CALL;
             } else if (opcode == 253) {
                 opcodeHandler = handleREVERT;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_ZERO;
             } else if (opcode == 255) {
                 opcodeHandler = handleSELFDESTRUCT;
                 stackIn = 1;
                 stackOut = 0;
-                gasFee = GAS_ADDITIONAL_HANDLING;
+                gasFee = GAS_SELFDESTRUCT;
             } else {
                 opcodeHandler = handleINVALID;
                 stackIn = 0;
@@ -1081,7 +1074,7 @@ contract EVMRuntimeStorage is EVMConstants {
             c = c | (0xff << i);
         }
 
-        c = GAS_EXP + (c * GAS_EXPBYTE);
+        c = (c * GAS_EXPBYTE);
 
         if (c > state.gas) {
             state.gas = 0;
@@ -1250,7 +1243,7 @@ contract EVMRuntimeStorage is EVMConstants {
     function handleSHA3(EVM memory state) internal {
         uint p = state.stack.pop();
         uint n = state.stack.pop();
-        uint res = GAS_SHA3 +
+        uint res = 
             (((n + 31) / 32) * GAS_SHA3WORD) +
             computeGasForMemory(state, p + n);
 
@@ -1271,8 +1264,7 @@ contract EVMRuntimeStorage is EVMConstants {
 
     // 0x3X
     function handleADDRESS(EVM memory state) internal {
-        //state.stack.push(uint(state.target.addr));
-        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
+        state.stack.push(uint(state.target));
     }
 
     // not supported, we are stateless
@@ -1283,7 +1275,7 @@ contract EVMRuntimeStorage is EVMConstants {
     }
 
     function handleORIGIN(EVM memory state) internal {
-        state.stack.push(uint(state.context.origin));
+        state.stack.push(uint(state.caller));
     }
 
     function handleCALLER(EVM memory state) internal {
@@ -1322,7 +1314,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint dAddr = state.stack.pop();
         uint len = state.stack.pop();
 
-        uint gasFee = GAS_VERYLOW + computeGasForMemoryCopy(state, mAddr, len);
+        uint gasFee = computeGasForMemoryCopy(state, mAddr, len);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1349,12 +1341,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint cAddr = state.stack.pop();
         uint len = state.stack.pop();
 
-        if (cAddr + len > state.code.length) {
-            state.errno = ERROR_INDEX_OOB;
-            return;
-        }
-
-        uint gasFee = GAS_VERYLOW + computeGasForMemoryCopy(state, mAddr, len);
+        uint gasFee = computeGasForMemoryCopy(state, mAddr, len);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1368,7 +1355,7 @@ contract EVMRuntimeStorage is EVMConstants {
     }
 
     function handleGASPRICE(EVM memory state) internal {
-        state.stack.push(state.context.gasPrice);
+         state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     // this can be implemented for special needs, the EVMRuntime itself should be stateless
@@ -1382,7 +1369,7 @@ contract EVMRuntimeStorage is EVMConstants {
     }
 
     function handleRETURNDATASIZE(EVM memory state) internal {
-        state.stack.push(state.lastRet.length);
+        state.stack.push(state.returnData.length);
     }
 
     function handleRETURNDATACOPY(EVM memory state) internal {
@@ -1390,7 +1377,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint rAddr = state.stack.pop();
         uint len = state.stack.pop();
 
-        uint gasFee = GAS_VERYLOW + computeGasForMemoryCopy(state, mAddr, len);
+        uint gasFee = computeGasForMemoryCopy(state, mAddr, len);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1401,7 +1388,7 @@ contract EVMRuntimeStorage is EVMConstants {
         state.gas -= gasFee;
 
         state.mem.storeBytesAndPadWithZeroes(
-            state.lastRet,
+            state.returnData,
             rAddr,
             mAddr,
             len
@@ -1415,27 +1402,27 @@ contract EVMRuntimeStorage is EVMConstants {
     // 0x4X
     function handleBLOCKHASH(EVM memory state) internal {
         state.stack.pop();
-        state.stack.push(0);
+        state.stack.push(state.blockHash);
     }
 
     function handleCOINBASE(EVM memory state) internal {
-        state.stack.push(state.context.coinBase);
+        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     function handleTIMESTAMP(EVM memory state) internal {
-        state.stack.push(state.context.time);
+        state.stack.push(state.blockTime);
     }
 
     function handleNUMBER(EVM memory state) internal {
-        state.stack.push(state.context.blockNumber);
+        state.stack.push(state.blockNumber);
     }
 
     function handleDIFFICULTY(EVM memory state) internal {
-        state.stack.push(state.context.difficulty);
+        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     function handleGASLIMIT(EVM memory state) internal {
-        state.stack.push(state.context.gasLimit);
+        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     // 0x5X
@@ -1445,7 +1432,7 @@ contract EVMRuntimeStorage is EVMConstants {
 
     function handleMLOAD(EVM memory state) internal {
         uint addr = state.stack.pop();
-        uint gasFee = GAS_VERYLOW + computeGasForMemory(state, addr + 32);
+        uint gasFee = computeGasForMemory(state, addr + 32);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1462,7 +1449,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint addr = state.stack.pop();
         uint val = state.stack.pop();
 
-        uint gasFee = GAS_VERYLOW + computeGasForMemory(state, addr + 32);
+        uint gasFee = computeGasForMemory(state, addr + 32);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1479,7 +1466,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint addr = state.stack.pop();
         uint8 val = uint8(state.stack.pop());
 
-        uint gasFee = GAS_VERYLOW + computeGasForMemory(state, addr + 1);
+        uint gasFee = computeGasForMemory(state, addr + 1);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1503,7 +1490,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint val = state.stack.pop();
         uint gasFee;
 
-        if ( !state.context.isStorageReset ){
+        if ( !state.isStorageReset ){
             gasFee = GAS_SSET;
         } else {
             gasFee = GAS_SRESET;
@@ -1636,8 +1623,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint retOffset = state.stack.pop();
         uint retSize = state.stack.pop();
 
-        uint gasFee = GAS_CALL +
-            computeGasForMemory(state, retOffset + retSize, inOffset + inSize);
+        uint gasFee = computeGasForMemory(state, retOffset + retSize, inOffset + inSize);
 
         if (gasFee > state.gas) {
             state.gas = 0;
@@ -1653,8 +1639,7 @@ contract EVMRuntimeStorage is EVMConstants {
 
         retEvm.data = state.mem.toBytes(inOffset, inSize);
         retEvm.customDataPtr = state.customDataPtr;
-        retEvm.context = state.context;
-
+        
         // we only going to support precompiles
         if (1 <= target && target <= 8) {
             if (target == 1) {
@@ -1680,11 +1665,11 @@ contract EVMRuntimeStorage is EVMConstants {
 
         if (retEvm.errno != NO_ERROR) {
             state.stack.push(0);
-            state.lastRet = new bytes(0);
+            state.returnData = new bytes(0);
         } else {
             state.stack.push(1);
             state.mem.storeBytesAndPadWithZeroes(retEvm.returnData, 0, retOffset, retSize);
-            state.lastRet = retEvm.returnData;
+            state.returnData = retEvm.returnData;
         }
         state.gas += retEvm.gas;
     }
