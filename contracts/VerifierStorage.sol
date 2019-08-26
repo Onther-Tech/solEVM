@@ -11,7 +11,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
 
     // dev
     bytes32 public inputHash;
-    bytes32 public hash;
+    bytes32 public resultHash;
     bytes32 public initialStateHash;
     bytes32 public beforeStorageHash;
     bytes32 public afterStorageHash;
@@ -262,17 +262,17 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
 
         afterStorageHash = hydratedState.tStorageHash;
 
-        hash = getStateHash(executionState, hydratedState, dataHash);
+        resultHash = getStateHash(executionState, hydratedState, dataHash);
 
-        if (hash != dispute.solver.right && hash != dispute.challenger.right) {
+        if (resultHash != dispute.solver.right && resultHash != dispute.challenger.right) {
             return;
         }
 
-        if (hash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
+        if (resultHash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
             dispute.state |= SOLVER_VERIFIED;
         }
 
-        if (hash == dispute.challenger.right) {
+        if (resultHash == dispute.challenger.right) {
             dispute.state |= CHALLENGER_VERIFIED;
         }
 
@@ -468,7 +468,9 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
                     }
 
                     hash := keccak256(0x00, 0x40)
-                    slot := shr(slot, 1)
+                    //slot := shr(slot, 1)
+                    // bitwise-right (slot << 1)
+                    slot := div(slot, exp(2, 1))
                     proofs := add(proofs, 0x20)
                 }
 
