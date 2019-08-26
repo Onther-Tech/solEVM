@@ -430,7 +430,16 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         // Enforce max. leaveCount here? :)
         uint256 leaveCount = ((codeByteLength + 31) / 32);
         require(leaveCount > 0);
-        leaveCount = leaveCount + leaveCount % 2;
+
+        // leaveCount should round up to the next highest power of 2.
+        leaveCount--;
+        leaveCount |= leaveCount >> 1;
+        leaveCount |= leaveCount >> 2;
+        leaveCount |= leaveCount >> 4;
+        leaveCount |= leaveCount >> 8;
+        leaveCount |= leaveCount >> 16;
+        leaveCount++;
+        //leaveCount = leaveCount + leaveCount % 2;
 
         // calculate tree depth
         uint256 treeDepth = 0;
