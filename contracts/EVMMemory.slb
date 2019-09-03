@@ -110,6 +110,8 @@ library EVMMemory {
                 mstore(add(dest, i), 0)
             }
 
+            let i := 0
+
             for { } ptr { } {
                 let slot := mload(add(ptr, 0x20))
                 let first := or(eq(slot, startslot), gt(slot, startslot))
@@ -117,8 +119,9 @@ library EVMMemory {
 
                 // slot >= startslot && slot <= endslot
                 if and(first, sec) {
-                    let d := add(dest, mul(mload(add(ptr, 0x20)), 0x20))
+                    let d := add(dest, mul(i, 0x20))
                     mstore(d, mload(ptr))
+                    i := add(i, 1)
                 }
 
                 // MemoryElement.next
