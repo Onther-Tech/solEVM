@@ -718,9 +718,9 @@ module.exports = class EVMRuntime {
   }
 
   async handleSLOAD (runState) {
-    if ( runState.stack[runState.stack.length - 1].isZero() ) {
-      return;
-    }
+    // if ( runState.stack[runState.stack.length - 1].isZero() ) {
+    //   return;
+    // }
     let addr = runState.stack.pop();
     
     addr = '0x' + addr.toString(16).padStart(64, '0');
