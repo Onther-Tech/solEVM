@@ -24,6 +24,7 @@ start_geth() {
   "--rpc"
   "--rpcport="$geth_port""
   "--rpcapi=eth,net,web3,debug"
+  "--allow-insecure-unlock"
   )
   $geth "${args[@]}" init scripts/genesis.json
   $geth "${args[@]}" js scripts/geth.js
