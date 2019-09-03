@@ -86,11 +86,11 @@ library MerkelizerStorage {
         return keccak256(abi.encodePacked(preHash, self.returnData));
     }
 
-    function initialStateHash(bytes32 dataHash, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
+    function initialStateHash(bytes32 dataHash, bytes32 tStorageHash, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
         ExecutionState memory e;
         e.gasRemaining = DEFAULT_GAS;
         e.customEnvironmentHash = customEnvironmentHash;
 
-        return stateHash(e, 0, 0, dataHash, 0);
+        return stateHash(e, 0, 0, dataHash, tStorageHash);
     }
 }
