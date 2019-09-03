@@ -25,7 +25,7 @@ contract IEnforcerStorage {
         // Except that codeHash could also be the contract address (addr + right-padded with zeros to 32 bytes)
         bytes32 codeHash;
         bytes32 dataHash;
-        bytes32 storageHash;
+        bytes32 tStorageHash;
     }
 
     struct Task {
@@ -75,7 +75,7 @@ contract IEnforcerStorage {
                 _parameters.customEnvironmentHash,
                 _parameters.codeHash,
                 _parameters.dataHash,
-                _parameters.storageHash
+                _parameters.tStorageHash
             )
         );
     }

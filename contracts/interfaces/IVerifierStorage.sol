@@ -58,7 +58,7 @@ contract IVerifierStorage {
         // TODO: should be the bytes32 root hash later on
         bytes32 codeHash,
         bytes32 dataHash,
-        address challenger,
-        bytes32 stoageHash
+        bytes32 tStorageHash,
+        address challenger
     ) public returns (bytes32 disputeId);
 }

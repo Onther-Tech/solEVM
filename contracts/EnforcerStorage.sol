@@ -1,11 +1,11 @@
 pragma solidity ^0.5.2;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IEnforcer.sol";
+import "./interfaces/IEnforcerStorage.sol";
 import "./MerkelizerStorage.slb";
 
 
-contract EnforcerStorage is IEnforcer {
+contract EnforcerStorage is IEnforcerStorage {
     /// @param _verifier is the verifier's contract address
     /// @param _taskPeriod The time (in seconds) how long the verification game for a given task
     /// is active, should be min. two times the `_challengePeriod`.
@@ -20,7 +20,7 @@ contract EnforcerStorage is IEnforcer {
         uint256 _bondAmount,
         uint256 _maxExecutionDepth
     ) public {
-        verifier = IVerifier(_verifier);
+        verifier = IVerifierStorage(_verifier);
         taskPeriod = _taskPeriod;
         challengePeriod = _challengePeriod;
         bondAmount = _bondAmount;
@@ -115,6 +115,7 @@ contract EnforcerStorage is IEnforcer {
             _parameters.customEnvironmentHash,
             _parameters.codeHash,
             _parameters.dataHash,
+            _parameters.tStorageHash,
             // challenger
             msg.sender
         );

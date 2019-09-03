@@ -1,22 +1,24 @@
 pragma solidity ^0.5.2;
 pragma experimental ABIEncoderV2;
 
-import "./interfaces/IVerifier.sol";
+import "./interfaces/IVerifierStorage.sol";
 import "./HydratedRuntimeStorage.sol";
 import "./MerkelizerStorage.slb";
 
 
-contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
+contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
 
     // dev
     bytes32 public inputHash;
     bytes32 public resultHash;
     bytes32 public initialStateHash;
-    bytes32 public beforeStorageHash;
-    bytes32 public afterStorageHash;
-    bytes32 public dataHash;
-    bytes32 public alive = bytes32(uint(9));
+    bytes public returnData;
+    bytes public evmData;
+    // bytes32 public beforeStorageHash;
+    // bytes32 public afterStorageHash;
+    // bytes32 public dataHash;
+    // bytes32 public alive = bytes32(uint(9));
 
     struct Proofs {
         bytes32 stackHash;
@@ -60,7 +62,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
     function setEnforcer(address _enforcer) public {
         require(address(enforcer) == address(0));
 
-        enforcer = IEnforcer(_enforcer);
+        enforcer = IEnforcerStorage(_enforcer);
     }
 
     /**
@@ -76,9 +78,10 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         // TODO: should be the bytes32 root hash later on
         bytes32 codeHash,
         bytes32 dataHash,
+        bytes32 tStorageHash,
         address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
-        initialStateHash = MerkelizerStorage.initialStateHash(dataHash, customEnvironmentHash);
+        initialStateHash = MerkelizerStorage.initialStateHash(dataHash, tStorageHash, customEnvironmentHash);
 
         disputeId = keccak256(
             abi.encodePacked(
@@ -177,7 +180,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
             return;
         }
         // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-        dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
+        bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
         bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
         // bytes32[] memory arg = new bytes32[](0);
@@ -214,22 +217,22 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
                 return;
             }
         }
-         alive = bytes32(uint(1));
+        //  alive = bytes32(uint(1));
         HydratedState memory hydratedState = initHydratedState(evm);
 
         hydratedState.stackHash = proofs.stackHash;
         hydratedState.memHash = memHash;
         hydratedState.tStorageHash = tStorageHash;
 
-        beforeStorageHash = hydratedState.tStorageHash;
-        
         evm.data = executionState.data;
+        evmData = evm.data;
         evm.gas = executionState.gasRemaining;
         evm.caller = DEFAULT_CALLER;
         evm.target = DEFAULT_CONTRACT_ADDRESS;
         evm.stack = EVMStack.fromArray(executionState.stack);
         evm.mem = EVMMemory.fromArray(executionState.mem);
         evm.returnData = executionState.returnData;
+        //returnData = evm.returnData;
         evm.tStorage = EVMStorageToArray.fromArrayForHash(executionState.tStorage);
         evm.isStorageReset = executionState.isStorageReset;
         
@@ -241,6 +244,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
 
         executionState.pc = evm.pc;
         executionState.returnData = evm.returnData;
+        returnData = executionState.returnData;
         executionState.gasRemaining = evm.gas;
 
         if (executionState.stack.length > executionState.stackSize) {
@@ -259,8 +263,6 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         if (evm.mem.size > 0) {
             executionState.memSize = evm.mem.size;
         }
-
-        afterStorageHash = hydratedState.tStorageHash;
 
         resultHash = getStateHash(executionState, hydratedState, dataHash);
 
@@ -287,7 +289,7 @@ contract VerifierStorage is IVerifier, HydratedRuntimeStorage {
         MerkelizerStorage.ExecutionState memory _executionState,
         HydratedState memory _hydratedState,
         bytes32 _dataHash
-    ) internal returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return _executionState.stateHash(
             _hydratedState.stackHash,
             _hydratedState.memHash,
