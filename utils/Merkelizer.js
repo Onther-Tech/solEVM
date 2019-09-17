@@ -94,14 +94,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   }
 
   static storageHash (tStorage) {
-    // const len = tStorage.length;
-    // const hash = createKeccakHash('keccak256');
-
-    // for (let i = 0; i < len; i++) {
-    //   hash.update(Buffer.from(tStorage[i].replace('0x', ''), 'hex'));
-    // }
-
-    // return `0x${hash.digest().toString('hex')}`;
     return ethers.utils.solidityKeccak256(
       ['bytes32[]'],
       [tStorage]

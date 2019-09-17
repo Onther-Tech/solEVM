@@ -107,8 +107,13 @@ Utils.deployContract = async function (truffleContract, ...args) {
 };
 
 Utils.deployCode = async function (code) {
-  let codeLen = (code.join('').length / 2).toString(16);
-
+  let codeLen;
+  if ( Array.isArray(code) ) {
+    codeLen = (code.join('').length / 2).toString(16);
+  } else {
+    codeLen = (code.length / 2).toString(16);
+  }
+  
   if (codeLen.length % 2 === 1) {
     codeLen = '0' + codeLen;
   }
@@ -128,9 +133,9 @@ Utils.deployCode = async function (code) {
   ];
   const obj = {
     abi: [],
-    bytecode: '0x' + codeCopy.join('') + code.join(''),
+    bytecode: Array.isArray(code) ? '0x' + codeCopy.join('') + code.join('') : '0x' + codeCopy.join('') + code,
   };
-
+  //console.log(code);
   return Utils.deployContract(obj);
 };
 

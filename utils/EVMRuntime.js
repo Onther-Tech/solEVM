@@ -48,7 +48,7 @@ function VmError (error) {
 };
 
 const DEFAULT_CONTRACT_ADDRESS = Buffer.from('0f572e5295c57F15886F9b263E2f6d2d6c7b5ec6', 'hex');
-const DEFAULT_CALLER = Buffer.from('cD1722f2947Def4CF144679da39c4C32bDc35681', 'hex');
+const DEFAULT_CALLER = Buffer.from('CA35b7d915458EF540aDe6068dFe2F44E8fa733c', 'hex');
 
 // 256x32 bytes
 const MAX_MEM_WORD_COUNT = new BN(256);

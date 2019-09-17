@@ -7,7 +7,7 @@ const onChainFixtures = require('./../fixtures/onChain');
 const Runtime = require('./../../utils/EthereumRuntimeAdapter');
 
 const OP = require('./../../utils/constants');
-const EthereumRuntime = require('./../../build/contracts/EthereumRuntime.json');
+const EthereumRuntime = require('./../../build/contracts/EthereumRuntimeStorage.json');
 
 describe('Runtime', function () {
   let rt;
