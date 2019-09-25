@@ -9,6 +9,7 @@ import { EVMStack } from "./EVMStack.slb";
 import { EVMUtils } from "./EVMUtils.slb";
 import { EVMCode } from "./EVMCode.slb";
 import { EVMStorageToArray } from "./EVMStorageToArray.slb";
+import {EVMLogs} from "./EVMLogs.slb";
 
 
 contract EVMRuntimeStorage is EVMConstants {
@@ -16,6 +17,7 @@ contract EVMRuntimeStorage is EVMConstants {
     using EVMStack for EVMStack.Stack;
     using EVMCode for EVMCode.Code;
     using EVMStorageToArray for EVMStorageToArray.Storage;
+    using EVMLogs for EVMLogs.Logs;
 
     // what we do not track  (not complete list)
     // call depth: as we do not support stateful things like call to other contracts
@@ -35,6 +37,7 @@ contract EVMRuntimeStorage is EVMConstants {
         EVMMemory.Memory mem;
         EVMStack.Stack stack;
         EVMStorageToArray.Storage tStorage;
+        EVMLogs.Logs logs;
 
         bool isStorageReset;
         uint256 blockNumber;
@@ -1569,9 +1572,28 @@ contract EVMRuntimeStorage is EVMConstants {
     }
 
     // 0xaX
-    // Logs are also stateful and thus not supported
     function handleLOG(EVM memory state) internal {
-        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
+        uint mAddr = state.stack.pop();
+        uint mSize = state.stack.pop();
+        uint gasFee = GAS_LOG +
+            (GAS_LOGTOPIC * state.n) +
+            (mSize * GAS_LOGDATA) +
+            computeGasForMemory(state, mAddr + mSize);
+
+        if (gasFee > state.gas) {
+            state.gas = 0;
+            state.errno = ERROR_OUT_OF_GAS;
+            return;
+        }
+        state.gas -= gasFee;
+
+        EVMLogs.LogEntry memory log;
+        log.account = state.target;
+        log.data = state.mem.toBytes(mAddr, mSize);
+
+        for (uint i = 0; i < state.n; i++) {
+            log.topics[i] = state.stack.pop();
+        }
     }
 
     // 0xfX

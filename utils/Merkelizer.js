@@ -32,6 +32,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         memHash: this.memHash([]),
         dataHash: this.dataHash(callData),
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
+        logHash: ZERO_HASH,
       },
     };
     
@@ -108,6 +109,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
+        'bytes32',
         'uint256',
         'uint256',
         'uint256',
@@ -118,6 +120,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.memHash,
         execution.dataHash,
         execution.tStorageHash,
+        execution.logHash,
         execution.customEnvironmentHash,
         execution.pc,
         execution.gasRemaining,

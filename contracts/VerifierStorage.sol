@@ -223,6 +223,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
         hydratedState.stackHash = proofs.stackHash;
         hydratedState.memHash = memHash;
         hydratedState.tStorageHash = tStorageHash;
+        hydratedState.logHash = executionState.logHash;
 
         evm.data = executionState.data;
         evmData = evm.data;
@@ -246,6 +247,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
         executionState.returnData = evm.returnData;
         returnData = executionState.returnData;
         executionState.gasRemaining = evm.gas;
+        executionState.logHash = hydratedState.logHash;
 
         if (executionState.stack.length > executionState.stackSize) {
             return;

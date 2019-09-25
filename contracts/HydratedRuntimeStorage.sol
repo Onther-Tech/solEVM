@@ -10,6 +10,7 @@ contract HydratedRuntimeStorage is EVMRuntimeStorage {
         bytes32 stackHash;
         bytes32 memHash;
         bytes32 tStorageHash;
+        bytes32 logHash;
     }
 
     function initHydratedState(EVM memory evm) internal pure returns (HydratedState memory hydratedState) {
@@ -61,6 +62,41 @@ contract HydratedRuntimeStorage is EVMRuntimeStorage {
         if (tStorage.length > 0) {
             hydratedState.tStorageHash = keccak256(abi.encodePacked(tStorage));
         }
+    }
+
+    function handleLOG(EVM memory state) internal {
+        uint mAddr = state.stack.pop();
+        uint mSize = state.stack.pop();
+        uint gasFee = GAS_LOG +
+            (GAS_LOGTOPIC * state.n) +
+            (mSize * GAS_LOGDATA) +
+            computeGasForMemory(state, mAddr + mSize);
+
+        if (gasFee > state.gas) {
+            state.gas = 0;
+            state.errno = ERROR_OUT_OF_GAS;
+            return;
+        }
+        state.gas -= gasFee;
+
+        EVMLogs.LogEntry memory log;
+        log.account = state.target;
+        log.data = state.mem.toBytes(mAddr, mSize);
+
+        for (uint i = 0; i < state.n; i++) {
+            log.topics[i] = state.stack.pop();
+        }
+
+        HydratedState memory hydratedState = getHydratedState(state);
+
+        hydratedState.logHash = keccak256(
+            abi.encodePacked(
+                hydratedState.logHash,
+                log.account,
+                log.topics,
+                log.data
+            )
+        );
     }
 
     function _run(EVM memory evm, uint pc, uint pcStepCount) internal {

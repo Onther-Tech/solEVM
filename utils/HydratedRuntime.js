@@ -1,6 +1,7 @@
 'use strict';
 
 const OP = require('./constants');
+const ethers = require('ethers');
 const EVMRuntime = require('./EVMRuntime');
 const RangeProofHelper = require('./RangeProofHelper');
 const Merkelizer = require('./Merkelizer');
@@ -89,12 +90,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       errno: runState.errno,
       gasRemaining: runState.gasLeft.toNumber(),
       tStorage: runState.tStorage,
+      logs: runState.logs,
+      logHash: runState.logHash
     };
 
     this.calculateMemProof(runState, step);
     this.calculateStackProof(runState, step);
     this.getStorageData(runState, step);
-    
+        
     runState.steps.push(step);
   }
 
@@ -199,6 +202,31 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     step.stackHash = runState.stackHashes[runState.stackHashes.length - 1];
     step.stackSize = runState.stack.length;
+  }
+
+  async handleLOG (runState) {
+    await super.handleLOG(runState);
+
+    let prevLogHash = runState.logHash.replace('0x', '');
+    let log = runState.logs[runState.logs.length - 1];
+
+    if (!log) {
+      throw new Error('step with LOGx opcode but no log emitted');
+    }
+
+    let topics = log[1];
+    while (topics.length !== 4) {
+      topics.push(0);
+    }
+    runState.logHash = ethers.utils.solidityKeccak256(
+      ['bytes32', 'address', 'uint[4]', 'bytes'],
+      [
+        '0x' + prevLogHash,
+        '0x' + log[0].toString('hex'),
+        topics,
+        '0x' + log[2].toString('hex'),
+      ]
+    );
   }
 
   async handleJUMP (runState) {

@@ -164,6 +164,8 @@ module.exports = class EVMRuntime {
       stopped: false,
       returnValue: Buffer.alloc(0),
       validJumps: {},
+      logs: [],
+      logHash: obj.logHash || OP.ZERO_HASH
     };
 
     const len = runState.code.length;
@@ -738,6 +740,7 @@ module.exports = class EVMRuntime {
     if ( !isAllocated ) {
       runState.tStorage.push(addr);
       runState.tStorage.push(val);
+      runState.stack.push(new BN(0));
     } else {
       runState.stack.push(new BN(val, 'hex'));
     }
@@ -868,7 +871,39 @@ module.exports = class EVMRuntime {
   }
 
   async handleLOG (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    if (runState.static) {
+      throw new VmError(ERROR.STATIC_STATE_CHANGE);
+    }
+    const mAddr = runState.stack.pop();
+    const mSize = runState.stack.pop();
+
+    const n = runState.opCode - 0xa0;
+    const GAS_LOG = new BN(375);
+    const GAS_LOGDATA = new BN(8);
+    const GAS_LOGTOPIC = new BN(375);
+    const gasFeeExceptMemory = GAS_LOG.add(GAS_LOGTOPIC.muln(n).iadd(GAS_LOGDATA.mul(mSize)));
+    this.subGas(runState, gasFeeExceptMemory);
+    let mem = this.memLoad(runState, mAddr, mSize);
+    mem = Array.from(mem, function(byte) {
+      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }).join('');
+
+    let log = [];
+    let topics = [];
+    for (let i = 0; i < n; i++) {
+      let t = runState.stack.pop();
+      topics[i] = '0x' + t.toString(16).padStart(64, '0');
+    }
+    
+    let address = Array.from(runState.address, function(byte) {
+      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }).join('').padStart(64, '0');
+
+    log.push(address);
+    log.push(topics);
+    log.push(mem);
+    runState.logs.push(log);
+    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
   async handleCREATE (runState) {

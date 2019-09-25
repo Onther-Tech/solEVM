@@ -10,6 +10,7 @@ memory from free memory by expanding it and then updating the free memory pointe
 library MemOps {
 
     uint constant internal WORD_SIZE = 32;
+    uint constant internal ONES = ~uint(0);
 
     /*
     Allocates 'words' words of memory.
@@ -33,6 +34,27 @@ library MemOps {
             assembly {
                 mstore(add(destPtr, mp), mload(add(srcPtr, mp)))
             }
+        }
+    }
+
+    // Copies 'len' bytes from 'srcPtr' to 'destPtr'.
+    // NOTE: This function does not check if memory is allocated, it only copies the bytes.
+    function memcopy(uint srcPtr, uint destPtr, uint len) internal pure {
+        uint offset = 0;
+        uint size = len / WORD_SIZE;
+        // Copy word-length chunks while possible.
+        for (uint i = 0; i < size; i++) {
+            offset = i * WORD_SIZE;
+            assembly {
+                mstore(add(destPtr, offset), mload(add(srcPtr, offset)))
+            }
+        }
+        offset = size*WORD_SIZE;
+        uint mask = ONES << 8*(32 - len % WORD_SIZE);
+        assembly {
+            let nSrc := add(srcPtr, offset)
+            let nDest := add(destPtr, offset)
+            mstore(nDest, or(and(mload(nSrc), mask), and(mload(nDest), not(mask))))
         }
     }
 }

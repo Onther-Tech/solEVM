@@ -1,6 +1,8 @@
 pragma solidity ^0.5.2;
 pragma experimental ABIEncoderV2;
 
+import {MemOps} from "./MemOps.slb";
+
 
 library EVMUtils {
 
@@ -17,5 +19,17 @@ library EVMUtils {
         assembly {
             mstore(add(bts, 0x20), x)
         }
+    }
+
+    function copy(bytes memory src, bytes memory dest, uint srcIdx, uint destIdx, uint len) internal pure {
+        assert(srcIdx + len <= src.length);
+        assert(destIdx + len <= dest.length);
+        uint srcMPtr;
+        uint destMPtr;
+        assembly {
+            srcMPtr := add(add(src, srcIdx), 0x20)
+            destMPtr := add(add(dest, destIdx), 0x20)
+        }
+        MemOps.memcopy(srcMPtr, destMPtr, len);
     }
 }
