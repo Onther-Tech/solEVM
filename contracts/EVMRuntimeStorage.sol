@@ -38,6 +38,7 @@ contract EVMRuntimeStorage is EVMConstants {
         EVMStack.Stack stack;
         EVMStorageToArray.Storage tStorage;
         EVMLogs.Logs logs;
+        bytes32 logHash;
 
         bool isStorageReset;
         uint256 blockNumber;
@@ -535,27 +536,27 @@ contract EVMRuntimeStorage is EVMConstants {
                 opcodeHandler = handleLOG;
                 stackIn = 2;
                 stackOut = 0;
-                gasFee = GAS_LOG;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 161) {
                 opcodeHandler = handleLOG;
                 stackIn = 3;
                 stackOut = 0;
-                gasFee = GAS_LOG;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 162) {
                 opcodeHandler = handleLOG;
                 stackIn = 4;
                 stackOut = 0;
-                gasFee = GAS_LOG;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 163) {
                 opcodeHandler = handleLOG;
                 stackIn = 5;
                 stackOut = 0;
-                gasFee = GAS_LOG;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 164) {
                 opcodeHandler = handleLOG;
                 stackIn = 6;
                 stackOut = 0;
-                gasFee = GAS_LOG;
+                gasFee = GAS_ADDITIONAL_HANDLING;
             } else if (opcode == 240) {
                 opcodeHandler = handleCREATE;
                 stackIn = 3;
@@ -1594,6 +1595,7 @@ contract EVMRuntimeStorage is EVMConstants {
         for (uint i = 0; i < state.n; i++) {
             log.topics[i] = state.stack.pop();
         }
+        state.logs.add(log);
     }
 
     // 0xfX

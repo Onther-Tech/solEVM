@@ -6,6 +6,7 @@ import { EVMCode } from "./EVMCode.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMMemory } from "./EVMMemory.slb";
 import { EVMStorageToArray } from "./EVMStorageToArray.slb";
+import {EVMLogs} from "./EVMLogs.slb";
 import { HydratedRuntimeStorage } from "./HydratedRuntimeStorage.sol";
 
 
@@ -21,6 +22,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         bytes32[] stack;
         bytes32[] mem;
         bytes32[] tStorage;
+        bytes32 logHash;
         bytes returnData;
     }
 
@@ -31,8 +33,9 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         uint8 errno;
         bytes32[] mem;
         bytes32[] stack;
-        uint pc;
         bytes32[] tStorage;
+        bytes32 logHash;
+        uint pc;
         bytes32 hashValue;
     }
 
@@ -56,7 +59,8 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         evm.stack = EVMStack.fromArray(img.stack);
         evm.mem = EVMMemory.fromArray(img.mem);
         evm.tStorage = EVMStorageToArray.fromArrayForHash(img.tStorage);
-
+        evm.logHash = img.logHash;
+                
         _run(evm, img.pc, img.stepCount);
 
         bytes32 hashValue = stateHash(evm);
@@ -69,6 +73,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         resultState.mem = EVMMemory.toArray(evm.mem);
         resultState.stack = EVMStack.toArray(evm.stack);
         resultState.tStorage = EVMStorageToArray.toArrayForHash(evm.tStorage);
+        resultState.logHash = evm.logHash;
         resultState.pc = evm.pc;
         resultState.hashValue = hashValue;
 
@@ -91,6 +96,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             hydratedState.stackHash,
             hydratedState.memHash,
             hydratedState.tStorageHash,
+            // hydratedState.logHash,
             evm.mem.size,
             evm.stack.size,
             evm.pc,
