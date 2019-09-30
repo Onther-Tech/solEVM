@@ -73,7 +73,7 @@ module.exports = class ProofHelper {
         stack: execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
         tStorage: execState.isStorageDataRequired ? prevOutput.tStorage : [],
-        logHash: '0x' + prevOutput.logHash || ZERO_HASH,
+        logHash: prevOutput.logHash,
         customEnvironmentHash: prevOutput.customEnvironmentHash,
         returnData: prevOutput.returnData,
         pc: prevOutput.pc,

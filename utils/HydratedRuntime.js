@@ -207,7 +207,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
   async handleLOG (runState) {
     await super.handleLOG(runState);
 
-    let prevLogHash = runState.logHash.replace('0x', '');
+    let prevLogHash = runState.logHash;
     let log = runState.logs[runState.logs.length - 1];
 
     if (!log) {
@@ -221,7 +221,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.logHash = ethers.utils.solidityKeccak256(
       ['bytes32', 'address', 'uint[4]', 'bytes'],
       [
-        '0x' + prevLogHash,
+        prevLogHash,
         '0x' + log[0].toString('hex'),
         topics,
         '0x' + log[2].toString('hex'),

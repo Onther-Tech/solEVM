@@ -165,6 +165,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     for (let i = 0; i < len; i++) {
       const exec = executions[i];
       const stackHash = exec.stackHash;
+      let logHash = exec.logHash;
       
       // memory is changed if either written to or if it was expanded
       let memoryChanged = exec.memWriteLow !== -1;
@@ -206,6 +207,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
             stackHash,
             memHash,
             tStorageHash,
+            logHash,
             executionState: executions[i],
           },
           hash: this.constructor.hash(prevLeaf.right.hash, hash),
