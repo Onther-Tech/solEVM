@@ -9,8 +9,9 @@ const disputeFixtures = require('./../fixtures/disputeERC20');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
+console.log('Bytecode Length', Verifier.deployedBytecode.length);
 const Enforcer = require('./../../build/contracts/EnforcerStorage.json');
-
+console.log('Bytecode Length', Enforcer.deployedBytecode.length.toString(16));
 const SOLVER_VERIFIED = (1 << 2);
 
 const EVMParameters = {
@@ -140,7 +141,7 @@ describe('Verifier', function () {
     const challengePeriod = 1000;
     const timeoutDuration = 50;
     const bondAmount = 1;
-    const maxExecutionDepth = 10;
+    const maxExecutionDepth = 15;
 
     verifier = await deployContract(Verifier, timeoutDuration);
     enforcer = await deployContract(
