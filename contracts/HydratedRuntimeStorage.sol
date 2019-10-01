@@ -62,26 +62,41 @@ contract HydratedRuntimeStorage is EVMRuntimeStorage {
         if (tStorage.length > 0) {
             hydratedState.tStorageHash = keccak256(abi.encodePacked(tStorage));
         }
+    }
 
-        (uint[] memory logs, bytes memory data) = evm.logs.toArray();
-        if ( logs.length != 0 && data.length != 0 ) {
-            uint[4] memory topics;
-            uint account = logs[0];
+    function handleLOG(EVM memory state) internal {
+        uint mAddr = state.stack.pop();
+        uint mSize = state.stack.pop();
+        uint gasFee = GAS_LOG +
+            (GAS_LOGTOPIC * state.n) +
+            (mSize * GAS_LOGDATA) +
+            computeGasForMemory(state, mAddr + mSize);
 
-            topics[0] = logs[1];
-            topics[1] = logs[2];
-            topics[2] = logs[3];
-            topics[3] = logs[4];
-
-            hydratedState.logHash = keccak256(
-                abi.encodePacked(
-                    hydratedState.logHash,
-                    account,
-                    topics,
-                    data
-                )
-            );
+        if (gasFee > state.gas) {
+            state.gas = 0;
+            state.errno = ERROR_OUT_OF_GAS;
+            return;
         }
+        state.gas -= gasFee;
+
+        EVMLogs.LogEntry memory log;
+        log.account = state.target;
+        log.data = state.mem.toBytes(mAddr, mSize);
+
+        for (uint i = 0; i < state.n; i++) {
+            log.topics[i] = state.stack.pop();
+        }
+
+        HydratedState memory hydratedState = getHydratedState(state);
+
+        hydratedState.logHash = keccak256(
+            abi.encodePacked(
+                hydratedState.logHash,
+                log.account,
+                log.topics,
+                log.data
+            )
+        );
     }
 
     function _run(EVM memory evm, uint pc, uint pcStepCount) internal {
