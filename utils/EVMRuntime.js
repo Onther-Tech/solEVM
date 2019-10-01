@@ -878,10 +878,9 @@ module.exports = class EVMRuntime {
     const mSize = runState.stack.pop();
 
     const n = runState.opCode - 0xa0;
-    const GAS_LOG = new BN(375);
     const GAS_LOGDATA = new BN(8);
     const GAS_LOGTOPIC = new BN(375);
-    const gasFeeExceptMemory = GAS_LOG.add(GAS_LOGTOPIC.muln(n).iadd(GAS_LOGDATA.mul(mSize)));
+    const gasFeeExceptMemory = GAS_LOGTOPIC.muln(n).iadd(GAS_LOGDATA.mul(mSize));
     this.subGas(runState, gasFeeExceptMemory);
     let mem = this.memLoad(runState, mAddr, mSize);
     mem = Array.from(mem, function(byte) {
@@ -892,12 +891,12 @@ module.exports = class EVMRuntime {
     let topics = [];
     for (let i = 0; i < n; i++) {
       let t = runState.stack.pop();
-      topics[i] = '0x' + t.toString(16).padStart(64, '0');
+      topics[i] = '0x' + t.toString(16);
     }
     
     let address = Array.from(runState.address, function(byte) {
       return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-    }).join('').padStart(64, '0');
+    }).join('');
 
     log.push(address);
     log.push(topics);
