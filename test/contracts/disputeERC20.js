@@ -9,9 +9,7 @@ const disputeFixtures = require('./../fixtures/disputeERC20');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
-console.log('Bytecode Length', Verifier.deployedBytecode.length);
 const Enforcer = require('./../../build/contracts/EnforcerStorage.json');
-console.log('Bytecode Length', Enforcer.deployedBytecode.length.toString(16));
 const SOLVER_VERIFIED = (1 << 2);
 
 const EVMParameters = {
@@ -99,17 +97,9 @@ async function doGame ({ verifier, code, callData, tStorage, execPokerSolver, ex
       }
 
       execPokerSolver.afterSubmitProof = async (disputeId) => {
-        // debug('alive?: ', await verifier.alive());
-        debug('initialStateHash: ', await verifier.initialStateHash());
-        debug('InputHash: ', await verifier.inputHash());
-        debug('resultHash: ', await verifier.resultHash());
-        debug('returnData: ', await verifier.returnData());
-        debug('data: ', await verifier.evmData());
         decide(disputeId);
       };
       execPokerChallenger.afterSubmitProof = async (disputeId) => {
-        // debug('challengerInputHash: ', await verifier.inputHash());
-        // debug('challengerHash: ', await verifier.resultHash());
         decide(disputeId);
       };
       execPokerSolver.onSlashed = () => {
