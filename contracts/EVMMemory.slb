@@ -21,6 +21,11 @@ library EVMMemory {
 
     // unused right now, but still standing here for the future
     function newMemory() internal pure returns (Memory memory mem) {
+        assembly{
+            let ptr := mload(0x40)
+            mstore(mem, 0)
+            mstore(add(mem, 0x20), ptr)
+        }
     }
 
     function fromArray(bytes32[] memory memIn) internal pure returns (Memory memory mem) {
@@ -84,6 +89,54 @@ library EVMMemory {
 
                 // MemoryElement.value
                 ptr := mload(add(ptr, 0x40))
+            }
+        }
+    }
+
+    function toArray(Memory memory self, uint start, uint len) internal pure returns (bytes memory arr) {
+        assembly {
+            // round up to WORD_SIZE
+            let size := mul(div(add(len, 31), 32), 32)
+
+            // allocate
+            arr := mload(0x40)
+            mstore(0x40, add(arr, add(size, 0x20)))
+
+            // set bytes.length
+            mstore(arr, size)
+
+            let dest := add(arr, 0x20)
+            let ptr := mload(add(self, 0x20))
+            let startslot := div(start, 32)
+            let endslot := div(add(start, len), 32)
+
+            // clear memory
+            for { let i := 0 } lt(i, size) { i := add(i, 0x20) } {
+                mstore(add(dest, i), 0)
+            }
+
+            for { } ptr { } {
+                let slot := mload(add(ptr, 0x20))
+                let first := or(eq(slot, startslot), gt(slot, startslot))
+                let sec := or(eq(slot, endslot), lt(slot, endslot))
+
+                // slot >= startslot && slot <= endslot
+                if and(first, sec) {
+                    let d := add(dest, mul(mload(add(ptr, 0x20)), 0x20))
+                    mstore(d, mload(ptr))
+                }
+
+                // MemoryElement.next
+                ptr := mload(add(ptr, 0x40))
+            }
+
+            let startoff := mod(start, 32)
+
+            // for unaligned start offset; fix the byte array ptr
+            if startoff {
+                ptr := add(arr, startoff)
+                mstore(ptr, len)
+                arr := ptr
             }
         }
     }

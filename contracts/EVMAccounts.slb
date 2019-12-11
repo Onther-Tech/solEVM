@@ -3,6 +3,8 @@ pragma solidity ^0.5.0;
 import {MemOps} from "./MemOps.slb";
 import {EVMStorageToArray} from "./EVMStorageToArray.slb";
 import {EVMUtils} from "./EVMUtils.slb";
+import {EVMCode} from "./EVMCode.slb";
+
 
 library EVMAccounts {
 
@@ -13,7 +15,7 @@ library EVMAccounts {
         uint balance;
         uint8 nonce;
         bool destroyed;
-        bytes code;
+        EVMCode.Code code;
         EVMStorageToArray.Storage stge;
     }
 

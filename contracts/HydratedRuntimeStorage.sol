@@ -80,7 +80,7 @@ contract HydratedRuntimeStorage is EVMRuntimeStorage {
         state.gas -= gasFee;
 
         EVMLogs.LogEntry memory log;
-        log.account = state.target;
+        log.account = state.target.addr;
         log.data = state.mem.toBytes(mAddr, mSize);
 
         for (uint i = 0; i < state.n; i++) {
