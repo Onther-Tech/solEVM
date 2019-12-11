@@ -100,6 +100,10 @@ library EVMCode {
         }
     }
 
+    function fromBytes(bytes memory codeBytes) internal pure returns (Code memory code) {
+        code.length = codeBytes.length;
+    }
+
     /**
       * @dev return code as bytes array, from a position for a number of bytes
       *     revert if the known code cannot fulfill the requirement
@@ -157,6 +161,18 @@ library EVMCode {
             assembly {
                 extcodecopy(codeContractAddress, add(bts, 0x20), pos, numBytes)
             }
+        }
+    }
+
+    function toBytes(Code memory self) internal view returns (bytes memory bts) {
+        address codeContractAddress = self.codeAddress;
+        uint size = self.length;
+        assembly {
+            bts := mload(0x40)
+            // padding up to word size
+            mstore(0x40, add(bts, and(add(add(size, 0x20), 0x1f), not(0x1f))))
+            mstore(bts, size)
+            extcodecopy(codeContractAddress, add(bts, 0x20), 0, size)
         }
     }
 
