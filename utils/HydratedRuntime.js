@@ -32,16 +32,18 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     return runState;
   }
 
-
-  async run (args) {
+  async run (args, isCALL = false) {
     const runState = await super.run(args);
 
     // a temporay hack for our unit tests :/
     if (runState.steps.length > 0) {
       runState.steps[runState.steps.length - 1].stack = toHex(runState.stack);
     }
-
-    return runState.steps;
+    if (isCALL){
+      return runState;
+    } else {
+      return runState.steps;
+    }
   }
 
   async runNextStep (runState) {
@@ -80,6 +82,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     );
 
     const step = {
+      account: runState.account,
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
       callDataReadLow: callDataProof.readLow,

@@ -140,6 +140,7 @@ module.exports = class EVMRuntime {
 
   async initRunState (obj) {
     const runState = {
+      account : obj.account,
       code: obj.code,
       callData: obj.data,
       gasLimit: new BN(obj.gasLimit),
@@ -165,7 +166,8 @@ module.exports = class EVMRuntime {
       returnValue: Buffer.alloc(0),
       validJumps: {},
       logs: [],
-      logHash: obj.logHash || OP.ZERO_HASH
+      logHash: obj.logHash || OP.ZERO_HASH,
+      callDepth: 0,
     };
 
     const len = runState.code.length;
@@ -217,7 +219,7 @@ module.exports = class EVMRuntime {
     return runState;
   }
 
-  async run ({ code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }) {
+  async run ({ account, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }) {
     data = data || '0x';
 
     if (Array.isArray(code)) {
@@ -229,6 +231,7 @@ module.exports = class EVMRuntime {
 
     // TODO: Support EVMParameters
     const runState = await this.initRunState({
+      account: account,
       code: Buffer.from(code, 'hex'),
       data: Buffer.from(data.replace('0x', ''), 'hex'),
       gasLimit: Buffer.from(NumToHex(gasLimit || OP.BLOCK_GAS_LIMIT), 'hex'),
@@ -753,7 +756,6 @@ module.exports = class EVMRuntime {
 
     addr = '0x' + addr.toString(16).padStart(64, '0');
     val = '0x' + val.toString(16).padStart(64, '0');
-
     let newStorageData = [];
     newStorageData.push(addr);
     newStorageData.push(val);
@@ -914,7 +916,64 @@ module.exports = class EVMRuntime {
   }
 
   async handleCALL (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    let gasLimit = runState.stack.pop();
+    const toAddress = runState.stack.pop();
+    const value = runState.stack.pop();
+    const inOffset = runState.stack.pop();
+    const inLength = runState.stack.pop();
+    const outOffset = runState.stack.pop();
+    const outLength = runState.stack.pop();
+    const data = this.memLoad(runState, inOffset, inLength).toString('hex');
+    const account = runState.account;
+    let gasFee;
+
+    this.subMemUsage(runState, outOffset, outLength);
+
+    if (value != 0) {
+      this.subGas(runState, new BN(9000));
+      runState.gasLeft.add(new BN(2300));
+      retEvm.gas += GAS_CALLSTIPEND;
+
+      if (retEvm.target.nonce == 0) {
+          gasFee += GAS_NEWACCOUNT;
+      }
+    }
+
+    if (gasLimit.gt(runState.gasLeft)) {
+      gasLimit = new BN(runState.gasLeft);
+    }
+    
+    const code = account.bytecode;
+    const stack = [];
+    const memory = [];
+    const tStorage = account.storage;
+    gasLimit = gasLimit.toNumber();
+    let gasRemaining = runState.gasLeft.toNumber();
+    const pc = 0;
+    const stepCount = 0;
+   //console.log( account, code, data, stack, memory, tStorage, gasLimit, gasRemaining, pc, stepCount )
+    // do we need another func for call?
+    const callRunState = await this.run({ account, code, data, stack, memory, tStorage, gasLimit, gasRemaining, pc, stepCount }, true);
+   
+    if ( callRunState.errno !== 0 ) {
+      runState.stack.push(new BN(0));
+      runState.returnData = new BN(0);
+    } else {
+      runState.stack.push(new BN(1));
+      let calleeGasUsed = new BN(gasLimit).sub(callRunState.gasLeft);
+      console.log(calleeGasUsed)
+      this.subGas(runState, calleeGasUsed);
+      this.memStore(runState, outOffset, callRunState.returnValue, new BN(0), outLength, true);
+      runState.returnValue = callRunState.returnValue;
+    }
+    runState.gasLeft.add(callRunState.gasLeft);
+    
+    // 1. load storage, code
+    // 2. runEVM
+    // 3. runEVM returnData into mem
+    // 4. gas 
+
+    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
   async handleCALLCODE (runState) {
@@ -922,7 +981,40 @@ module.exports = class EVMRuntime {
   }
 
   async handleDELEGATECALL (runState) {
-    throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    const target = runState.stack[runState.stack.length - 2] || new BN(0xff);
+
+    if (target.gten(0) && target.lten(8)) {
+      let gasLimit = runState.stack.pop();
+      const toAddress = runState.stack.pop();
+      const inOffset = runState.stack.pop();
+      const inLength = runState.stack.pop();
+      const outOffset = runState.stack.pop();
+      const outLength = runState.stack.pop();
+      const data = this.memLoad(runState, inOffset, inLength);
+
+      this.subMemUsage(runState, outOffset, outLength);
+
+      if (gasLimit.gt(runState.gasLeft)) {
+        gasLimit = new BN(runState.gasLeft);
+      }
+
+      const precompile = PRECOMPILED[toAddress.toString()];
+      const r = await precompile(gasLimit, data);
+
+      runState.returnValue = r.returnValue;
+      runState.stack.push(new BN(r.exception));
+
+      this.subGas(runState, r.gasUsed);
+      this.memStore(runState, outOffset, r.returnValue, new BN(0), outLength, true);
+      return;
+    }
+
+    // TODO: remove this and throw first, sync behaviour with contracts
+    runState.returnValue = Buffer.alloc(0);
+    runState.stack = runState.stack.slice(0, runState.stack.length - 6);
+    runState.stack.push(new BN(0));
+
+    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 
   async handleSTATICCALL (runState) {

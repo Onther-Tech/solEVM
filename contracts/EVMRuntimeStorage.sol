@@ -42,10 +42,10 @@ contract EVMRuntimeStorage is EVMConstants {
         uint pc;
 
         bytes data;
-        bytes lastRet;
         bytes returnData;
 
         EVMCode.Code code;
+        EVMCode.Code targetCode;
         EVMMemory.Memory mem;
         EVMStack.Stack stack;
         EVMStorageToArray.Storage tStorage;
@@ -57,19 +57,20 @@ contract EVMRuntimeStorage is EVMConstants {
         uint256 blockHash;
         uint256 blockTime;
 
-        EVMAccounts.Accounts accounts;
-        EVMAccounts.Account caller;
-        EVMAccounts.Account target;
-        // caller is also origin, as we do not support calling other contracts
-        //address caller;
+        // EVMAccounts.Accounts accounts;
+        // EVMAccounts.Account caller;
+        // EVMAccounts.Account target;
+        //caller is also origin, as we do not support calling other contracts
+        address caller;
         //EVMAccounts.Account target;
-        //address target;
+        address target;
     }
 
     // solhint-disable-next-line code-complexity, function-max-lines
     function _call(EVM memory parentState, EVM memory evm, CallType callType) internal {
         evm.customDataPtr = parentState.customDataPtr;
-        
+        evm.context = parentState.context;
+
         // Transfer value. TODO if callcode is added
         if (callType != CallType.DelegateCall && evm.value > 0) {
             if (evm.staticExec) {
@@ -83,16 +84,36 @@ contract EVMRuntimeStorage is EVMConstants {
             evm.caller.balance -= evm.value;
             evm.target.balance += evm.value;
         }
-       
-        if (evm.target.code.length == 0) {
-            return;
+
+        if (1 <= uint(evm.target.addr) && uint(evm.target.addr) <= 8) {
+            if (uint(evm.target.addr) == 1) {
+                handlePreC_ECRECOVER(evm);
+            } else if (uint(evm.target.addr) == 2) {
+                handlePreC_SHA256(evm);
+            } else if (uint(evm.target.addr) == 3) {
+                handlePreC_RIPEMD160(evm);
+            } else if (uint(evm.target.addr) == 4) {
+                handlePreC_IDENTITY(evm);
+            } else if (uint(evm.target.addr) == 5) {
+                handlePreC_MODEXP(evm);
+            } else if (uint(evm.target.addr) == 6) {
+                handlePreC_ECADD(evm);
+            } else if (uint(evm.target.addr) == 7) {
+                handlePreC_ECMUL(evm);
+            } else if (uint(evm.target.addr) == 8) {
+                handlePreC_ECPAIRING(evm);
+            }
+        } else {
+            if (evm.target.code.length == 0) {
+                return;
+            }
+
+            evm.code = evm.target.code;
+            evm.stack = EVMStack.newStack();
+            evm.mem = EVMMemory.newMemory();
+
+            _run(evm, 0, 0);
         }
-
-        evm.code = evm.target.code;
-        evm.stack = EVMStack.newStack();
-        evm.mem = EVMMemory.newMemory();
-
-        _run(evm, 0, 0);
     }
 
     // solhint-disable-next-line code-complexity, function-max-lines, security/no-assign-params
@@ -1635,12 +1656,13 @@ contract EVMRuntimeStorage is EVMConstants {
 
         retEvm.gas = state.stack.pop();
         retEvm.staticExec = state.staticExec;
-
-        if (retEvm.staticExec) {
-            retEvm.accounts = state.accounts;
-        } else {
-            retEvm.accounts = state.accounts.copy();
-        }
+        
+        // do we need consider account?
+        // if (retEvm.staticExec) {
+        //     retEvm.accounts = state.accounts;
+        // } else {
+        //     retEvm.accounts = state.accounts.copy();
+        // }
 
         retEvm.caller = retEvm.accounts.get(state.target.addr);
         retEvm.target = retEvm.accounts.get(address(state.stack.pop()));
@@ -1683,11 +1705,11 @@ contract EVMRuntimeStorage is EVMConstants {
 
         if (retEvm.errno != NO_ERROR) {
             state.stack.push(0);
-            state.lastRet = new bytes(0);
+            state.returnData = new bytes(0);
         } else {
             state.stack.push(1);
             state.mem.storeBytesAndPadWithZeroes(retEvm.returnData, 0, retOffset, retSize);
-            state.lastRet = retEvm.returnData;
+            state.returnData = retEvm.returnData;
             // Update to the new state.
             state.accounts = retEvm.accounts;
             state.caller = state.accounts.get(state.caller.addr);
