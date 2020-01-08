@@ -18,3 +18,32 @@
 - [ ]  support OPcode(BALANCE, LOG, GASLIMIT, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, RETURNDATASIZE)
 - [ ]  integration with Plasma EVM client(GO porting)
 
+## Setup
+
+```bash
+$ git clone https://github.com/Onther-Tech/solEVM.git ./
+$ git checkout 72b536a183e70ab0452b17761975951d9cc46e0f
+$ npm install
+```
+
+## Test
+You can run all the tests like this:
+```bash
+$ yarn
+$ yarn test
+```
+
+You can run the test of ERC20 token transfer :
+```bash
+$ ./scripts/test_geth.sh test/contracts/disputeERC20.js
+```
+
+You can run the test of offchain stepper(Offchain VM) :
+```bash
+$ node test/utils/testStepper.js
+```
+
+You can compile all contracts :
+```bash
+$ npm run compile:contracts
+```
