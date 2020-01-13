@@ -42,6 +42,7 @@ You can compile all contracts :
 $ npm run compile:contracts
 ```
 
+## Usage
 ```javascript
 describe('Fixture for Dispute/Verifier Logic #1', function () {    
     
@@ -75,6 +76,12 @@ describe('Fixture for Dispute/Verifier Logic #1', function () {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 ```
+
+### Input 
+- stack[hex number] - 32bytes
+- mem [hex number] - 32bytes
+- tStorage [slot, value, slot, value, ...] - 32bytes
+
 
 ## Test Status
 Case | Pass / Fail 
