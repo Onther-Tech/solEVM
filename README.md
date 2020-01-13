@@ -92,9 +92,9 @@ dispute.storage.js | `OPCODE SLOAD, SSTORE Support` | Pass
 dispute.log.js | `OPCODE LOG Support` | Pass
 dispute.balanceOf.js | `ERC20 balanceOf Verification` | Pass
 dispute.transfer.js | `ERC20 transfer Verification` | Pass
-- | `External Bytecode Support` | Pass
-- | `OPCODE CALL, DELEGATECALL, STATICCALL Support` | Fail
-- | `OPCODE CREATE, CREATE2 Support` | Fail
+-- | `External Bytecode Support` | Pass
+-- | `OPCODE CALL, DELEGATECALL, STATICCALL Support` | Fail
+-- | `OPCODE CREATE, CREATE2 Support` | Fail
 
 ### Detail
 Case | Pass / Fail 
