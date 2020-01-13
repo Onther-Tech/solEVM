@@ -27,12 +27,6 @@ $ npm install
 ```
 
 ## Test
-You can run all the tests like this:
-```bash
-$ yarn
-$ yarn test
-```
-
 You can run the test of ERC20 token transfer :
 ```bash
 $ ./scripts/test_geth.sh test/contracts/disputeERC20.js
@@ -47,3 +41,89 @@ You can compile all contracts :
 ```bash
 $ npm run compile:contracts
 ```
+
+```javascript
+describe('Fixture for Dispute/Verifier Logic #1', function () {    
+    
+    const code = '[runtime bytecode]';
+    const data = '[callData]';
+    const stack = [
+      '0x0000000000000000000000000000000000000000000000000000000070a08231',
+      '0x0000000000000000000000000000000000000000000000000000000000000263',
+      '0x000000000000000000000000ca35b7d915458ef540ade6068dfe2f44e8fa733c'
+    ];
+    const mem = [
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000000000000000000000000000',
+      '0x0000000000000000000000000000000000000000000000000000000000000080'
+    ];
+    const tStorage = [
+      '0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
+      '0x00000000000000000000000000000000000000000000000000000000000003e8',
+      '0x0000000000000000000000000000000000000000000000000000000000000002',
+      '0x00000000000000000000000000000000000000000000000000000000000003e8'
+    ];
+    
+    let steps;
+    let copy;
+    let merkle;
+    const runtime = new HydratedRuntime();
+
+    beforeEach(async () => {
+      steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
+      copy = JSON.stringify(steps);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
+    });
+```
+
+## Test Status
+Case | Pass / Fail 
+--- | --- 
+`OPCODE SLOAD, SSTORE Support` | Pass
+`OPCODE LOG Support` | Pass
+`OPCODE LOG Support` | Pass
+`External Bytecode Support` | Pass
+`ERC20 balanceOf Verification` | Pass
+`ERC20 transfer Verification` | Pass
+`OPCODE CALL, DELEGATECALL, STATICCALL Support` | Fail
+`OPCODE CREATE, CREATE2 Support` | Fail
+
+### Detail
+Case | Pass / Fail 
+--- | --- 
+`both have the same result, solver wins` | Pass
+`challenger has an output error somewhere` | Pass
+`solver has an output error somewhere` | Pass
+`challenger first step missing` | Pass
+`solver first step missing` | Pass
+`challenger last step gone` | Pass
+`solver last step gone` | Pass
+`challenger wrong memory output` | Pass
+`solver wrong memory output` | Pass
+`challenger wrong stack output` | Pass
+`solver wrong stack output` | Pass
+`challenger wrong opcode` | Pass
+`solver wrong opcode` | Pass
+`only two steps, both wrong but doesn\'t end with OP.REVERT or RETURN = challenger wins` | Pass
+`solver misses steps in between` | Pass
+`solver with one invalid step` | Pass
+`challenger with one invalid step` | Pass
+`solver with one invalid step against LOG` | Pass
+`challenger with one invalid step against LOG` | Pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
