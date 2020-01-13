@@ -27,9 +27,9 @@ $ npm install
 ```
 
 ## Test
-You can run the test of ERC20 token transfer :
+You can run the tests of verification game :
 ```bash
-$ ./scripts/test_geth.sh test/contracts/disputeERC20.js
+$ ./scripts/test_geth.sh test/contracts/[Test File].js
 ```
 
 You can run the test of offchain stepper(Offchain VM) :
@@ -86,16 +86,15 @@ describe('Fixture for Dispute/Verifier Logic #1', function () {
 
 
 ## Test Status
-Case | Pass / Fail 
---- | --- 
-`OPCODE SLOAD, SSTORE Support` | Pass
-`OPCODE LOG Support` | Pass
-`OPCODE LOG Support` | Pass
-`External Bytecode Support` | Pass
-`ERC20 balanceOf Verification` | Pass
-`ERC20 transfer Verification` | Pass
-`OPCODE CALL, DELEGATECALL, STATICCALL Support` | Fail
-`OPCODE CREATE, CREATE2 Support` | Fail
+Test Files | Case | Pass / Fail 
+--- | --- | --- 
+dispute.storage.js | `OPCODE SLOAD, SSTORE Support` | Pass
+dispute.log.js | `OPCODE LOG Support` | Pass
+dispute.balanceOf.js | `ERC20 balanceOf Verification` | Pass
+dispute.transfer.js | `ERC20 transfer Verification` | Pass
+- | `External Bytecode Support` | Pass
+- | `OPCODE CALL, DELEGATECALL, STATICCALL Support` | Fail
+- | `OPCODE CREATE, CREATE2 Support` | Fail
 
 ### Detail
 Case | Pass / Fail 
