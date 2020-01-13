@@ -78,7 +78,9 @@ describe('Fixture for Dispute/Verifier Logic #1', function () {
 ```
 
 ### Input 
-- stack[hex number] - 32bytes
+- code [runtime bytecode] - bytes
+- data [callData] - bytes
+- stack [hex number] - 32bytes
 - mem [hex number] - 32bytes
 - tStorage [slot, value, slot, value, ...] - 32bytes
 
