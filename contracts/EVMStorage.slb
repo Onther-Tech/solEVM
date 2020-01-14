@@ -1,38 +1,32 @@
-pragma experimental "v0.5.0";
-pragma experimental ABIEncoderV2;
-pragma solidity 0.4.24;
-
+pragma solidity ^0.5.0;
 
 library EVMStorage {
-    
+
     struct StorageSlot {
         uint addr;
         uint val;
     }
-    
+
     struct Element {
         uint _next;
         StorageSlot slot;
     }
-    
+
     struct Storage {
         Element head;
         uint size;
     }
-    
-    function store(Storage memory self, uint addr, uint val) internal pure {
+
+    function _getOrCreateElement(Storage memory self, uint addr) internal pure returns (Element memory e) {
         if (self.size == 0) {
-            Element memory e;
             e.slot.addr = addr;
-            e.slot.val = val;
             self.head = e;
             self.size = 1;
         } else {
-            Element memory e = self.head;
+            e = self.head;
             while (true) {
                 if (e.slot.addr == addr) {
-                    e.slot.val = val;
-                    return;
+                    return e;
                 }
                 if (e._next == 0) {
                     break;
@@ -42,40 +36,29 @@ library EVMStorage {
                     e := n
                 }
             }
-            Element memory newElem = Element(0, StorageSlot(addr, val));
+            Element memory newElem = Element(0, StorageSlot(addr, 0));
             uint elemAddr;
             assembly {
                 elemAddr := newElem
             }
             e._next = elemAddr;
             self.size++;
+            e = newElem;
         }
+        return e;
     }
-    
+
+    function store(Storage memory self, uint addr, uint val) internal pure {
+        _getOrCreateElement(self, addr).slot.val = val;
+    }
+
     function load(Storage memory self, uint addr) internal pure returns (uint val) {
-        if (self.size != 0) {
-            Element memory e = self.head;
-            while (true) {
-                if (e.slot.addr == addr) {
-                    val = e.slot.val;
-                    return;
-                }
-                if (e._next == 0) {
-                    break;
-                }
-                uint n = e._next;
-                assembly {
-                    e := n
-                }
-            }
-        }
-        val = 0;
-        return;
+        return _getOrCreateElement(self, addr).slot.val;
     }
-    
+
     function copy(Storage memory self) internal pure returns (Storage memory stg) {
         if (self.size == 0) {
-            return;
+            return stg;
         }
         stg.size = self.size;
         Element memory e = self.head;
@@ -97,12 +80,11 @@ library EVMStorage {
             e2._next = newElemAddr;
             e2 = newElem;
         }
-        return;
     }
-    
+
     function toArray(Storage memory self) internal pure returns (StorageSlot[] memory slots) {
         if (self.size == 0) {
-            return;
+            return slots;
         }
         slots = new StorageSlot[](self.size);
         uint i = 0;
@@ -117,8 +99,7 @@ library EVMStorage {
                 e := n
             }
         }
-        return;
     }
-    
-    
+
+
 }

@@ -1,49 +1,49 @@
-pragma experimental "v0.5.0";
-pragma experimental ABIEncoderV2;
-pragma solidity 0.4.24;
+pragma solidity ^0.5.0;
 
 import {MemOps} from "./MemOps.slb";
-import {EVMStorage} from "./EVMStorage.slb";
+import {EVMStorageToArray} from "./EVMStorageToArray.slb";
 import {EVMUtils} from "./EVMUtils.slb";
+import {EVMCode} from "./EVMCode.slb";
 
 
 library EVMAccounts {
-    
-    using EVMStorage for EVMStorage.Storage;
-    
+
+    using EVMStorageToArray for EVMStorageToArray.Storage;
+    using EVMCode for EVMCode.Code;
+
     struct Account {
         address addr;
         uint balance;
         uint8 nonce;
         bool destroyed;
-        bytes code;
-        EVMStorage.Storage stge;
+        EVMCode.Code code;
+        EVMStorageToArray.Storage stge;
     }
-    
+
     struct Element {
         uint _next;
         Account account;
     }
-    
+
     struct Accounts {
         Element head;
         uint size;
     }
-    
-    function get(Accounts memory self, address addr) internal pure returns (Account memory acc) {
+
+    function get(Accounts memory self, address addr) internal pure returns (Account memory acc){
         if (self.size == 0) {
             Element memory e;
             e.account.addr = addr;
             self.head = e;
             self.size = 1;
             acc = e.account;
-            return;
+            return acc;
         } else {
             Element memory e = self.head;
             while (true) {
                 if (e.account.addr == addr) {
                     acc = e.account;
-                    return;
+                    return acc;
                 }
                 if (e._next == 0) {
                     break;
@@ -64,21 +64,21 @@ library EVMAccounts {
             self.size++;
         }
     }
-    
+
     function copy(Accounts memory self) internal pure returns (Accounts memory accs) {
         if (self.size == 0) {
-            return;
+            return accs;
         }
         accs.size = self.size;
         Element memory e = self.head;
         accs.head = Element(0, Account(
-            e.account.addr,
-            e.account.balance,
-            e.account.nonce,
-            e.account.destroyed,
-            e.account.code,
-            e.account.stge.copy()
-        ));
+                e.account.addr,
+                e.account.balance,
+                e.account.nonce,
+                e.account.destroyed,
+                e.account.code,
+                e.account.stge.copy()
+            ));
         Element memory e2 = accs.head;
         while (true) {
             if (e._next == 0) {
@@ -89,13 +89,13 @@ library EVMAccounts {
                 e := n
             }
             Element memory newElem = Element(0, Account(
-                e.account.addr,
-                e.account.balance,
-                e.account.nonce,
-                e.account.destroyed,
-                e.account.code,
-                e.account.stge.copy()
-            ));
+                    e.account.addr,
+                    e.account.balance,
+                    e.account.nonce,
+                    e.account.destroyed,
+                    e.account.code,
+                    e.account.stge.copy()
+                ));
             uint newElemAddr;
             assembly {
                 newElemAddr := newElem
@@ -103,12 +103,11 @@ library EVMAccounts {
             e2._next = newElemAddr;
             e2 = newElem;
         }
-        return;
     }
 
-    function toArray(Accounts memory self) internal pure returns (uint[] memory arr, bytes memory code) {
+    function toArray(Accounts memory self) internal view returns (uint[] memory arr, bytes memory code) {
         if (self.size == 0) {
-            return;
+            return (arr, code);
         }
         Account[] memory accs = new Account[](self.size);
         uint totalSize;
@@ -141,15 +140,41 @@ library EVMAccounts {
             arr[offset + 4] = codeOffset;
             arr[offset + 5] = acc.code.length;
             arr[offset + 6] = acc.stge.size;
-            EVMStorage.StorageSlot[] memory stge = EVMStorage.toArray(acc.stge);
+            EVMStorageToArray.StorageSlot[] memory stge = EVMStorageToArray.toArray(acc.stge);
             for (uint j = 0; j < stge.length; j++) {
                 arr[offset + 7 + 2*j] = stge[j].addr;
                 arr[offset + 7 + 2*j + 1] = stge[j].val;
             }
-            EVMUtils.copy(acc.code, code, 0, codeOffset, acc.code.length);
+            EVMUtils.copy(acc.code.toBytes(), code, 0, codeOffset, acc.code.length);
             offset += 7 + stge.length * 2;
             codeOffset += acc.code.length;
         }
     }
-    
+
+    function fromArray(
+        uint[] memory accountsIn,
+        bytes memory accountsCode
+    ) internal pure returns (Accounts memory accountsOut) {
+        if (accountsIn.length == 0) {
+            return accountsOut;
+        }
+        uint offset = 0;
+        while (offset < accountsIn.length) {
+            address addr = address(accountsIn[offset]);
+            Account memory acc = get(accountsOut, addr);
+            acc.balance = accountsIn[offset + 1];
+            acc.nonce = uint8(accountsIn[offset + 2]);
+            acc.destroyed = accountsIn[offset + 3] == 1;
+            uint codeSize = accountsIn[offset + 5];
+            bytes memory code = new bytes(codeSize);
+            EVMUtils.copy(accountsCode, code, accountsIn[offset + 4], 0, codeSize); // accountsIn[offset + 4] - code offset
+            acc.code = EVMCode.fromBytes(code);
+            uint storageSize = accountsIn[offset + 6];
+            for (uint i = 0; i < storageSize; i++) {
+                acc.stge.store(accountsIn[offset + 7 + 2*i], accountsIn[offset + 8 + 2*i]);
+            }
+            offset += 7 + 2 * storageSize;
+        }
+    }
+
 }

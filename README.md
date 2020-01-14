@@ -1,223 +1,126 @@
-# Solidity EVM and Runtime (PoC)
+# CP challenge for Tokamak
 
-This is a simple Ethereum runtime written in Solidity. The runtime contract allows you to execute evm bytecode with calldata and various other parameters. It is meant to be Truebit-style computation verification games for off-chain execution. Check the [architecture docs](/docs/Architecture.md) for details.
+## Implementation Status
 
-This is a fork of [solevm](https://github.com/Ohalo-Ltd/solevm) by [Andreas Olofsson](https://github.com/androlo).
+- [x]  support storage field on contract
+- [x]  support storage field to local VM
+- [x]  support OPcode SSTORE, SLOAD 
+- [x]  support storage 필드 in merkle tree offchain
+- [x]  support external call(verification of a contract code in offchain) 
+- [x]  verification of ERC-20 contract method(balanceOf, transfer)
+- [x]  support log field in execution state
+- [ ]  implementation of merkle tree for storage(when it needs to be submit offchain)
+- [ ]  support ETH transfer
+- [ ]  support OPcode(BALANCE, LOG, GASLIMIT, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, RETURNDATASIZE)
+- [ ]  support OPcode CALL 
+- [ ]  support OPcode DELEGATECALL 
+- [ ]  include account to EVM parameter 
+- [ ]  implementation of compact storage 
+- [ ]  implementation of compact return data 
+- [ ]  implementation of compact log
+- [ ]  integration with Plasma EVM client(GO porting)
 
-Discussions in this [Discord channel](https://discord.gg/7bfD6eB).
+## Setup
 
-There is a regular call going on currently every Monday at 13:00 UTC in [hangouts](https://hangouts.google.com/hangouts/_/calendar/ODJkajBpczc0NHJxNWd0MnAybjJmNTY5cWtAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ.6j7d7c6k2hgl8o3ka9oljcpk0g).
-
-### Setup
-
-Currently there are only tests using truffle. You can run the tests like this:
-
-```
-npm install --global lerna
-npm install
-npm test
-```
-
-### Runtime
-
-First of all, the `EthereumRuntime` code is designed to run on a constantinople net, with all constantinople features. The `genesis.json` file in the root folder can be used to configure the geth EVM (through the `--prestate` option).
-
-The executable contract is `EthereumRuntime.sol`. The contract has an `execute` method which is used to run code. It has many overloaded versions, but the simplest version takes two arguments - `code` and `data`.
-
-`code` is the bytecode to run.
-
-`data` is the calldata.
-
-The solidity type for both of them is `bytes memory`.
-
-```
-// Execute the given code and call-data.
-    function execute(bytes memory code, bytes memory data) public pure returns (Result memory state);
-
-    // Execute the given transaction.
-    function execute(TxInput memory input) public pure returns (Result memory result);
-
-    // Execute the given transaction in the given context.
-    function execute(TxInput memory input, Context memory context) public pure returns (Result memory result);
-
+```bash
+$ git clone https://github.com/Onther-Tech/solEVM.git ./
+$ npm install
 ```
 
-The other alternatives have two objects, `TxInput` and `Context`:
-
+## Test
+You can run the tests of verification game :
+```bash
+$ ./scripts/test_geth.sh test/contracts/[Test File].js
 ```
-    struct TxInput {
-        uint64 gas;
-        uint gasPrice;
-        address caller;
-        uint callerBalance;
-        uint value;
-        address target;
-        uint targetBalance;
-        bytes targetCode;
-        bytes data;
-        bool staticExec;
-    }
+If you want to look into more details or debug for development you can do like this :
+```bash
+$ DEBUG=vgame-test ./scripts/test_geth.sh test/contracts/[Test File].js
 ```
 
-The `gas` and `gasPrice` fields are reserved but never used, since gas is not yet supported. All the other params are obvious except for `staticExec` which should be set to `true` if the call should be executed as a `STATICCALL`, i.e. what used to be called a read-only call (as opposed to a transaction).
-
-```
-struct Context {
-    address origin;
-    uint gasPrice;
-    uint gasLimit;
-    uint coinBase;
-    uint blockNumber;
-    uint time;
-    uint difficulty;
-}
+You can run the test of offchain stepper(Offchain VM) :
+```bash
+$ node test/utils/testStepper.js
 ```
 
-These fields all speak for themselves.
-
-NOTE: There is no actual `CREATE` operation taking place for the contract account in which the code is run, i.e. the code to execute would normally be runtime code; however, the code being run can create new contracts.
-
-The return value from the execute functions is a struct on the form:
-
-```
-struct Result {
-    uint errno;
-    uint errpc;
-    bytes returnData;
-    uint[] stack;
-    bytes mem;
-    uint[] accounts;
-    bytes accountsCode;
-    uint[] logs;
-    bytes logsData;
-}
+You can compile all contracts :
+```bash
+$ npm run compile:contracts
 ```
 
-`errno` - an error code. If execution was normal, this is set to 0.
+## Usage
+```javascript
+describe('Fixture for Dispute/Verifier Logic #1', function () {    
+    
+    const code = ['runtime bytecode'];
+    const data = ['callData'];
+    const tStorage = ['0x + hex'];
+    
+    let steps;
+    let copy;
+    let merkle;
+    const runtime = new HydratedRuntime();
 
-`errpc` - the program counter at the time when execution stopped.
-
-`returnData` - the return data. It will be empty if no data was returned.
-
-`stack` - The stack when execution stopped.
-
-`mem` - The memory when execution stopped.
-
-`accounts` - Account data packed into an uint-array, omitting the account code.
-
-`accountsCode` - The combined code for all accounts.
-
-`logs` - Logs packed into an uint-array, omitting the log data.
-
-`logsData` - The combined data for all logs.
-
-Note that `errpc` is only meant to be used when the error is non-zero, in which case it will be the program counter at the time when the error was thrown.
-
-There is a javascript (typescript) adapter at `script/adapter.ts` which allow you to run the execute function from within this library, and automatically format input and output parameters. The return data is formatted as such:
-
-```
-{
-    errno: number,
-    errpc: number,
-    returnData: string (hex),
-    stack: [BigNumber],
-    mem: string (hex),
-    accounts: [{
-        address: string (hex),
-        balance: BigNumber,
-        nonce: BigNumber,
-        destroyed: boolean
-        storage: [{
-            address: BigNumber,
-            value: BigNumber
-        }]
-    }]
-    logs: [{
-        account: string (hex)
-        topics: [BigNumber] (size 4)
-        data: string (hex)
-    }]
-}
+    beforeEach(async () => {
+      steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage });
+      copy = JSON.stringify(steps);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
+    });
 ```
 
-There is a pretty-print function in the adapter as well.
+### Input 
+- code [runtime bytecode] - bytes
+- data [callData] - bytes
+- stack [hex number] - 32bytes
+- mem [hex number] - 32bytes
+- tStorage [slot, value, slot, value, ...] - 32bytes
 
-#### Accounts
 
-Accounts are on the following format:
+## Test Status
+Test Files | Case | Pass / Fail / Not Yet
+|:---:|---|---| 
+|dispute.storage.js | `OPCODE SLOAD, SSTORE Support` | Pass
+|dispute.log.js | `OPCODE LOG Support` | Pass
+|dispute.balanceOf.js | `ERC20 balanceOf Verification` | Pass
+|dispute.transfer.js | `ERC20 transfer Verification` | Pass
+|-| `OPCODE CALL, DELEGATECALL, STATICCALL Support` | Not Yet
+|-| `OPCODE CREATE, CREATE2 Support` | Not Yet
 
-```
-account : {
-    addr: address,
-    balance: uint,
-    nonce: uint8,
-    destroyed: bool
-    code: bytes
-    storage: [{
-        addr: uint,
-        val: uint
-    }]
-}
-```
+### Test Case
+Case | 
+--- |
+`both have the same result, solver wins` 
+`challenger has an output error somewhere` 
+`solver has an output error somewhere` 
+`challenger first step missing` 
+`solver first step missing` 
+`challenger last step gone` 
+`solver last step gone` 
+`challenger wrong memory output` 
+`solver wrong memory output` 
+`challenger wrong stack output` 
+`solver wrong stack output` 
+`challenger wrong opcode` 
+`solver wrong opcode` 
+`only two steps, both wrong but doesn\'t end with OP.REVERT or RETURN = challenger wins` 
+`solver misses steps in between` 
+`solver with one invalid step` 
+`challenger with one invalid step` 
+`solver with one invalid step against LOG` 
+`challenger with one invalid step against LOG` 
 
-`nonce` is restricted to `uint8` (max 255) to make new account creation easier, since it will get a simpler RLP encoding.
 
-The `destroyed` flag is used to indicate whether or not a (contract) account has been destroyed during execution. This can only happen if `SELFDESTRUCT` is called in that contract.
 
-When executing code, two accounts will always be created - the caller account, and the contract account used to run the provided code. In the simple "code + data" call, the caller and contract account are assigned default addresses.
 
-In contract code, accounts and account storage are both arrays instead of maps. Technically they are implemented as (singly) linked lists. This will be improved later.
 
-The "raw" int arrays in the return object has an account packed in the following way:
 
-- `0`: account address
 
-- `1`: account balance
 
-- `2`: account nonce
 
-- `3`: account destroyed (true or false)
 
-- `4`: code starting index (in combined 'accountsCode' array).
 
-- `5`: code size
 
-- `6`: number of entries in storage
 
-- `7`+ : pairs of (address, value) storage entries
 
-The size of an account is thus: `7 + storageEntries*2`.
 
-The `accounts` array is a series of accounts: `[account0, account1, ... ]`
 
-### Logs
 
-Logs are on the following format:
-
-```
-log: {
-     account: address
-     topics: uint[4]
-     data: bytes
- }
-```
-
-`account` - The address of the account that generated the log entry.
-
-`topics` - The topics.
-
-`data` - The data.
-
-The "raw" int arrays in the return object has a log packed in the following way:
-
-- `0`: account address
-
-- `1 - 4`: topics
-
-- `5`: data starting index (in combined 'logsData' array).
-
-- `6`: data size.
-
-### Blockchain
-
-There are no blocks, so `BLOCKHASH` will always return `0`. The only blockchain related parameters that can be set are those in the context object.

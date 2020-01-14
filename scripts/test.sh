@@ -3,17 +3,7 @@
 # Exit script as soon as a command fails.
 set -o errexit
 
-# Executes cleanup function at script exit.
-trap cleanup EXIT
-
-cleanup() {
-  # Kill the ganache instance that we started (if we started one and if it's still running).
-  if [ -n "$ganache_pid" ] && ps -p $ganache_pid > /dev/null; then
-    kill -9 $ganache_pid
-  fi
-}
-
-ganache_port=8545
+ganache_port=8111
 
 ganache_running() {
   nc -z localhost "$ganache_port"
@@ -34,7 +24,7 @@ start_ganache() {
     --account="0x2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501209,1000000000000000000000000"
   )
 
-  node_modules/.bin/ganache-cli --gasLimit 0xfffffffffffff --evm-version constantinople --port "$ganache_port" "${accounts[@]}" > /dev/null &
+  node_modules/.bin/ganache-cli --gasPrice 0x01 --gasLimit 0xfffffffffffff --hardfork petersburg --port "$ganache_port" "${accounts[@]}" --allowUnlimitedContractSize > /dev/null &
 
   ganache_pid=$!
 }
@@ -44,6 +34,7 @@ if ganache_running; then
 else
   echo "Starting our own ganache instance"
   start_ganache
+  sleep 3
 fi
 
 if [ "$SOLC_NIGHTLY" = true ]; then
@@ -51,8 +42,4 @@ if [ "$SOLC_NIGHTLY" = true ]; then
   wget -q https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/soljson-nightly.js -O /tmp/soljson.js && find . -name soljson.js -exec cp /tmp/soljson.js {} \;
 fi
 
-if [ -n "$1" ]; then
-  node_modules/.bin/truffle test test/"$1".test.js
-else
-  node_modules/.bin/truffle test "$@"
-fi
+RPC_PORT=$ganache_port yarn mocha --timeout 60000 "$@"

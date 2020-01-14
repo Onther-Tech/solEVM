@@ -1,0 +1,183 @@
+pragma solidity ^0.5.0;
+
+library EVMStorageToArray {
+
+    struct StorageSlot {
+        uint addr;
+        uint val;
+    }
+
+    struct Element {
+        uint _next;
+        StorageSlot slot;
+    }
+
+    struct Storage {
+        Element head;
+        uint size;
+    }
+
+    function fromArrayForHash(bytes32[] memory storageIn) internal pure returns (Storage memory stor) {
+        assembly {
+            let src := add(storageIn, 0x20)
+            // storageIn.length / 2
+            let size := div(mload(storageIn), 0x2)
+            let ptr := mload(0x40)
+
+            // update free memory pointer, we allocate size * sizeof(StorageSlot)
+            mstore(0x40, add(ptr, mul(size, 0x80)))
+            // set Storage.head
+            mstore(stor, ptr)
+            // set Storage.size
+            mstore(add(stor, 0x20), size)
+           
+            for { let i := 0 } lt(i, size) { i := add(i, 1) } {
+               
+                // Element._next
+                mstore(ptr, add(ptr, 0x80))
+                // Element.slot
+                mstore(add(ptr, 0x20), add(ptr, 0x40))
+                // StorageSlot.addr
+                mstore(add(ptr, 0x40), mload(src))
+                // StorageSlot.val
+                mstore(add(ptr, 0x60), mload(add(src, 0x20)))
+                // update ptr
+                let n := add(ptr, 0x80)
+                let s := add(src, 0x40)
+                ptr := n
+                src := s
+            }
+            // reset the last next value
+            mstore(sub(ptr, 0x80), 0)
+        }
+    }
+
+    function toArrayForHash(Storage memory self) internal pure returns (bytes32[] memory arr) {
+        assembly {
+            // Storage.size * 32 * 2
+            let size := mul(mul(mload(add(self, 0x20)), 0x20), 0x2)
+
+            // allocate size + WORD_SIZE
+            arr := mload(0x40)
+            mstore(0x40, add(arr, add(size, 0x20)))
+
+            // set bytes.length = size / 32
+            mstore(arr, div(size, 0x20))
+
+            let dest := add(arr, 0x20)
+
+            // Storage.head
+            let ptr := mload(self)
+
+            // clear memory
+            for { let i := 0 } lt(i, size) { i := add(i, 0x20) } {
+                mstore(add(dest, i), 0)
+            }
+
+            // copy all slots
+            for { let i := 0 } lt(i, size) { i := add(i, 0x40) } {
+                // copy address
+                let d := add(dest, i)
+                let slot := mload(add(ptr, 0x20))
+                let addr := mload(slot)
+
+                mstore(d, addr)
+
+                // copy value
+                let d2 := add(d, 0x20)
+                let val := mload(add(slot, 0x20))
+
+                mstore(d2, val)
+
+                // Element._next
+                ptr := mload(ptr)
+            }
+        }
+    }
+
+    function _getOrCreateElement(Storage memory self, uint addr) internal pure returns (Element memory e) {
+        if (self.size == 0) {
+            e.slot.addr = addr;
+            self.head = e;
+            self.size = 1;
+        } else {
+            e = self.head;
+            while (true) {
+                if (e.slot.addr == addr) {
+                    return e;
+                }
+                if (e._next == 0) {
+                    break;
+                }
+                uint n = e._next;
+                assembly {
+                    e := n
+                }
+            }
+            Element memory newElem = Element(0, StorageSlot(addr, 0));
+            uint elemAddr;
+            assembly {
+                elemAddr := newElem
+            }
+            e._next = elemAddr;
+            self.size++;
+            e = newElem;
+        }
+        return e;
+    }
+
+    function store(Storage memory self, uint addr, uint val) internal pure {
+        _getOrCreateElement(self, addr).slot.val = val;
+    }
+
+    function load(Storage memory self, uint addr) internal pure returns (uint val) {
+        return _getOrCreateElement(self, addr).slot.val;
+    }
+
+    function copy(Storage memory self) internal pure returns (Storage memory stg) {
+        if (self.size == 0) {
+            return stg;
+        }
+        stg.size = self.size;
+        Element memory e = self.head;
+        stg.head = Element(0, StorageSlot(e.slot.addr, e.slot.val));
+        Element memory e2 = stg.head;
+        while (true) {
+            if (e._next == 0) {
+                break;
+            }
+            uint n = e._next;
+            assembly {
+                e := n
+            }
+            Element memory newElem = Element(0, StorageSlot(e.slot.addr, e.slot.val));
+            uint newElemAddr;
+            assembly {
+                newElemAddr := newElem
+            }
+            e2._next = newElemAddr;
+            e2 = newElem;
+        }
+    }
+
+    function toArray(Storage memory self) internal pure returns (StorageSlot[] memory slots) {
+        if (self.size == 0) {
+            return slots;
+        }
+        slots = new StorageSlot[](self.size);
+        uint i = 0;
+        Element memory e = self.head;
+        while (true) {
+            slots[i++] = e.slot;
+            if (e._next == 0) {
+                break;
+            }
+            uint n = e._next;
+            assembly {
+                e := n
+            }
+        }
+    }
+
+
+}
