@@ -85,7 +85,7 @@ Test Files | Case | Pass / Fail / Not Yet
 |-| `OPCODE CALL, DELEGATECALL, STATICCALL Support` | Not Yet
 |-| `OPCODE CREATE, CREATE2 Support` | Not Yet
 
-### Detail
+### Test Case
 Case | 
 --- |
 `both have the same result, solver wins` 
