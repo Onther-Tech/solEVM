@@ -5,7 +5,7 @@ const debug = require('debug')('vgame-test');
 const assert = require('assert');
 
 const { Merkelizer, ExecutionPoker, Constants, FragmentTree } = require('./../../utils');
-const disputeFixtures = require('./../fixtures/disputeERC20');
+const disputeFixtures = require('./../fixtures/dispute.log');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
