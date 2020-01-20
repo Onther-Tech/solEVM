@@ -2,23 +2,43 @@
 
 ## Implementation Status
 
+### Support Storage
 - [x]  support storage field on contract
 - [x]  support storage field to local VM
 - [x]  support OPcode SSTORE, SLOAD 
 - [x]  support storage 필드 in merkle tree offchain
+
+### Verification of external code in offchain
 - [x]  support external call(verification of a contract code in offchain) 
-- [x]  verification of ERC-20 contract method(balanceOf, transfer)
+
+### Verification of ERC20 token method
 - [x]  support log field in execution state
-- [ ]  implementation of merkle tree for storage(when it needs to be submit offchain)
+- [x]  verification of ERC-20 contract method(balanceOf)
+- [x]  verification of ERC-20 contract method(transfer)
+
+### Support Stateful
+- [ ]  support Account
 - [ ]  support ETH transfer
-- [ ]  support OPcode(BALANCE, LOG, GASLIMIT, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, RETURNDATASIZE)
+
+
+### Support CALL like OPCODES
+- [ ]  implementation of submitting merkle proof for state
+- [ ]  implementation of arranging execution steps of CALLER and CALLEE
 - [ ]  support OPcode CALL 
 - [ ]  support OPcode DELEGATECALL 
+- [ ]  support OPcode STATICCALL 
 - [ ]  include account to EVM parameter 
+
+### Optimization
 - [ ]  implementation of compact storage 
 - [ ]  implementation of compact return data 
 - [ ]  implementation of compact log
+
+### Integration with Clients
 - [ ]  integration with Plasma EVM client(GO porting)
+
+### Misc
+- [ ]  support OPcode(BALANCE, GASLIMIT, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, RETURNDATASIZE)
 
 ## Setup
 
