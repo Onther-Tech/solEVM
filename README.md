@@ -27,7 +27,11 @@
 - [ ]  support OPcode CALL 
 - [ ]  support OPcode DELEGATECALL 
 - [ ]  support OPcode STATICCALL 
-- [ ]  include account to EVM parameter 
+
+### Support State Transition Function  
+- [ ]  support charging UPFRONT COST
+- [ ]  support refunding TX FEE
+- [ ]  support block's reward in case of last transaction 
 
 ### Optimization
 - [ ]  implementation of compact storage 
