@@ -145,14 +145,16 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     );
   }
 
-  run (executions, code, callData, tStorage, customEnvironmentHash) {
+  makeLeave (executions, code, callData, tStorage, customEnvironmentHash) {
     if (!executions || !executions.length) {
       throw new Error('You need to pass at least one execution step');
     }
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
 
-    this.tree = [[]];
-
+    if (!this.tree) {
+      this.tree = [[]];
+    }
+    
     const initialState = this.constructor.initialStateHash(code, callData, tStorage, customEnvironmentHash);
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
@@ -161,6 +163,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     let len = executions.length;
     let memHash;
     let tStorageHash;
+    let afterCallTemp;
 
     for (let i = 0; i < len; i++) {
       const exec = executions[i];
@@ -199,26 +202,78 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
        exec.customEnvironmentHash = customEnvironmentHash;
                       
       const hash = this.constructor.stateHash(exec);
-      const llen = leaves.push(
-        {
-          left: prevLeaf.right,
-          right: {
-            hash: hash,
-            stackHash,
-            memHash,
-            tStorageHash,
-            logHash,
-            executionState: executions[i],
-          },
-          hash: this.constructor.hash(prevLeaf.right.hash, hash),
+      
+      let isFirstExecutionStep = i === 0;
+      let isEndExecutionStep = (exec.opCodeName === 'RETURN' || exec.opCodeName === 'STOP' 
+      || exec.opCodeName === 'REVERT' ) ? true : false;
+      
+      const pushLeaf = (beforeStep) => {
+        return leaves.push(
+          {
+            left: beforeStep.right,
+            right: {
+              hash: hash,
+              stackHash,
+              memHash,
+              tStorageHash,
+              logHash,
+              executionState: executions[i],
+            },
+            hash: this.constructor.hash(beforeStep.right.hash, hash),
+            isLeaf: true,
+            isFirstExecutionStep: isFirstExecutionStep,
+            isEndExecutionStep: isEndExecutionStep,
+            callDepth: exec.callDepth
+          }
+        );
+      }
+
+      const recalLeaf = (left, right) => {
+        const obj = {
+          left: left,
+          right: right,
+          hash: this.constructor.hash(left.hash, right.hash),
           isLeaf: true,
-          isFirstExecutionStep: i === 0,
-        }
-      );
-
+          isFirstExecutionStep: false,
+          isEndExecutionStep: false,
+          callDepth: exec.callDepth - 1
+        };
+             
+        return obj;
+      }
+      
+      if (exec.callDepth !== 0 && isFirstExecutionStep) {
+        afterCallTemp = leaves[leaves.length-1];
+        const beforeCall = recalLeaf(leaves[leaves.length-1].left, prevLeaf.right);
+        leaves[leaves.length-1] = beforeCall;
+      } 
+      
+      const llen = pushLeaf(prevLeaf);
       prevLeaf = leaves[llen - 1];
-    }
 
+      if (exec.callDepth !== 0 && isEndExecutionStep) {
+        const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right);
+        const llen = leaves.push(afterCall);
+        prevLeaf = leaves[llen - 1];
+      }
+
+      if (exec.callDepth === 0 && exec.isCALLExecuted) {
+        console.log('test');
+      }  
+
+      if (exec.isCALLExecuted) {
+        const steps = exec.calleeSteps;
+        const code = exec.calleeCode;
+        const callData = exec.calleeCallData;
+        const tStorage = exec.calleeTstorage;
+        
+        this.makeLeave(steps, code, callData, tStorage, customEnvironmentHash);    
+      }
+    }
+  }
+
+  run (executions, code, callData, tStorage, customEnvironmentHash) {
+    this.makeLeave(executions, code, callData, tStorage, customEnvironmentHash);
     this.recal(0);
 
     return this;

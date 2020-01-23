@@ -96,7 +96,7 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
             hydratedState.stackHash,
             hydratedState.memHash,
             hydratedState.tStorageHash,
-            // hydratedState.logHash,
+            hydratedState.logHash,
             evm.mem.size,
             evm.stack.size,
             evm.pc,
