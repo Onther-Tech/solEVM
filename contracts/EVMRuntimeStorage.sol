@@ -1738,7 +1738,63 @@ contract EVMRuntimeStorage is EVMConstants {
     }
 
     function handleDELEGATECALL(EVM memory state) internal {
-        state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
+        EVM memory retEvm;
+
+        retEvm.gas = state.stack.pop();
+
+        EVMCode.Code memory oldCode = state.target.code;
+        state.target.code = state.accounts.get(address(state.stack.pop())).code;
+        retEvm.staticExec = state.staticExec;
+
+        if (retEvm.staticExec) {
+            retEvm.accounts = state.accounts;
+        } else {
+            retEvm.accounts = state.accounts.copy();
+        }
+
+        retEvm.target = retEvm.accounts.get(state.target.addr);
+        retEvm.caller = retEvm.accounts.get(state.caller.addr);
+
+        uint inOffset = state.stack.pop();
+        uint inSize = state.stack.pop();
+        uint retOffset = state.stack.pop();
+        uint retSize = state.stack.pop();
+
+        uint gasFee = GAS_CALL +
+            computeGasForMemory(state, retOffset + retSize, inOffset + inSize);
+
+        if (gasFee > state.gas) {
+            state.gas = 0;
+            state.errno = ERROR_OUT_OF_GAS;
+            return;
+        }
+        state.gas -= gasFee;
+
+        if (retEvm.gas > state.gas) {
+            retEvm.gas = state.gas;
+        }
+        state.gas -= retEvm.gas;
+
+        retEvm.data = state.mem.toArray(inOffset, inSize);
+        retEvm.value = state.value;
+
+        // solhint-disable-next-line avoid-low-level-calls
+        _call(state, retEvm, CallType.DelegateCall);
+
+        if (retEvm.errno != NO_ERROR) {
+            state.stack.push(0);
+            state.lastRet = new bytes(0);
+        } else {
+            state.stack.push(1);
+            state.mem.storeBytesAndPadWithZeroes(retEvm.returnData, 0, retOffset, retSize);
+            state.lastRet = retEvm.returnData;
+            state.accounts = retEvm.accounts;
+            state.caller = state.accounts.get(state.caller.addr);
+            state.target = state.accounts.get(state.target.addr);
+        }
+        state.target.code = oldCode;
+        state.gas += retEvm.gas;
+        //state.errno = ERROR_INSTRUCTION_NOT_SUPPORTED;
     }
 
     // solhint-disable-next-line code-complexity, function-max-lines
