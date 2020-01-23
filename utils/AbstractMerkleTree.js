@@ -120,22 +120,46 @@ module.exports = class AbstractMerkleTree {
     let res = '';
 
     for (let i = 0; i < this.tree.length; i++) {
-      const row = this.tree[i];
+      const row = this.tree[0];
 
-      res += `level ${i}: `;
+      res += `level ${0}: `;
       for (let y = 0; y < row.length; y++) {
         const e = row[y];
         const h = e.hash.substring(2, 6);
         const hl = e.left ? e.left.hash.substring(2, 6) : '?';
         const hr = e.right ? e.right.hash.substring(2, 6) : '?';
+        
                 
-        res += ` [ ${h} (l:${hl} r:${hr}) ] `;
+        res += `[ ${h} (l:${hl} r:${hr}) ] \n`;
       }
 
       res += '\n';
     }
     let depth = this.tree.length;
     res += `${depth}`;
+    return res;
+  }
+
+  printLeave () {
+    let res = '';
+
+    const row = this.tree[0];
+
+     
+    for (let y = 0; y < row.length; y++) {
+      const e = row[y];
+      const h = e.hash.substring(2, 6);
+      const hl = e.left ? e.left.hash.substring(2, 6) : '?';
+      const hr = e.right ? e.right.hash.substring(2, 6) : '?';
+      const dep = e.callDepth;
+      const isStart = e.isFirstExecutionStep;
+      const isEnd = e.isEndExecutionStep;
+              
+      res += ` callDepth: ${dep}, ${isStart}, ${isEnd} [ ${h} (l:${hl} r:${hr}) ] \n`;
+    }
+
+    res += '\n';
+       
     return res;
   }
 };

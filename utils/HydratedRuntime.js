@@ -14,7 +14,7 @@ const OP_DUP1 = parseInt(OP.DUP1, 16);
 const OP_DUP16 = parseInt(OP.DUP16, 16);
 
 module.exports = class HydratedRuntime extends EVMRuntime {
-  async initRunState (obj) {
+  async initRunState (obj, isCALL) {
     const runState = await super.initRunState(obj);
     const stack = toHex(runState.stack);
 
@@ -25,15 +25,19 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.memProof = new RangeProofHelper(runState.memory);
     runState.callDataProof = new RangeProofHelper(runState.callData);
     runState.codeProof = new RangeProofHelper(runState.code);
+    runState.rawCode = runState.code; 
+    runState.rawCallData = runState.callData; 
     runState.callData = runState.callDataProof.proxy;
     runState.memory = runState.memProof.proxy;
     runState.code = runState.codeProof.proxy;
+    runState.callDepth = isCALL ? ++runState.callDepth : 0;
+    
     
     return runState;
   }
 
   async run (args, isCALL = false) {
-    const runState = await super.run(args);
+    const runState = await super.run(args, isCALL);
 
     // a temporay hack for our unit tests :/
     if (runState.steps.length > 0) {
@@ -81,7 +85,22 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
     );
 
+    // if CALL set isCallExecuted true 
+    let isCALLExecuted = false;
+    let calleeCode;
+    let calleeCallData;
+    let calleeTstorage;
+    if (opcode === 0xf1) {
+      isCALLExecuted = true;
+      calleeCode = runState.calleeRuntime.rawCode.toString('hex');
+      calleeCallData = '0x' + runState.calleeRuntime.rawCallData.toString('hex');
+      calleeTstorage = runState.calleeRuntime.tStorage;
+    } 
+    
     const step = {
+      calleeCode: calleeCode || '',
+      calleeCallData: calleeCallData || '',
+      calleeTstorage: calleeTstorage || [],
       account: runState.account,
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
@@ -94,9 +113,12 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       gasRemaining: runState.gasLeft.toNumber(),
       tStorage: runState.tStorage,
       logs: runState.logs,
-      logHash: runState.logHash
+      logHash: runState.logHash,
+      isCALLExecuted: isCALLExecuted,
+      calleeSteps: runState.calleeSteps,
+      callDepth: runState.callDepth
     };
-
+    
     this.calculateMemProof(runState, step);
     this.calculateStackProof(runState, step);
     this.getStorageData(runState, step);
