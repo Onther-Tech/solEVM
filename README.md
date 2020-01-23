@@ -22,8 +22,8 @@
 
 
 ### Support CALL like OPCODES
+- [x]  implementation of arranging execution steps of CALLER and CALLEE
 - [ ]  implementation of submitting merkle proof for state
-- [ ]  implementation of arranging execution steps of CALLER and CALLEE
 - [ ]  support OPcode CALL 
 - [ ]  support OPcode DELEGATECALL 
 - [ ]  support OPcode STATICCALL 
@@ -64,6 +64,11 @@ $ DEBUG=vgame-test ./scripts/test_geth.sh test/contracts/[Test File].js
 You can run the test of offchain stepper(Offchain VM) :
 ```bash
 $ node test/utils/testStepper.js
+```
+
+You can run the test of offchain stepper when to execute CALL(Offchain VM) :
+```bash
+$ npm run test:utils:call
 ```
 
 You can compile all contracts :
