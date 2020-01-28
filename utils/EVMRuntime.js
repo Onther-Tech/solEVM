@@ -219,9 +219,10 @@ module.exports = class EVMRuntime {
     return runState;
   }
 
-  async run ({ account, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }) {
+  async run ({ account, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }, isCALL) {
     data = data || '0x';
-
+    isCALL = isCALL || false;
+    
     if (Array.isArray(code)) {
       code = code.join('');
     } else {
@@ -242,8 +243,8 @@ module.exports = class EVMRuntime {
       mem,
       stack,
       tStorage: tStorage,
-      gasRemaining,
-    });
+      gasRemaining
+    }, isCALL);
 
     stepCount = stepCount | 0;
 
@@ -925,17 +926,16 @@ module.exports = class EVMRuntime {
     const outLength = runState.stack.pop();
     const data = this.memLoad(runState, inOffset, inLength).toString('hex');
     const account = runState.account;
-    let gasFee;
-
+       
     this.subMemUsage(runState, outOffset, outLength);
 
     if (value != 0) {
       this.subGas(runState, new BN(9000));
       runState.gasLeft.add(new BN(2300));
-      retEvm.gas += GAS_CALLSTIPEND;
+      gasLimit.add(new BN(2300));
 
-      if (retEvm.target.nonce == 0) {
-          gasFee += GAS_NEWACCOUNT;
+      if (runState.account.nonce == 0) {
+        this.subGas(runState, new BN(32000));
       }
     }
 
@@ -948,32 +948,26 @@ module.exports = class EVMRuntime {
     const memory = [];
     const tStorage = account.storage;
     gasLimit = gasLimit.toNumber();
-    let gasRemaining = runState.gasLeft.toNumber();
+    let gasRemaining = gasLimit;
     const pc = 0;
     const stepCount = 0;
-   //console.log( account, code, data, stack, memory, tStorage, gasLimit, gasRemaining, pc, stepCount )
-    // do we need another func for call?
+  
     const callRunState = await this.run({ account, code, data, stack, memory, tStorage, gasLimit, gasRemaining, pc, stepCount }, true);
-   
+    
     if ( callRunState.errno !== 0 ) {
       runState.stack.push(new BN(0));
       runState.returnData = new BN(0);
     } else {
       runState.stack.push(new BN(1));
       let calleeGasUsed = new BN(gasLimit).sub(callRunState.gasLeft);
-      console.log(calleeGasUsed)
       this.subGas(runState, calleeGasUsed);
       this.memStore(runState, outOffset, callRunState.returnValue, new BN(0), outLength, true);
       runState.returnValue = callRunState.returnValue;
+      runState.tStorage = callRunState.tStorage;
     }
     runState.gasLeft.add(callRunState.gasLeft);
-    
-    // 1. load storage, code
-    // 2. runEVM
-    // 3. runEVM returnData into mem
-    // 4. gas 
-
-    //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
+    runState.calleeSteps = callRunState.steps;
+    runState.calleeRuntime = callRunState;
   }
 
   async handleCALLCODE (runState) {
@@ -981,39 +975,44 @@ module.exports = class EVMRuntime {
   }
 
   async handleDELEGATECALL (runState) {
-    const target = runState.stack[runState.stack.length - 2] || new BN(0xff);
+    let gasLimit = runState.stack.pop();
+    const toAddress = runState.stack.pop();
+    const inOffset = runState.stack.pop();
+    const inLength = runState.stack.pop();
+    const outOffset = runState.stack.pop();
+    const outLength = runState.stack.pop();
+    const data = this.memLoad(runState, inOffset, inLength).toString('hex');
+    const account = runState.account;
+       
+    this.subMemUsage(runState, outOffset, outLength);
 
-    if (target.gten(0) && target.lten(8)) {
-      let gasLimit = runState.stack.pop();
-      const toAddress = runState.stack.pop();
-      const inOffset = runState.stack.pop();
-      const inLength = runState.stack.pop();
-      const outOffset = runState.stack.pop();
-      const outLength = runState.stack.pop();
-      const data = this.memLoad(runState, inOffset, inLength);
-
-      this.subMemUsage(runState, outOffset, outLength);
-
-      if (gasLimit.gt(runState.gasLeft)) {
-        gasLimit = new BN(runState.gasLeft);
-      }
-
-      const precompile = PRECOMPILED[toAddress.toString()];
-      const r = await precompile(gasLimit, data);
-
-      runState.returnValue = r.returnValue;
-      runState.stack.push(new BN(r.exception));
-
-      this.subGas(runState, r.gasUsed);
-      this.memStore(runState, outOffset, r.returnValue, new BN(0), outLength, true);
-      return;
+    if (gasLimit.gt(runState.gasLeft)) {
+      gasLimit = new BN(runState.gasLeft);
     }
-
-    // TODO: remove this and throw first, sync behaviour with contracts
-    runState.returnValue = Buffer.alloc(0);
-    runState.stack = runState.stack.slice(0, runState.stack.length - 6);
-    runState.stack.push(new BN(0));
-
+    
+    const code = account.bytecode;
+    const stack = [];
+    const memory = [];
+    const tStorage = runState.tStorage;
+    gasLimit = gasLimit.toNumber();
+    let gasRemaining = gasLimit;
+    const pc = 0;
+    const stepCount = 0;
+  
+    const callRunState = await this.run({ account, code, data, stack, memory, tStorage, gasLimit, gasRemaining, pc, stepCount }, true);
+    if ( callRunState.errno !== 0 ) {
+      runState.stack.push(new BN(0));
+      runState.returnData = new BN(0);
+    } else {
+      runState.stack.push(new BN(1));
+      let calleeGasUsed = new BN(gasLimit).sub(callRunState.gasLeft);
+      this.subGas(runState, calleeGasUsed);
+      this.memStore(runState, outOffset, callRunState.returnValue, new BN(0), outLength, true);
+      runState.returnValue = callRunState.returnValue;
+    }
+    runState.gasLeft.add(callRunState.gasLeft);
+    runState.calleeSteps = callRunState.steps;
+    runState.calleeRuntime = callRunState;
     //throw new VmError(ERROR.INSTRUCTION_NOT_SUPPORTED);
   }
 

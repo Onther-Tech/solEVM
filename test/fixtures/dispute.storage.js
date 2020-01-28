@@ -7,7 +7,7 @@ const debug = require('debug')('dispute-test');
 
 module.exports = (callback) => {
   describe('Fixture for Dispute/Verifier Logic #1', function () {
-    const code = [
+    let code = [
       OP.PUSH1, '03',
       OP.PUSH1, '05',
       OP.ADD,
@@ -45,172 +45,157 @@ module.exports = (callback) => {
       OP.PUSH1, '00',
       OP.RETURN,
     ];
+
+    // need for convert string
+    code = code.join('');
+
+    // need to init tStorage
+    const tStorage = []; 
+
     const data = '0x00010203040506070809';
-    console.log(code);
     let steps;
     let copy;
     let merkle;
     const runtime = new HydratedRuntime();
 
     beforeEach(async () => {
-      steps = await runtime.run({ code, data });
+      steps = await runtime.run({ code, data, tStorage: tStorage });
       copy = JSON.stringify(steps);
-      merkle = new Merkelizer().run(steps, code, data);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
     it('both have the same result, solver wins', async () => {
-      await callback(code, data, merkle, merkle, 'solver');
+      await callback(code, data, tStorage, merkle, merkle, 'solver');
     });
 
-    // it('challenger has an output error somewhere', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an output error somewhere', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an output error somewhere', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an output error somewhere', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger first step missing', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution.shift();
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger first step missing', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution.shift();
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver first step missing', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution.shift();
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver first step missing', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution.shift();
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger last step gone', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution.pop();
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger last step gone', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution.pop();
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver last step gone', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution.pop();
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver last step gone', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution.pop();
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger wrong memory output', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 2) {
-    //     wrongExecution[i].mem.push('0x0000000000000000000000000000000000000000000000000000000000000000');
-    //   }
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger wrong memory output', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 2) {
+        wrongExecution[i].mem.push('0x0000000000000000000000000000000000000000000000000000000000000000');
+      }
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver wrong memory output', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 2) {
-    //     wrongExecution[i].mem.push('0x0000000000000000000000000000000000000000000000000000000000000000');
-    //   }
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver wrong memory output', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 2) {
+        wrongExecution[i].mem.push('0x0000000000000000000000000000000000000000000000000000000000000000');
+      }
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger wrong stack output', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 2) {
-    //     wrongExecution[i].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000000');
-    //     wrongExecution[i].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   }
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger wrong stack output', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 2) {
+        wrongExecution[i].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000000');
+        wrongExecution[i].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      }
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver wrong stack output', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 2) {
-    //     wrongExecution[i].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000000');
-    //     wrongExecution[i].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   }
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver wrong stack output', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 2) {
+        wrongExecution[i].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000000');
+        wrongExecution[i].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      }
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger wrong opcode', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 3) {
-    //     wrongExecution[i].code = ['01'];
-    //     wrongExecution[i].pc += 1;
-    //   }
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger wrong opcode', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 3) {
+        wrongExecution[i].code = ['01'];
+        wrongExecution[i].pc += 1;
+      }
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver wrong opcode', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   for (let i = 1; i < wrongExecution.length; i += 3) {
-    //     wrongExecution[i].code = ['01'];
-    //     wrongExecution[i].pc += 1;
-    //   }
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver wrong opcode', async () => {
+      const wrongExecution = JSON.parse(copy);
+      for (let i = 1; i < wrongExecution.length; i += 3) {
+        wrongExecution[i].code = ['01'];
+        wrongExecution[i].pc += 1;
+      }
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('only two steps, both wrong but doesn\'t end with REVERT or RETURN = challenger wins', async () => {
-    //   const wrongExecution = JSON.parse(copy).slice(0, 2);
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('only two steps, both wrong but doesn\'t end with OP.REVERT or RETURN = challenger wins', async () => {
+      const wrongExecution = JSON.parse(copy).slice(0, 2);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('solver misses steps in between', async () => {
-    //   let wrongExecution = JSON.parse(copy);
-    //   wrongExecution = wrongExecution.slice(0, 2).concat(wrongExecution.slice(-3));
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver misses steps in between', async () => {
+      let wrongExecution = JSON.parse(copy);
+      wrongExecution = wrongExecution.slice(0, 2).concat(wrongExecution.slice(-3));
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('solver with one invalid step', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[7] = wrongExecution[8];
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver with one invalid step', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[7] = wrongExecution[8];
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('solver with one invalid step', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[5] = wrongExecution[6];
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
-
-    // it('solver with one invalid step', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[8] = wrongExecution[9];
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
-
-    // it('solver with one invalid step', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[10] = wrongExecution[11];
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, solverMerkle, merkle, 'challenger');
-    // });
-
-    // it('challenger with one invalid step', async () => {
-    //   const wrongExecution = JSON.parse(copy);
-    //   wrongExecution[7] = wrongExecution[8];
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data);
-    //   await callback(code, data, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger with one invalid step', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[7] = wrongExecution[8];
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });   
   });
 
   // describe('Fixture for Dispute/Verifier Logic #2 (JUMP)', function () {
