@@ -1,5 +1,8 @@
 'use strict';
 
+const utils = require('ethereumjs-util');
+const BN = utils.BN;
+
 const OP = require('./constants');
 const ethers = require('ethers');
 const EVMRuntime = require('./EVMRuntime');
@@ -31,8 +34,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.memory = runState.memProof.proxy;
     runState.code = runState.codeProof.proxy;
     runState.callDepth = isCALL ? ++runState.callDepth : 0;
+    runState.tStorage = obj.tStorage || [];
+    runState.logHash = obj.logHash || OP.ZERO_HASH;
+    runState.callDepth = 0;
     
-    
+    //console.log(runState.stateManager)
     return runState;
   }
 
@@ -98,10 +104,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     } 
     
     const step = {
-      calleeCode: calleeCode || '',
-      calleeCallData: calleeCallData || '',
-      calleeTstorage: calleeTstorage || [],
-      account: runState.account,
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
       callDataReadLow: callDataProof.readLow,
@@ -112,8 +114,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       errno: runState.errno,
       gasRemaining: runState.gasLeft.toNumber(),
       tStorage: runState.tStorage,
+      isStorageReset: false,
+      isStorageDataRequired: false,
+      tStorageSize: 0,
       logs: runState.logs,
       logHash: runState.logHash,
+      calleeCode: calleeCode || '',
+      calleeCallData: calleeCallData || '',
+      calleeTstorage: calleeTstorage || [],
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,
       callDepth: runState.callDepth
@@ -121,30 +129,86 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     
     this.calculateMemProof(runState, step);
     this.calculateStackProof(runState, step);
-    this.getStorageData(runState, step);
+    await this.getStorageData(runState, step);
         
     runState.steps.push(step);
   }
 
-  getStorageData (runState, step){
+  async getStorageData (runState, step){
     const opcodeName = runState.opName;
     
     let isStorageDataRequired = false;
     let isStorageReset = false;
     if( opcodeName === 'SSTORE' ){
-      step.tStorage = runState.tStorage;
-      isStorageReset = runState.isStorageReset;
-      isStorageDataRequired = true;
+      try {
+        let newStorageData = await this.getStorageValue(runState, step.compactStack);
+        
+        for (let i = 0; i < runState.tStorage.length - 1; i++){
+          if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
+            isStorageReset = true;
+          }
+        }
+        if (!isStorageReset){
+          runState.tStorage = runState.tStorage.concat(newStorageData);
+        }
+        isStorageDataRequired = true;
+      } catch (error) {
+        console.log(error);
+      }
     }
 
+    let isStorageLoaded = false;
     if ( opcodeName === 'SLOAD' ){
-      step.tStorage = runState.tStorage;
       isStorageDataRequired = true;
+      let newStorageData = await this.getStorageValue(runState, step.compactStack);
+      
+      for (let i = 0; i < runState.tStorage.length - 1; i++){
+        if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
+          isStorageLoaded = true;
+        } 
+      }
+      if (!isStorageLoaded) {
+        runState.tStorage = runState.tStorage.concat(newStorageData);
+      }
     }
-
+    
+    step.tStorage = runState.tStorage;
     step.isStorageReset = isStorageReset;
     step.isStorageDataRequired = isStorageDataRequired;
-    step.tStorageSize = step.tStorage.length;
+    step.tStorageSize = runState.tStorage.length;
+  }
+
+  async getStorageValue(runState, compactStack) {
+    let stateManager = runState.stateManager;
+    let address = runState.address;
+    let key = compactStack[compactStack.length - 1];
+    key = Buffer.from(key.replace('0x', ''), 'hex');
+    
+    return new Promise(
+      function (resolve, reject) {
+            
+        const cb = function (err, result) {
+            if (err) {
+              reject(err)
+              return;
+            }
+           
+            let elem = [];
+            key = '0x' + key.toString('hex');
+            result = result.length ? new BN(result) : new BN(0);
+            result = '0x' + result.toString(16).padStart(64, '0')
+            
+            elem.push(key);
+            elem.push(result);
+            resolve(elem);
+        };
+        
+        stateManager.getContractStorage(address, key, cb);   
+
+        return;
+              
+      }
+    )
   }
 
   calculateMemProof (runState, step) {

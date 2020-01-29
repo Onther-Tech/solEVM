@@ -18,6 +18,7 @@
     "test": "yarn test:contracts && yarn test:utils",
     "test:contracts": "yarn compile:contracts && scripts/test.sh test/contracts/*",
     "test:utils": "mocha test/utils/",
+    "test:utils:stepper": "mocha test/utils/stepper.js",
     "test:utils:call": "mocha test/utils/stepper.call.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -36,6 +37,7 @@
     "solhint": "=2.1.0"
   },
   "dependencies": {
+    "ethereumjs-vm": "https://github.com/pinkiebell/ethereumjs-vm.git#release/v2.6.0-r6",
     "ethereumjs-util": "=6.1.0",
     "ethers": "=4.0.33",
     "keccak": "=2.0.0",
