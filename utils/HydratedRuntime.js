@@ -37,8 +37,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.tStorage = obj.tStorage || [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
     runState.callDepth = 0;
+    // dev: it should be given input value not zero hash. it's just test.
+    runState.intermediateStateRoot = obj.beforeStateRoot || OP.ZERO_HASH;
     
-    //console.log(runState.stateManager)
     return runState;
   }
 
@@ -102,7 +103,34 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeCallData = '0x' + runState.calleeRuntime.rawCallData.toString('hex');
       calleeTstorage = runState.calleeRuntime.tStorage;
     } 
-    
+
+    // chase intermediate state root
+    const getIntermediateStateRoot = async () => {
+      return new Promise(
+        function (resolve, reject) {
+              
+          const cb = function (err, result) {
+              if (err) {
+                reject(err)
+                return;
+              }
+              result = '0x' + result.toString('hex');
+              resolve(result);
+          };
+          
+          runState.stateManager.getStateRoot(cb);   
+  
+          return;
+                
+        }
+      )
+    }
+
+    if (runState.opName === 'SSTORE' || runState.opName === 'SLOAD') {
+      let stateRoot = await getIntermediateStateRoot();
+      runState.intermediateStateRoot = stateRoot;
+    }
+    //console.log(runState.opName, runState.intermediateStateRoot);
     const step = {
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
@@ -124,7 +152,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeTstorage: calleeTstorage || [],
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,
-      callDepth: runState.callDepth
+      callDepth: runState.callDepth,
+      intermediateStateRoot: runState.intermediateStateRoot
     };
     
     this.calculateMemProof(runState, step);
