@@ -238,7 +238,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     return runState;
   }
 
-  async run ({ code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }, isCALL) {
+  async run ({ accounts, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }, isCALL) {
     data = data || '0x';
     isCALL = isCALL || false;
     
@@ -251,7 +251,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
      // TODO: make it configurable by the user
     // init default account
-    await this.initAccounts([{ code: code, address: DEFAULT_CONTRACT_ADDRESS, tStorage: tStorage }]);
+    // dev: it should be needed to input externally because of we don't have local DB yet.
+    // input - [address, code, tStorage]
+    await this.initAccounts(accounts);
     // commit to the tree, needs a checkpoint first 🤪
     await new Promise((resolve) => {
       this.stateManager.checkpoint(() => {

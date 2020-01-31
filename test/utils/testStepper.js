@@ -24,14 +24,33 @@ const tStorage = [
   '0x00000000000000000000000000000000000000000000000000000000000003e8'
 ];
 
+const accounts = [
+  {
+    address: OP.DEFAULT_CONTRACT_ADDRESS,
+    code: code,
+    tStorage: tStorage
+  }
+];
+
 let steps;
 let copy;
 let merkle;
 const runtime = new HydratedRuntime();
 
 (async function(){
-    steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
-    console.log(steps[318], steps.length);
-    merkle = await new Merkelizer().run(steps, code, data, tStorage);
+    steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage });
+    //console.log(steps, steps.length);
+    // for (let i = 0; i < steps.length; i++) {
+    //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
+    //     console.log(steps[i])
+    //   }
+    // }
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i].opCodeName, steps[i].intermediateStateRoot)
+      }
+    }
+    
+    // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     //console.log(merkle.printTree());
 })();
