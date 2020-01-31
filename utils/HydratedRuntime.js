@@ -36,10 +36,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.callDepth = isCALL ? ++runState.callDepth : 0;
     runState.tStorage = obj.tStorage || [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
-    runState.callDepth = 0;
-    // dev: it should be given input value not zero hash. it's just test.
+    // dev: it should be given input value not zero hash. it's for test.
     runState.intermediateStateRoot = obj.beforeStateRoot || OP.ZERO_HASH;
-    
+    runState.stateManager = runState.stateManager.copy();
+        
     return runState;
   }
 
@@ -99,9 +99,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeTstorage;
     if (opcode === 0xf1) {
       isCALLExecuted = true;
-      calleeCode = runState.calleeRuntime.rawCode.toString('hex');
-      calleeCallData = '0x' + runState.calleeRuntime.rawCallData.toString('hex');
-      calleeTstorage = runState.calleeRuntime.tStorage;
+      calleeCode = runState.calleeCode.toString('hex');
+      calleeCallData = '0x' + runState.calleeCallData.toString('hex');
+      calleeTstorage = runState.calleeTstorage;
     } 
 
     // chase intermediate state root
@@ -130,7 +130,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       let stateRoot = await getIntermediateStateRoot();
       runState.intermediateStateRoot = stateRoot;
     }
-    //console.log(runState.opName, runState.intermediateStateRoot);
+
     const step = {
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
@@ -152,7 +152,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeTstorage: calleeTstorage || [],
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,
-      callDepth: runState.callDepth,
+      callDepth: runState.depth,
       intermediateStateRoot: runState.intermediateStateRoot
     };
     
@@ -161,6 +161,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     await this.getStorageData(runState, step);
         
     runState.steps.push(step);
+    //console.log(runState.depth)
   }
 
   async getStorageData (runState, step){
@@ -175,6 +176,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         for (let i = 0; i < runState.tStorage.length - 1; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
             isStorageReset = true;
+            runState.tStorage[i+1] = newStorageData[1];
           }
         }
         if (!isStorageReset){
