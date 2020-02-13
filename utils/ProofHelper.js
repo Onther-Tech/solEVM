@@ -8,14 +8,24 @@ module.exports = class ProofHelper {
   static constructProof (computationPath, { merkle, codeFragmentTree } = {}) {
     const prevOutput = computationPath.left.executionState;
     const execState = computationPath.right.executionState;
+    const isFirstStep = computationPath.isFirstExecutionStep;
+    let initStorageProof;
+
+    if (isFirstStep) {
+      initStorageProof = computationPath.left.initStorageProof;
+      return initStorageProof;
+    }
+
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
     }
+
     let isCallDataRequired = false;
     if (execState.callDataReadHigh !== -1 || execState.callDataWriteHigh !== -1) {
       isCallDataRequired = true;
     }
+
     const proofs = {
       stackHash: execState.compactStackHash,
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
@@ -24,8 +34,9 @@ module.exports = class ProofHelper {
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
+      storageProof: execState.isStorageDataRequired ? execState.intermediateStorageProof : []
     };
-
+    
     if (codeFragmentTree) {
       const leaves = codeFragmentTree.leaves;
       const neededSlots = [];
