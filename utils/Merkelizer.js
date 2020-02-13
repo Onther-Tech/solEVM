@@ -9,7 +9,7 @@ const { ZERO_HASH } = require('./constants');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (initStorageHash, initStorageProof, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -33,11 +33,13 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         dataHash: this.dataHash(callData),
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
+        intermediateStorageRoot: initStorageHash,
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-
+    res.initStorageProof = initStorageProof;
+    // console.log('initialStateHash', initStorageProof)
     return res;
   }
 
@@ -96,7 +98,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
 
   static storageHash (tStorage) {
     return ethers.utils.solidityKeccak256(
-      ['bytes32[]'],
+      ['bytes[]'],
       [tStorage]
     );
   }
@@ -136,26 +138,31 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     return ethers.utils.solidityKeccak256(
       [
         'bytes32',
+        'bytes32',
         'bytes',
       ],
       [
         this.preStateHash(execution),
+        execution.intermediateStorageRoot,
         execution.returnData,
       ]
     );
   }
 
-  makeLeave (executions, code, callData, tStorage, customEnvironmentHash) {
+  makeLeave (initStorageProof, executions, code, callData, tStorage, customEnvironmentHash) {
     if (!executions || !executions.length) {
       throw new Error('You need to pass at least one execution step');
     }
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
+    initStorageProof = initStorageProof || []; 
+    
+    const initStorageHash = '0x' + initStorageProof[0].rootHash.toString('hex');
 
     if (!this.tree) {
       this.tree = [[]];
     }
     
-    const initialState = this.constructor.initialStateHash(code, callData, tStorage, customEnvironmentHash);
+    const initialState = this.constructor.initialStateHash(initStorageHash, initStorageProof, code, callData, tStorage, customEnvironmentHash);
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
 
@@ -197,6 +204,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
        exec.dataHash = callDataHash;
        exec.memHash = memHash;
        exec.tStorageHash = tStorageHash;
+      //  console.log('merkle', exec.intermediateStorageRoot)
        
        // TODO: the runtime should ultimately support and supply that
        exec.customEnvironmentHash = customEnvironmentHash;
@@ -262,18 +270,19 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       }  
 
       if (exec.isCALLExecuted) {
+        const initStorageProof = exec.calleeProof;
         const steps = exec.calleeSteps;
         const code = exec.calleeCode;
         const callData = exec.calleeCallData;
         const tStorage = exec.calleeTstorage;
         
-        this.makeLeave(steps, code, callData, tStorage, customEnvironmentHash);    
+        this.makeLeave(initStorageProof, steps, code, callData, tStorage, customEnvironmentHash);    
       }
     }
   }
 
-  run (executions, code, callData, tStorage, customEnvironmentHash) {
-    this.makeLeave(executions, code, callData, tStorage, customEnvironmentHash);
+  run (initStorageProof, executions, code, callData, tStorage, customEnvironmentHash) {
+    this.makeLeave(initStorageProof, executions, code, callData, tStorage, customEnvironmentHash);
     this.recal(0);
 
     return this;
