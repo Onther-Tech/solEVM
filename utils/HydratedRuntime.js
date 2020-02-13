@@ -17,7 +17,7 @@ const OP_DUP1 = parseInt(OP.DUP1, 16);
 const OP_DUP16 = parseInt(OP.DUP16, 16);
 
 module.exports = class HydratedRuntime extends EVMRuntime {
-  async initRunState (obj, isCALL) {
+  async initRunState (obj) {
     const runState = await super.initRunState(obj);
     const stack = toHex(runState.stack);
 
@@ -33,28 +33,24 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.callData = runState.callDataProof.proxy;
     runState.memory = runState.memProof.proxy;
     runState.code = runState.codeProof.proxy;
-    runState.callDepth = isCALL ? ++runState.callDepth : 0;
-    runState.tStorage = obj.tStorage || [];
+    runState.tStorage = this.accounts[runState.depth].tStorage || [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
-    // dev: it should be given input value not zero hash. it's for test.
-    runState.intermediateStateRoot = obj.beforeStateRoot || OP.ZERO_HASH;
     runState.stateManager = runState.stateManager.copy();
-        
+    runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
+    runState.intermediateStorageProof = [];
+    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash;
+    // console.log('initRunState', this.accounts[runState.depth].storageHash)
     return runState;
   }
 
-  async run (args, isCALL = false) {
-    const runState = await super.run(args, isCALL);
+  async run (args) {
+    const runState = await super.run(args);
 
     // a temporay hack for our unit tests :/
     if (runState.steps.length > 0) {
       runState.steps[runState.steps.length - 1].stack = toHex(runState.stack);
     }
-    if (isCALL){
-      return runState;
-    } else {
-      return runState.steps;
-    }
+    return [runState.initStorageProof, runState.steps];
   }
 
   async runNextStep (runState) {
@@ -97,39 +93,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeCode;
     let calleeCallData;
     let calleeTstorage;
+    let calleeProof;
     if (opcode === 0xf1) {
       isCALLExecuted = true;
       calleeCode = runState.calleeCode.toString('hex');
       calleeCallData = '0x' + runState.calleeCallData.toString('hex');
       calleeTstorage = runState.calleeTstorage;
+      calleeProof = runState.calleeProof;
     } 
-
-    // chase intermediate state root
-    const getIntermediateStateRoot = async () => {
-      return new Promise(
-        function (resolve, reject) {
-              
-          const cb = function (err, result) {
-              if (err) {
-                reject(err)
-                return;
-              }
-              result = '0x' + result.toString('hex');
-              resolve(result);
-          };
-          
-          runState.stateManager.getStateRoot(cb);   
-  
-          return;
-                
-        }
-      )
-    }
-
-    if (runState.opName === 'SSTORE' || runState.opName === 'SLOAD') {
-      let stateRoot = await getIntermediateStateRoot();
-      runState.intermediateStateRoot = stateRoot;
-    }
 
     const step = {
       opCodeName: runState.opName,
@@ -150,18 +121,23 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeCode: calleeCode || '',
       calleeCallData: calleeCallData || '',
       calleeTstorage: calleeTstorage || [],
+      calleeProof: calleeProof,
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,
       callDepth: runState.depth,
-      intermediateStateRoot: runState.intermediateStateRoot
+      intermediateStorageRoot: runState.intermediateStorageRoot,
+      initStorageProof: runState.initStorageProof,
+      intermediateStorageProof: runState.intermediateStorageProof
     };
     
     this.calculateMemProof(runState, step);
     this.calculateStackProof(runState, step);
-    await this.getStorageData(runState, step);
+    if (runState.opName === 'SSTORE' || runState.opName === 'SLOAD') {
+      await this.getStorageData(runState, step);
+    }
+    
         
     runState.steps.push(step);
-    //console.log(runState.depth)
   }
 
   async getStorageData (runState, step){
@@ -169,11 +145,45 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     
     let isStorageDataRequired = false;
     let isStorageReset = false;
+
+     // pick storage trie for an account
+     const address = runState.address.toString('hex');
+     let storageTrie;
+     for (let i = 0; i < this.accounts.length; i++){
+       if (address === this.accounts[i].address) {
+         storageTrie = this.accounts[i].storageTrie;
+       }
+     }
+    
     if( opcodeName === 'SSTORE' ){
       try {
         let newStorageData = await this.getStorageValue(runState, step.compactStack);
+        let key = newStorageData[0].toString();
+        let val = newStorageData[1].toString();
         
-        for (let i = 0; i < runState.tStorage.length - 1; i++){
+        key = key.replace('0x', '');
+        val = val.replace('0x', '');
+
+        await storageTrie.putData(key, val);
+        // let data = await storageTrie.getData(key)
+        // console.log('data', data);
+        let arr = [];
+        let obj = {};
+        const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
+        obj.rootHash = rootHash;
+        obj.key = key;
+        obj.val = val;
+        obj.hashedKey = hashedKey;
+        obj.stack = stack;
+        arr.push(obj);
+
+        runState.intermediateStorageRoot = '0x' + rootHash.toString('hex');
+        runState.intermediateStorageProof = arr;
+        
+        // console.log('rootHash', rootHash);
+        // console.log('hashedKey', hashedKey);
+        // console.log('stack', stack);
+        for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
             isStorageReset = true;
             runState.tStorage[i+1] = newStorageData[1];
@@ -201,12 +211,31 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       if (!isStorageLoaded) {
         runState.tStorage = runState.tStorage.concat(newStorageData);
       }
-    }
+
+      let key = newStorageData[0].toString();
+      let val = newStorageData[1].toString();
+
+      key = key.replace('0x', '');
+      val = val.replace('0x', '');
+
+      let arr = [];
+      let obj = {};
+      const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
+      obj.rootHash = rootHash;
+      obj.key = key;
+      obj.val = val;
+      obj.hashedKey = hashedKey;
+      obj.stack = stack;
+      arr.push(obj);
+      runState.intermediateStorageProof = arr;
+  }
     
     step.tStorage = runState.tStorage;
     step.isStorageReset = isStorageReset;
     step.isStorageDataRequired = isStorageDataRequired;
     step.tStorageSize = runState.tStorage.length;
+    step.intermediateStorageRoot = runState.intermediateStorageRoot;
+    step.intermediateStorageProof = runState.intermediateStorageProof;
   }
 
   async getStorageValue(runState, compactStack) {
@@ -227,7 +256,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
             let elem = [];
             key = '0x' + key.toString('hex');
             result = result.length ? new BN(result) : new BN(0);
-            result = '0x' + result.toString(16).padStart(64, '0')
+            result = '0x' + result.toString(16);
             
             elem.push(key);
             elem.push(result);

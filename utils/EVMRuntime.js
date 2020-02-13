@@ -7,6 +7,8 @@ const BN = utils.BN;
 const OP = require('./constants');
 const OPCODES = require('./Opcodes');
 
+const HexaryTrie = require('./HexaryTrie');
+
 const PRECOMPILED = {
   '1': require('./precompiled/01-ecrecover.js'),
   '2': require('./precompiled/02-sha256.js'),
@@ -93,10 +95,73 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     super({ hardfork: 'petersburg' });
   }
 
+  async initHexaryTrie (accounts) {
+    const self = this;
+
+    return new Promise(async (resolve, reject) => {
+      let len = accounts.length;
+      
+      self.accounts = [];
+      
+      for (let i = 0; i < len; i++) {
+        let obj = accounts[i];
+        let account = {};
+        account.address = obj.address;
+        account.storageTrie = new HexaryTrie();
+        account.tStorage = obj.tStorage;
+                
+        let proof = [];
+        if (obj.tStorage) {
+          let storageLen = obj.tStorage.length;
+
+          // TODO: need to fix sync to be complete?
+          for (let i = 0; i < storageLen - 1; i++) {
+            if (i % 2 === 0) {
+                let key = obj.tStorage[i].replace('0x', '');
+                let val = obj.tStorage[i+1].replace('0x', '');
+                
+                await account.storageTrie.putData(key, val);
+                const data = await account.storageTrie.getData(key);
+                // console.log('111key', key);
+                // console.log('111val', val);
+                // console.log('111data', data);
+                
+            }
+          }
+                  
+          for (let i = 0; i < storageLen - 1; i++) {
+            if (i % 2 === 0) {
+                let elem = {};
+                let key = obj.tStorage[i].replace('0x', '');
+                const {rootHash, hashedKey, stack} = await account.storageTrie.getProof(key);
+                // console.log('222key', key);
+                // console.log('222rootHash', rootHash);
+                // console.log('222hashedKey', hashedKey);
+                // console.log('222stack', stack);
+
+                elem.key = key;
+                elem.rootHash = rootHash;
+                elem.hashedKey = hashedKey;
+                elem.stack = stack;
+                proof.push(elem);
+            }
+          }
+        }
+        const storageHash = account.storageTrie.trie.root;
+        account.storageHash = '0x' + storageHash.toString('hex');
+        account.initStorageProof = proof;
+        self.accounts.push(account);
+       }
+       
+      //  console.log('initHexaryTrie', this.accounts)
+       resolve();
+    })
+  }
+
   async initAccounts (accounts) {
     const self = this;
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       let openCallbacks = 0;
 
       function resolveCallbacks () {
@@ -134,7 +199,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         let addr = Buffer.isBuffer(obj.address)
           ? obj.address : Buffer.from((obj.address || '').replace('0x', ''), 'hex');
         let account = new VM.deps.Account();
-
         account.balance = obj.balance | 0;
        
         // resolves immediately
@@ -142,9 +206,8 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
         if (obj.tStorage) {
           let storageLen = obj.tStorage.length;
-
-          const forLoop = async _ => {
-              for (let i = 0; i < storageLen - 1; i++) {
+         
+            for (let i = 0; i < storageLen - 1; i++) {
               if (i % 2 === 0) {
                   let address = obj.tStorage[i].replace('0x', '');
                   let value = obj.tStorage[i+1].replace('0x', '');
@@ -154,16 +217,14 @@ module.exports = class EVMRuntime extends VM.MetaVM {
                   await setStorage(addr, address, value);
               }
             }
-          }
-
-          forLoop();
         }
-       
+        
         if (obj.code) {
           openCallbacks++;
           self.stateManager.putContractCode(addr, Buffer.from(obj.code, 'hex'), resolveCallbacks);
         }
       }
+      
       if (openCallbacks === 0) {
         resolve();
       }
@@ -199,6 +260,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
   }
 
   async initRunState (obj) {
+    const self = this;
     const runState = await super.initRunState(obj);
 
     runState.errno = 0;
@@ -234,14 +296,13 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     if (typeof obj.gasRemaining !== 'undefined') {
       runState.gasLeft = new BN(Buffer.from(NumToHex(obj.gasRemaining), 'hex'));
     }
-
+    
     return runState;
   }
 
-  async run ({ accounts, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }, isCALL) {
+  async run ({ accounts, code, data, stack, mem, tStorage, gasLimit, gasRemaining, pc, stepCount }) {
     data = data || '0x';
-    isCALL = isCALL || false;
-    
+        
     if (Array.isArray(code)) {
       code = code.join('');
     } else {
@@ -263,6 +324,8 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       });
     });
 
+    await this.initHexaryTrie(accounts);
+    
     // TODO: Support EVMParameters
     const runState = await this.initRunState({
       code: Buffer.from(code, 'hex'),
@@ -276,7 +339,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       stack,
       tStorage: tStorage,
       gasRemaining
-    }, isCALL);
+    });
     
     stepCount = stepCount | 0;
 
