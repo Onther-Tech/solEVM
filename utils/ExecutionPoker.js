@@ -305,8 +305,12 @@ module.exports = class ExecutionPoker {
     }
 
     const runtime = new HydratedRuntime();
-    const steps = await runtime.run({ code, data });
-    const merkle = new Merkelizer().run(steps, bytecode, data, evmParams.customEnvironmentHash);
+    
+    // @dev modification for initStorageProof
+    const res = await runtime.run({ code, data });
+    const initStorageProof = res[0];
+    const steps = res[1]
+    const merkle = new Merkelizer().run(initStorageProof, steps, bytecode, data, evmParams.customEnvironmentHash);
 
     return { steps, merkle, codeFragmentTree };
   }

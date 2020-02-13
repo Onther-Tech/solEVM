@@ -116,6 +116,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'uint256',
         'uint256',
         'uint256',
+        'bytes32',
       ],
       [
         execution.stackHash,
@@ -128,6 +129,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.gasRemaining,
         execution.stackSize,
         execution.memSize,
+        execution.intermediateStorageRoot,
       ]
     );
   }
@@ -138,12 +140,10 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     return ethers.utils.solidityKeccak256(
       [
         'bytes32',
-        'bytes32',
         'bytes',
       ],
       [
         this.preStateHash(execution),
-        execution.intermediateStorageRoot,
         execution.returnData,
       ]
     );
@@ -154,10 +154,14 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       throw new Error('You need to pass at least one execution step');
     }
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
-    initStorageProof = initStorageProof || []; 
     
-    const initStorageHash = '0x' + initStorageProof[0].rootHash.toString('hex');
-
+    let initStorageHash;
+    if (initStorageProof.length !== 0) {
+      initStorageHash = '0x' + initStorageProof[0].rootHash.toString('hex');
+    } else {
+      initStorageHash = ZERO_HASH; 
+    }
+    
     if (!this.tree) {
       this.tree = [[]];
     }

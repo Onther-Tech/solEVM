@@ -38,7 +38,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.stateManager = runState.stateManager.copy();
     runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
     runState.intermediateStorageProof = [];
-    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash;
+    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash || OP.ZERO_HASH;
     // console.log('initRunState', this.accounts[runState.depth].storageHash)
     return runState;
   }

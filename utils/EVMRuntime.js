@@ -310,9 +310,21 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       code = code.replace('0x', '');
     }
 
-     // TODO: make it configurable by the user
+    // @dev if not set account, set default account
+    if (!accounts) {
+
+      accounts = [
+        {
+          address: OP.DEFAULT_CONTRACT_ADDRESS,
+          code: code,
+          tStorage: tStorage
+        }
+      ];
+    }
+    
+    // TODO: make it configurable by the user
+    // @dev it should be needed to input externally because of we don't have local DB yet.
     // init default account
-    // dev: it should be needed to input externally because of we don't have local DB yet.
     // input - [address, code, tStorage]
     await this.initAccounts(accounts);
     // commit to the tree, needs a checkpoint first 🤪
@@ -325,7 +337,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     });
 
     await this.initHexaryTrie(accounts);
-    
+       
     // TODO: Support EVMParameters
     const runState = await this.initRunState({
       code: Buffer.from(code, 'hex'),
