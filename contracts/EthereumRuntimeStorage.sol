@@ -50,8 +50,6 @@ contract EthereumRuntimeStorage is HydratedRuntimeStorage {
         evm.data = img.data;
         evm.gas = img.gasRemaining;
 
-        evm.caller = evm.accounts.get(DEFAULT_CALLER);
-        evm.target = evm.accounts.get(DEFAULT_CONTRACT_ADDRESS);
         evm.returnData = img.returnData;
         evm.errno = img.errno;
 

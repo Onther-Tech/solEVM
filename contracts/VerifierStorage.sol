@@ -214,8 +214,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
 
         evm.data = executionState.data;
         evm.gas = executionState.gasRemaining;
-        evm.caller = evm.accounts.get(DEFAULT_CALLER);
-        evm.target = evm.accounts.get(DEFAULT_CONTRACT_ADDRESS);
         evm.stack = EVMStack.fromArray(executionState.stack);
         evm.mem = EVMMemory.fromArray(executionState.mem);
         evm.returnData = executionState.returnData;
