@@ -1,5 +1,5 @@
 {
-  "name": "solEVM-enforcer",
+  "name": "solEVM-onther",
   "version": "0.1.0",
   "description": "The EVM Enforcer is a computation verification engine that allows on-chain enforcement of off-chain EVM execution.",
   "author": "LeapDAO",
@@ -37,11 +37,13 @@
     "solhint": "=2.1.0"
   },
   "dependencies": {
-    "ethereumjs-vm": "https://github.com/Onther-Tech/ethereumjs-vm.git",
     "ethereumjs-util": "=6.1.0",
+    "ethereumjs-vm": "https://github.com/Onther-Tech/ethereumjs-vm.git",
     "ethers": "=4.0.33",
     "keccak": "=2.0.0",
+    "merkle-patricia-tree": "^3.0.0",
     "rustbn.js": "=0.2.0",
-    "truffle": "^5.0.38"
+    "truffle": "^5.0.38",
+    "web3": "^1.2.6"
   }
 }
