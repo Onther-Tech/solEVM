@@ -19,9 +19,9 @@ const data = '0xa9059cbb00000000000000000000000014723a09acff6d2a60dcdf7aa4aff308
 // ];
 const tStorage = [
   '0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
-  '0x00000000000000000000000000000000000000000000000000000000000003e8',
+  '0x0x000000000000000000000000000000000000000000000000000000000003e8',
   '0x0000000000000000000000000000000000000000000000000000000000000002',
-  '0x00000000000000000000000000000000000000000000000000000000000003e8'
+  '0x0x000000000000000000000000000000000000000000000000000000000003e8',
 ];
 
 const accounts = [
@@ -32,25 +32,28 @@ const accounts = [
   }
 ];
 
+let initStorageProof;
 let steps;
 let copy;
 let merkle;
 const runtime = new HydratedRuntime();
 
 (async function(){
-    steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage });
-    //console.log(steps, steps.length);
+    const res = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage });
+    initStorageProof = res[0];
+    steps = res[1];
+    console.log(steps, steps.length);
     // for (let i = 0; i < steps.length; i++) {
     //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
     //     console.log(steps[i])
     //   }
     // }
-    for (let i = 0; i < steps.length; i++) {
-      if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
-        console.log(steps[i].opCodeName, steps[i].intermediateStateRoot)
-      }
-    }
+    // for (let i = 0; i < steps.length; i++) {
+    //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
+    //     console.log(steps[i].opCodeName, steps[i].intermediateStateRoot)
+    //   }
+    // }
     
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);
-    //console.log(merkle.printTree());
+    // console.log(merkle.printTree());
 })();
