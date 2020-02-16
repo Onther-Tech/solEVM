@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 
 import { EVMConstants } from "./EVMConstants.sol";
-import {EVMAccounts} from "./EVMAccounts.slb";
+//import {EVMAccounts} from "./EVMAccounts.slb";
 import { EVMMemory } from "./EVMMemory.slb";
 import { EVMStack } from "./EVMStack.slb";
 import { EVMUtils } from "./EVMUtils.slb";
@@ -13,20 +13,11 @@ import {EVMLogs} from "./EVMLogs.slb";
 
 
 contract EVMRuntimeStorage is EVMConstants {
-
-    enum CallType {
-        Call,
-        StaticCall,
-        DelegateCall,
-        CallCode
-    }
-
     using EVMMemory for EVMMemory.Memory;
     using EVMStack for EVMStack.Stack;
     using EVMCode for EVMCode.Code;
     using EVMStorageToArray for EVMStorageToArray.Storage;
     using EVMLogs for EVMLogs.Logs;
-    using EVMAccounts for EVMAccounts.Accounts;
 
     // what we do not track  (not complete list)
     // call depth: as we do not support stateful things like call to other contracts
@@ -35,9 +26,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint customDataPtr;
         uint gas;
         uint value;
-        bool staticExec;
         uint8 errno;
-        uint16 depth;
         uint n;
         uint pc;
 
@@ -45,7 +34,6 @@ contract EVMRuntimeStorage is EVMConstants {
         bytes returnData;
 
         EVMCode.Code code;
-        EVMCode.Code targetCode;
         EVMMemory.Memory mem;
         EVMStack.Stack stack;
         EVMStorageToArray.Storage tStorage;
@@ -56,8 +44,7 @@ contract EVMRuntimeStorage is EVMConstants {
         uint256 blockNumber;
         uint256 blockHash;
         uint256 blockTime;
-
-        //caller is also origin, as we do not support calling other contracts
+        // caller is also origin, as we do not support calling other contracts
         address caller;
         //EVMAccounts.Account target;
         address target;
