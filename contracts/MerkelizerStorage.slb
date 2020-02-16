@@ -18,6 +18,7 @@ library MerkelizerStorage {
         uint memSize;
         bool isStorageReset;
         bytes32 logHash;
+        bytes32 storageRoot;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {
@@ -47,12 +48,13 @@ library MerkelizerStorage {
         return keccak256(abi.encodePacked(_tStorage));
     }
 
-    function stateHash(
+    function preHash(
         ExecutionState memory self,
         bytes32 _stackHash,
         bytes32 _memHash,
         bytes32 _dataHash,
-        bytes32 _tStorageHash
+        bytes32 _tStorageHash,
+        bytes32 _storageRoot
     ) internal pure returns (bytes32) {
         if (_memHash == 0) {
             _memHash = memHash(self.mem);
@@ -72,6 +74,7 @@ library MerkelizerStorage {
                 _memHash,
                 _dataHash,
                 _tStorageHash,
+                _storageRoot,
                 self.logHash,
                 self.customEnvironmentHash,
                 self.pc,
@@ -80,19 +83,39 @@ library MerkelizerStorage {
                 self.memSize
             )
         );
+        return preHash;
+    }
 
+    function envHash(ExecutionState memory self) internal pure returns (bytes32) {
+        bytes32 _envHash = keccak256(
+            abi.encodePacked(
+                self.logHash,
+                self.customEnvironmentHash,
+                self.pc,
+                self.gasRemaining,
+                self.stackSize,
+                self.memSize
+            )
+        );
+        return _envHash;
+    }
+
+    function stateHash(
+        ExecutionState memory self,
+        bytes32 _preHash
+    ) internal pure returns (bytes32) {
         // Question: before we *eventually* implement `FragmentTree` for `returnData`,
         // should we also hash the bytelength from `returnData`.
         // This is probably not needed because the array would be too large anyway to verify on-chain
         // for a possible hash-collision
-        return keccak256(abi.encodePacked(preHash, self.returnData));
+        return keccak256(abi.encodePacked(_preHash, self.returnData));
     }
 
-    function initialStateHash(bytes32 dataHash, bytes32 tStorageHash, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
+    function initialStateHash(bytes32 dataHash, bytes32 tStorageHash, bytes32 storageRoot, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
         ExecutionState memory e;
         e.gasRemaining = DEFAULT_GAS;
         e.customEnvironmentHash = customEnvironmentHash;
-
-        return stateHash(e, 0, 0, dataHash, tStorageHash);
+        bytes32 _preHash = preHash(e, 0, 0, dataHash, tStorageHash, storageRoot);
+        return stateHash(e, _preHash);
     }
 }
