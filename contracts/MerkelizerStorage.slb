@@ -47,12 +47,13 @@ library MerkelizerStorage {
         return keccak256(abi.encodePacked(_tStorage));
     }
 
-    function stateHash(
+    function intermediateHash(
         ExecutionState memory self,
         bytes32 _stackHash,
         bytes32 _memHash,
         bytes32 _dataHash,
-        bytes32 _tStorageHash
+        bytes32 _tStorageHash,
+        bytes32 _storageRoot
     ) internal pure returns (bytes32) {
         if (_memHash == 0) {
             _memHash = memHash(self.mem);
@@ -66,12 +67,20 @@ library MerkelizerStorage {
             _tStorageHash = storageHash(self.tStorage);
         }
 
-        bytes32 preHash = keccak256(
+        return keccak256(
             abi.encodePacked(
                 _stackHash,
                 _memHash,
                 _dataHash,
                 _tStorageHash,
+                _storageRoot
+            )
+        );
+    }
+
+    function envHash (ExecutionState memory self) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
                 self.logHash,
                 self.customEnvironmentHash,
                 self.pc,
@@ -80,19 +89,33 @@ library MerkelizerStorage {
                 self.memSize
             )
         );
+    }
 
+    function stateHash(
+        ExecutionState memory self,
+        bytes32 _intermediateHash,
+        bytes32 _envHash
+    ) internal pure returns (bytes32) {
+        bytes32 _preHash = keccak256(
+            abi.encodePacked(
+                _intermediateHash,
+                _envHash
+            )
+        );
         // Question: before we *eventually* implement `FragmentTree` for `returnData`,
         // should we also hash the bytelength from `returnData`.
         // This is probably not needed because the array would be too large anyway to verify on-chain
         // for a possible hash-collision
-        return keccak256(abi.encodePacked(preHash, self.returnData));
+        return keccak256(abi.encodePacked(_preHash, self.returnData));
     }
 
-    function initialStateHash(bytes32 dataHash, bytes32 tStorageHash, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
+    function initialStateHash(bytes32 dataHash, bytes32 tStorageHash, bytes32 storageRoot, bytes32 customEnvironmentHash) internal pure returns (bytes32) {
         ExecutionState memory e;
         e.gasRemaining = DEFAULT_GAS;
         e.customEnvironmentHash = customEnvironmentHash;
+        bytes32 _intermediateHash = intermediateHash(e, 0, 0, dataHash, tStorageHash, storageRoot);
+        bytes32 _envHash = envHash(e);
 
-        return stateHash(e, 0, 0, dataHash, tStorageHash);
+        return stateHash(e, _intermediateHash, _envHash);
     }
 }
