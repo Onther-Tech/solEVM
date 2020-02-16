@@ -64,7 +64,7 @@ class MyExecutionPoker extends ExecutionPoker {
 
     const dataHash = Merkelizer.dataHash(callData);
     const tStorageHash = Merkelizer.storageHash(tStorage);
-    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash });
+    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash});
 
     return super.requestExecution(evmParams, callData);
   }
