@@ -35,8 +35,8 @@ module.exports = class ProofHelper {
       codeFragments: [],
       codeProof: [],
       // storageProof: execState.isStorageDataRequired ? execState.intermediateStorageProof : [],
-      // beforeStorageRoot : execState.isStorageDataRequired ? prevOutput.intermediateStorageRoot : ZERO_HASH,
-      // afterStorageRoot : execState.isStorageDataRequired ? execState.intermediateStorageRoot : ZERO_HASH,
+      beforeStorageRoot : prevOutput.intermediateStorageRoot,
+      afterStorageRoot : execState.intermediateStorageRoot,
     };
     
     if (codeFragmentTree) {
