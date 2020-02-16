@@ -120,9 +120,9 @@ module.exports = class AbstractMerkleTree {
     let res = '';
 
     for (let i = 0; i < this.tree.length; i++) {
-      const row = this.tree[0];
+      const row = this.tree[i];
 
-      res += `level ${0}: `;
+      res += `level ${i}: `;
       for (let y = 0; y < row.length; y++) {
         const e = row[y];
         const h = e.hash.substring(2, 6);

@@ -11,10 +11,10 @@ module.exports = class ProofHelper {
     const isFirstStep = computationPath.isFirstExecutionStep;
     let initStorageProof;
 
-    if (isFirstStep) {
-      initStorageProof = computationPath.left.initStorageProof;
-      return initStorageProof;
-    }
+    // if (isFirstStep) {
+    //   initStorageProof = computationPath.left.initStorageProof;
+    //   return initStorageProof;
+    // }
 
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
@@ -34,9 +34,9 @@ module.exports = class ProofHelper {
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
-      storageProof: execState.isStorageDataRequired ? execState.intermediateStorageProof : [],
-      beforeStorageRoot : execState.isStorageDataRequired ? prevOutput.intermediateStorageRoot : ZERO_HASH,
-      afterStorageRoot : execState.isStorageDataRequired ? execState.intermediateStorageRoot : ZERO_HASH,
+      // storageProof: execState.isStorageDataRequired ? execState.intermediateStorageProof : [],
+      // beforeStorageRoot : execState.isStorageDataRequired ? prevOutput.intermediateStorageRoot : ZERO_HASH,
+      // afterStorageRoot : execState.isStorageDataRequired ? execState.intermediateStorageRoot : ZERO_HASH,
     };
     
     if (codeFragmentTree) {

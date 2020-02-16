@@ -193,7 +193,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       }
       
       let len = accounts.length;
-   
+      
       while (len--) {
         let obj = accounts[len];
         let addr = Buffer.isBuffer(obj.address)
@@ -312,7 +312,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
     // @dev if not set account, set default account
     if (!accounts) {
-
       accounts = [
         {
           address: OP.DEFAULT_CONTRACT_ADDRESS,

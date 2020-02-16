@@ -282,7 +282,8 @@ module.exports = class ExecutionPoker {
     );
 
     tx = await tx.wait();
-
+    const hash = this.verifier.hash();
+    this.log('result', hash);
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 
     return tx;

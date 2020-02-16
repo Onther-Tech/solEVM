@@ -38,8 +38,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.stateManager = runState.stateManager.copy();
     runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
     runState.intermediateStorageProof = [];
-    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash || OP.ZERO_HASH;
-    // console.log('initRunState', this.accounts[runState.depth].storageHash)
+    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash;
+    // console.log('initRunState', this.accounts[runState.depth].storageTrie)
     return runState;
   }
 
@@ -156,6 +156,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
      }
     
     if( opcodeName === 'SSTORE' ){
+      
       try {
         let newStorageData = await this.getStorageValue(runState, step.compactStack);
         let key = newStorageData[0].toString();
@@ -200,6 +201,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     let isStorageLoaded = false;
     if ( opcodeName === 'SLOAD' ){
+      
       isStorageDataRequired = true;
       let newStorageData = await this.getStorageValue(runState, step.compactStack);
       
@@ -210,24 +212,28 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
       if (!isStorageLoaded) {
         runState.tStorage = runState.tStorage.concat(newStorageData);
+      } else {
+        // @dev in case of not loaded from state (ie the key with val = 0) 
+        // it needs the exclusion proof?
+        let key = newStorageData[0].toString();
+        let val = newStorageData[1].toString();
+  
+        key = key.replace('0x', '');
+        val = val.replace('0x', '');
+       
+        let arr = [];
+        let obj = {};
+        const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
+        obj.rootHash = rootHash;
+        obj.key = key;
+        obj.val = val;
+        obj.hashedKey = hashedKey;
+        obj.stack = stack;
+        arr.push(obj);
+        runState.intermediateStorageProof = arr;
       }
 
-      let key = newStorageData[0].toString();
-      let val = newStorageData[1].toString();
-
-      key = key.replace('0x', '');
-      val = val.replace('0x', '');
-
-      let arr = [];
-      let obj = {};
-      const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
-      obj.rootHash = rootHash;
-      obj.key = key;
-      obj.val = val;
-      obj.hashedKey = hashedKey;
-      obj.stack = stack;
-      arr.push(obj);
-      runState.intermediateStorageProof = arr;
+     
   }
     
     step.tStorage = runState.tStorage;

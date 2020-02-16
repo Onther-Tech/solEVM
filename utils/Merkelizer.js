@@ -9,7 +9,7 @@ const { ZERO_HASH } = require('./constants');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (initStorageHash, initStorageProof, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -33,12 +33,12 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         dataHash: this.dataHash(callData),
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
-        intermediateStorageRoot: initStorageHash,
+        // intermediateStorageRoot: initStorageHash,
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-    res.initStorageProof = initStorageProof;
+    // res.initStorageProof = initStorageProof;
     // console.log('initialStateHash', initStorageProof)
     return res;
   }
@@ -110,7 +110,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
-        'bytes32',
+        // 'bytes32',
         'bytes32',
         'bytes32',
         'uint256',
@@ -123,7 +123,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.memHash,
         execution.dataHash,
         execution.tStorageHash,
-        execution.intermediateStorageRoot,
+        // execution.intermediateStorageRoot,
         execution.logHash,
         execution.customEnvironmentHash,
         execution.pc,
@@ -166,7 +166,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       this.tree = [[]];
     }
     
-    const initialState = this.constructor.initialStateHash(initStorageHash, initStorageProof, code, callData, tStorage, customEnvironmentHash);
+    const initialState = this.constructor.initialStateHash(code, callData, tStorage, customEnvironmentHash);
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
 
@@ -178,6 +178,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
 
     for (let i = 0; i < len; i++) {
       const exec = executions[i];
+      // console.log('makeLeave', exec)
       const stackHash = exec.stackHash;
       let logHash = exec.logHash;
       

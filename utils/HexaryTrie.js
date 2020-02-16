@@ -120,7 +120,7 @@ module.exports = class HexaryTrie {
     };
 
     async getProof (key) {
-        // console.log('test')
+        
         let rootHash = this.trie.root;
         let hashedKey = utils.keccak(key);
         
