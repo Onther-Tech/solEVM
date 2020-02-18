@@ -121,10 +121,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
                 let val = obj.tStorage[i+1].replace('0x', '');
                 
                 await account.storageTrie.putData(key, val);
-                const data = await account.storageTrie.getData(key);
                 // console.log('111key', key);
                 // console.log('111val', val);
-                // console.log('111data', data);
+                
                 
             }
           }
@@ -134,15 +133,18 @@ module.exports = class EVMRuntime extends VM.MetaVM {
                 let elem = {};
                 let key = obj.tStorage[i].replace('0x', '');
                 const {rootHash, hashedKey, stack} = await account.storageTrie.getProof(key);
+                const val = await account.storageTrie.getData(key);
                 // console.log('222key', key);
+                // console.log('222data', data);
                 // console.log('222rootHash', rootHash);
                 // console.log('222hashedKey', hashedKey);
                 // console.log('222stack', stack);
 
                 elem.key = key;
+                elem.val = val;
                 elem.rootHash = rootHash;
                 elem.hashedKey = hashedKey;
-                elem.stack = stack;
+                elem.stack = utils.rlp.encode(stack);
                 proof.push(elem);
             }
           }

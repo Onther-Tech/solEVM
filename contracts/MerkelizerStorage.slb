@@ -18,6 +18,9 @@ library MerkelizerStorage {
         uint memSize;
         bool isStorageReset;
         bytes32 logHash;
+        bool isStorageDataRequired;
+        bool isFirstStep;
+        uint callDepth;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {
@@ -84,7 +87,8 @@ library MerkelizerStorage {
                 self.logHash,
                 self.customEnvironmentHash,
                 self.pc,
-                self.gasRemaining,
+                // @dev trick for CALL.
+                // self.gasRemaining,
                 self.stackSize,
                 self.memSize
             )

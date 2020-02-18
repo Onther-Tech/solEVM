@@ -37,7 +37,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.logHash = obj.logHash || OP.ZERO_HASH;
     runState.stateManager = runState.stateManager.copy();
     runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
-    runState.intermediateStorageProof = [];
+    runState.intermediateStorageProof = this.accounts[runState.depth].initStorageProof || [];
     runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash;
     // console.log('initRunState', this.accounts[runState.depth].storageTrie)
     return runState;
@@ -175,7 +175,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
-        obj.stack = stack;
+        obj.stack = utils.rlp.encode(stack);
         arr.push(obj);
 
         runState.intermediateStorageRoot = '0x' + rootHash.toString('hex');
@@ -228,7 +228,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
-        obj.stack = stack;
+        obj.stack = utils.rlp.encode(stack);
         arr.push(obj);
         runState.intermediateStorageProof = arr;
       }
@@ -262,7 +262,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
             let elem = [];
             key = '0x' + key.toString('hex');
             result = result.length ? new BN(result) : new BN(0);
-            result = '0x' + result.toString(16);
+            result = '0x' + result.toString(16).padStart(64, '0');
             
             elem.push(key);
             elem.push(result);

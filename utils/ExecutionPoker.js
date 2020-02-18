@@ -2,6 +2,7 @@
 
 const ethers = require('ethers');
 
+const web3 = require('web3');
 const HydratedRuntime = require('./HydratedRuntime.js');
 const Merkelizer = require('./Merkelizer.js');
 const ProofHelper = require('./ProofHelper.js');
@@ -274,17 +275,23 @@ module.exports = class ExecutionPoker {
 
     this.log('submitting proof - proofs', args.proofs);
     this.log('submitting proof - executionState', args.executionInput);
+    this.log('submitting proof - storageProof', args.storageProof);
 
     let tx = await this.verifier.submitProof(
       disputeId,
       args.proofs,
       args.executionInput,
+      args.storageProof,
       { gasLimit: this.gasLimit }
     );
 
     tx = await tx.wait();
-    const hash = this.verifier.hash();
-    this.log('result', hash);
+    const val = await this.verifier.val();
+    const result = await this.verifier.result();
+    const hash = await this.verifier.hash();
+    this.log('val!!', web3.utils.hexToAscii(val), val);
+    this.log('result!!', result);
+    this.log('hash!!', hash);
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 
     return tx;

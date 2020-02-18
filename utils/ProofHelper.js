@@ -1,21 +1,36 @@
 'use strict';
 
 const Merkelizer = require('./Merkelizer');
-
+const web3 = require('web3');
 const { ZERO_HASH } = require('./constants');
+const FragmentTree = require('./FragmentTree');
 
 module.exports = class ProofHelper {
   static constructProof (computationPath, { merkle, codeFragmentTree } = {}) {
     const prevOutput = computationPath.left.executionState;
     const execState = computationPath.right.executionState;
     const isFirstStep = computationPath.isFirstExecutionStep;
-    let initStorageProof;
-
-    // if (isFirstStep) {
-    //   initStorageProof = computationPath.left.initStorageProof;
-    //   return initStorageProof;
-    // }
-
+    
+    const intermediateStorageProof = execState.intermediateStorageProof;
+    
+    let storageProof = [];
+    for (let i = 0; i < intermediateStorageProof.length; i++) {
+      
+      const obj = {
+        rootHash: (isFirstStep || execState.isStorageDataRequired) 
+          ? intermediateStorageProof[i].rootHash : ZERO_HASH,
+        key: (isFirstStep || execState.isStorageDataRequired) 
+          ?  web3.utils.asciiToHex(intermediateStorageProof[i].key) : '0x',
+        val: (isFirstStep || execState.isStorageDataRequired) 
+          ?  web3.utils.asciiToHex(intermediateStorageProof[i].val) : '0x',
+        mptPath: (isFirstStep || execState.isStorageDataRequired) 
+          ? intermediateStorageProof[i].hashedKey : '0x',
+        rlpStack: (isFirstStep || execState.isStorageDataRequired) 
+          ? intermediateStorageProof[i].stack : '0x'
+      }
+      storageProof.push(obj);
+    }
+    // console.log('ProofHelper', storageProof)
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
@@ -34,12 +49,57 @@ module.exports = class ProofHelper {
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
-      // storageProof: execState.isStorageDataRequired ? execState.intermediateStorageProof : [],
       beforeStorageRoot : prevOutput.intermediateStorageRoot,
       afterStorageRoot : execState.intermediateStorageRoot,
+      calleeCodeHash: ZERO_HASH,
     };
-    
-    if (codeFragmentTree) {
+
+    if (computationPath.callDepth !== 0) {
+      // console.log('ProofHelper', 'CALLEE')
+      const code = computationPath.code;
+      const calleeFragmentTree = new FragmentTree().run(code);
+      const calleeCodeHash = calleeFragmentTree.root.hash;
+      
+      const leaves = calleeFragmentTree.leaves;
+      const neededSlots = [];
+
+      // convert to 32 byte-sized words
+      execState.codeReads.forEach(
+        function (val) {
+          val = val >> 5;
+          if (neededSlots.indexOf(val) === -1) {
+            neededSlots.push(val);
+          }
+        }
+      );
+
+      for (let i = 0; i < neededSlots.length; i++) {
+        const slot = neededSlots[i];
+        const leaf = leaves[slot];
+
+        if (leaf.hash === ZERO_HASH) {
+          continue;
+        }
+        // panic, just in case
+        if (leaf.slot !== slot) {
+          throw new Error('FragmentTree for contract code is not sorted');
+        }
+
+        proofs.codeFragments.push('0x' + leaf.slot.toString(16).padStart(64, '0'));
+        proofs.codeFragments.push(leaf.value);
+
+        const proof = calleeFragmentTree.calculateProof(leaf.slot);
+        // paranoia
+        if (!calleeFragmentTree.verifyProof(leaf, proof)) {
+          throw new Error(`Can not verify proof for ${leaf}`);
+        }
+
+        proofs.codeProof = proofs.codeProof.concat(proof);
+        proofs.codeByteLength = leaf.byteLength;
+        proofs.calleeCodeHash = calleeCodeHash;
+      }  
+    } else if (computationPath.callDepth === 0 && codeFragmentTree) {
+      // console.log('ProofHelper', 'CALLER')
       const leaves = codeFragmentTree.leaves;
       const neededSlots = [];
 
@@ -78,7 +138,7 @@ module.exports = class ProofHelper {
         proofs.codeByteLength = leaf.byteLength;
       }
     }
-
+    
     return {
       proofs,
       executionInput: {
@@ -93,8 +153,12 @@ module.exports = class ProofHelper {
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
-        isStorageReset: execState.isStorageReset ? true : false
+        isStorageReset: execState.isStorageReset ? true : false,
+        isStorageDataRequired: execState.isStorageDataRequired,
+        isFirstStep: isFirstStep,
+        callDepth: computationPath.callDepth,
       },
+      storageProof,
     };
   }
 };

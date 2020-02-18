@@ -9,7 +9,7 @@ const { ZERO_HASH } = require('./constants');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (intermediateStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -34,11 +34,11 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
         intermediateStorageRoot: initStorageRoot,
+        intermediateStorageProof: intermediateStorageProof,
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-    // res.initStorageProof = initStorageProof;
     // console.log('initialStateHash', initStorageProof)
     return res;
   }
@@ -147,7 +147,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'uint256',
-        'uint256',
+        // trick for CALL
+        // 'uint256',
         'uint256',
         'uint256',
       ],
@@ -155,7 +156,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.logHash,
         execution.customEnvironmentHash,
         execution.pc,
-        execution.gasRemaining,
+        // trick for CALL
+        // execution.gasRemaining,
         execution.stackSize,
         execution.memSize,
       ]
@@ -195,12 +197,12 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
     
     let initStorageRoot = executions[0].intermediateStorageRoot;
-        
+    // console.log('makeLeave', initStorageRoot);
     if (!this.tree) {
       this.tree = [[]];
     }
     
-    const initialState = this.constructor.initialStateHash(initStorageRoot, code, callData, tStorage, customEnvironmentHash);
+    const initialState = this.constructor.initialStateHash(initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash);
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
 
@@ -270,19 +272,20 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
             isLeaf: true,
             isFirstExecutionStep: isFirstExecutionStep,
             isEndExecutionStep: isEndExecutionStep,
-            callDepth: exec.callDepth
+            callDepth: exec.callDepth,
+            code: code,
           }
         );
       }
 
-      const recalLeaf = (left, right) => {
+      const recalLeaf = (left, right, isFirstExecutionStep = false, isEndExecutionStep = false) => {
         const obj = {
           left: left,
           right: right,
           hash: this.constructor.hash(left.hash, right.hash),
           isLeaf: true,
-          isFirstExecutionStep: false,
-          isEndExecutionStep: false,
+          isFirstExecutionStep: isFirstExecutionStep,
+          isEndExecutionStep: isEndExecutionStep,
           callDepth: exec.callDepth - 1
         };
              
@@ -292,28 +295,28 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       if (exec.callDepth !== 0 && isFirstExecutionStep) {
         afterCallTemp = leaves[leaves.length-1];
         const beforeCall = recalLeaf(leaves[leaves.length-1].left, prevLeaf.right);
+        // console.log('makeLeave', beforeCall)
         leaves[leaves.length-1] = beforeCall;
-      } 
-      
-      const llen = pushLeaf(prevLeaf);
-      prevLeaf = leaves[llen - 1];
-
-      if (exec.callDepth !== 0 && isEndExecutionStep) {
-        const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right);
+        const llen = pushLeaf(prevLeaf);
+        prevLeaf = leaves[llen - 1];
+        // console.log('makeLeave', prevLeaf)
+      } else if (exec.callDepth !== 0 && isEndExecutionStep) {
+        const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right, false, true);
         const llen = leaves.push(afterCall);
         prevLeaf = leaves[llen - 1];
+      } else {
+        const llen = pushLeaf(prevLeaf);
+        prevLeaf = leaves[llen - 1];
       }
-
-      if (exec.callDepth === 0 && exec.isCALLExecuted) {
-        console.log('test');
-      }  
-
+     
       if (exec.isCALLExecuted) {
         const initStorageProof = exec.calleeProof;
         const steps = exec.calleeSteps;
         const code = exec.calleeCode;
         const callData = exec.calleeCallData;
-        const tStorage = exec.calleeTstorage;
+        const tStorage = [];
+        // const tStorage = exec.calleeTstorage;
+        // console.log('makeLeave', tStorage)
         
         this.makeLeave(initStorageProof, steps, code, callData, tStorage, customEnvironmentHash);    
       }

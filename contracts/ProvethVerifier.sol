@@ -186,6 +186,9 @@ contract ProvethVerifier {
     uint8 constant public TX_PROOF_RESULT_PRESENT = 1;
     uint8 constant public TX_PROOF_RESULT_ABSENT = 2;
 
+    uint8 constant PROOF_RESULT_ABSENT = 0;
+    uint8 constant PROOF_RESULT_PRESENT = 1;
+
     function txProof(
         bytes32 blockHash,
         bytes memory proofBlob
@@ -234,7 +237,7 @@ contract ProvethVerifier {
         }
 
 
-        bytes memory rlpTx = validateMPTProof(proof.txRootHash, proof.mptKey, proof.stack);
+        (uint8 res, bytes memory rlpTx) = validateMPTProof(proof.txRootHash, proof.mptKey, proof.stack);
 
         if (rlpTx.length == 0) {
             // empty node
@@ -285,7 +288,8 @@ contract ProvethVerifier {
         bytes32 rootHash,
         bytes memory mptKey,
         RLPReader.RLPItem[] memory stack
-    ) internal pure returns (bytes memory value) {
+    ) internal pure returns (uint8 result, bytes memory value) {
+        result = 0;
         uint mptKeyOffset = 0;
 
         bytes32 nodeHashHash;
@@ -297,7 +301,10 @@ contract ProvethVerifier {
         if (stack.length == 0) {
             // Root hash of empty Merkle-Patricia-Trie
             require(rootHash == 0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421);
-            return new bytes(0);
+            return (
+                PROOF_RESULT_ABSENT,
+                new bytes(0)
+            );
         }
 
         // Traverse stack of nodes starting at root.
@@ -348,7 +355,10 @@ contract ProvethVerifier {
                         revert();
                     }
 
-                    return new bytes(0);
+                    return (
+                        PROOF_RESULT_ABSENT,
+                        new bytes(0)
+                    );
                 }
 
                 if (isLeaf) {
@@ -359,11 +369,17 @@ contract ProvethVerifier {
                     }
 
                     if (mptKeyOffset < mptKey.length) {
-                        return new bytes(0);
+                        return (
+                            PROOF_RESULT_ABSENT,
+                            new bytes(0)
+                        );
                     }
 
                     rlpValue = node[1];
-                    return rlpValue.toBytes();
+                    return (
+                        PROOF_RESULT_PRESENT,
+                        rlpValue.toBytes()
+                    );
                 } else { // extension
                     // Sanity check
                     if (i == stack.length - 1) {
@@ -400,7 +416,10 @@ contract ProvethVerifier {
                             revert();
                         }
 
-                        return new bytes(0);
+                        return (
+                            PROOF_RESULT_ABSENT,
+                            new bytes(0)
+                        );
                     } else if (!node[nibble].isList()) {
                         nodeHashHash = keccak256(node[nibble].toBytes());
                     } else {
@@ -414,8 +433,10 @@ contract ProvethVerifier {
                         // should be at last level
                         revert();
                     }
-
-                    return node[16].toBytes();
+                    return (
+                        PROOF_RESULT_PRESENT,
+                        node[16].toBytes()
+                    );
                 }
             }
         }

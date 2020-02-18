@@ -4,10 +4,22 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IVerifierStorage.sol";
 import "./HydratedRuntimeStorage.sol";
 import "./MerkelizerStorage.slb";
+import "./ProvethVerifier.sol";
 
 
-contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
+contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVerifier {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
+    bytes public val;
+    uint8 public result;
+    bytes32 public hash;
+
+    struct StorageProof {
+        bytes32 rootHash;
+        bytes key;
+        bytes val;
+        bytes mptPath;
+        bytes rlpStack;
+    }
 
     struct Proofs {
         bytes32 stackHash;
@@ -19,6 +31,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
         bytes32[] codeProof;
         bytes32 beforeStorageRoot;
         bytes32 afterStorageRoot;
+        bytes32 calleeCodeHash;
     }
 
     /**
@@ -158,7 +171,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
     function submitProof(
         bytes32 disputeId,
         Proofs memory proofs,
-        MerkelizerStorage.ExecutionState memory executionState
+        MerkelizerStorage.ExecutionState memory executionState,
+        StorageProof[] memory storageProof
         // solhint-disable-next-line function-max-lines
     ) public onlyPlaying(disputeId) {
         Dispute storage dispute = disputes[disputeId];
@@ -172,18 +186,17 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
             return;
         }
         // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-        bytes32 stackHash = executionState.stackHash(proofs.stackHash);
+        // bytes32 stackHash = executionState.stackHash(proofs.stackHash);
         bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
         bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
-        bytes32 beforeStorageRoot = proofs.beforeStorageRoot;
+        // bytes32 beforeStorageRoot = proofs.beforeStorageRoot;
         bytes32 inputHash = getInputHash(
             executionState,
-            stackHash,
+            proofs,
             memHash,
             dataHash,
-            tStorageHash,
-            beforeStorageRoot
+            tStorageHash
         );
         
         if ((inputHash != dispute.solver.left && inputHash != dispute.challenger.left) ||
@@ -197,12 +210,36 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
         }
 
         EVM memory evm;
-        evm.code = verifyCode(
-            dispute.codeHash,
-            proofs.codeFragments,
-            proofs.codeProof,
-            proofs.codeByteLength
-        );
+
+        if (executionState.isFirstStep || executionState.isStorageDataRequired) {
+            for (uint i = 0; i < storageProof.length; i++) {
+                (result, val) = validateMPTProof(
+                    storageProof[i].rootHash,
+                    storageProof[i].mptPath,
+                    RLPReader.toList(RLPReader.toRlpItem(storageProof[i].rlpStack))
+                );
+
+                if (result != PROOF_RESULT_PRESENT) {
+                    return;
+                }
+            }
+        }
+        if (executionState.callDepth != 0) {
+            evm.code = verifyCode(
+                proofs.calleeCodeHash,
+                proofs.codeFragments,
+                proofs.codeProof,
+                proofs.codeByteLength
+            );
+        } else {
+            evm.code = verifyCode(
+                dispute.codeHash,
+                proofs.codeFragments,
+                proofs.codeProof,
+                proofs.codeByteLength
+            );
+        }
+        
 
         if ((dispute.state & END_OF_EXECUTION) != 0) {
             uint8 opcode = evm.code.getOpcodeAt(executionState.pc);
@@ -257,7 +294,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
             executionState.memSize = evm.mem.size;
         }
         bytes32 afterStorageRoot = proofs.afterStorageRoot;
-        bytes32 hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
+        hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
 
         if (hash != dispute.solver.right && hash != dispute.challenger.right) {
             return;
@@ -279,22 +316,23 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
     }
 
     function getInputHash(
-        MerkelizerStorage.ExecutionState memory _executionState,
-        bytes32 _stackHash,
-        bytes32 _memHash,
-        bytes32 _dataHash,
-        bytes32 _tStorageHash,
-        bytes32 _storageRoot
+        MerkelizerStorage.ExecutionState memory executionState,
+        Proofs memory proofs,
+        bytes32 memHash,
+        bytes32 dataHash,
+        bytes32 tStorageHash
     ) internal pure returns (bytes32) {
-        bytes32 intermediateHash = _executionState.intermediateHash(
-            _stackHash,
-            _memHash,
-            _dataHash,
-            _tStorageHash,
-            _storageRoot
+        bytes32 stackHash = executionState.stackHash(proofs.stackHash);
+        bytes32 beforeStorageRoot = proofs.beforeStorageRoot;
+        bytes32 intermediateHash = executionState.intermediateHash(
+            stackHash,
+            memHash,
+            dataHash,
+            tStorageHash,
+            beforeStorageRoot
         );
-        bytes32 envHash = _executionState.envHash();
-        return _executionState.stateHash(
+        bytes32 envHash = executionState.envHash();
+        return executionState.stateHash(
             intermediateHash,
             envHash
         );
@@ -429,7 +467,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage {
         }
         emit DisputeNewRound(disputeId, dispute.timeout, dispute.solverPath, dispute.challengerPath);
     }
-    
+    /// @dev TODO: fix bug(zeroHash)
     /// @dev Verify FragmentTree for contract bytecode.
     /// `codeFragments` must be power of two and consists of `slot/pos`, `value`.
     /// If `codeHash`'s last 12 bytes are zero, `codeHash` assumed to be a contract address

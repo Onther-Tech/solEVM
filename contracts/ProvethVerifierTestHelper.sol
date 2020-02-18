@@ -73,6 +73,7 @@ contract ProvethVerifierTestHelper is ProvethVerifier {
         bytes calldata mptPath,
         bytes calldata rlpStack
     ) external pure returns (
+        uint8 res,
         bytes memory value
     ) {
         return validateMPTProof(
