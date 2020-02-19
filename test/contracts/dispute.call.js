@@ -5,12 +5,11 @@ const debug = require('debug')('vgame-test');
 const assert = require('assert');
 
 const { Merkelizer, ExecutionPoker, Constants, FragmentTree } = require('./../../utils');
-const disputeFixtures = require('./../fixtures/disputeStorage');
+const disputeFixtures = require('./../fixtures/dispute.call');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
 const Enforcer = require('./../../build/contracts/EnforcerStorage.json');
-
 const SOLVER_VERIFIED = (1 << 2);
 
 const EVMParameters = {
@@ -23,6 +22,8 @@ const EVMParameters = {
   customEnvironmentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  tStorageHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  storageRoot: '0x0000000000000000000000000000000000000000000000000000000000000000'
 };
 
 class MyExecutionPoker extends ExecutionPoker {
@@ -48,7 +49,7 @@ class MyExecutionPoker extends ExecutionPoker {
     return { steps: this._steps, merkle: this._merkle, codeFragmentTree: this._codeFragmentTree };
   }
 
-  async requestExecution (code, callData, doDeployCode) {
+  async requestExecution (code, callData, tStorage, doDeployCode) {
     EVMParameters.blockNumber++;
 
     let codeHash;
@@ -57,12 +58,13 @@ class MyExecutionPoker extends ExecutionPoker {
       const codeContract = await deployCode(code);
       codeHash = `0x${codeContract.address.replace('0x', '').toLowerCase().padEnd(64, '0')}`;
     } else {
-      this._codeFragmentTree = new FragmentTree().run(code.join(''));
+      this._codeFragmentTree = new FragmentTree().run(code);
       codeHash = this._codeFragmentTree.root.hash;
     }
 
     const dataHash = Merkelizer.dataHash(callData);
-    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash });
+    const tStorageHash = Merkelizer.storageHash(tStorage);
+    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash });
 
     return super.requestExecution(evmParams, callData);
   }
@@ -72,7 +74,7 @@ class MyExecutionPoker extends ExecutionPoker {
   }
 }
 
-async function doGame ({ verifier, code, callData, execPokerSolver, execPokerChallenger, doDeployCode }) {
+async function doGame ({ verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode }) {
   return new Promise(
     (resolve, reject) => {
       let resolved = false;
@@ -96,14 +98,9 @@ async function doGame ({ verifier, code, callData, execPokerSolver, execPokerCha
       }
 
       execPokerSolver.afterSubmitProof = async (disputeId) => {
-        debug('alive?: ', await verifier.alive());
-        debug('solverInputHash: ', await verifier.inputHash());
-        debug('solverHash: ', await verifier.hash());
         decide(disputeId);
       };
       execPokerChallenger.afterSubmitProof = async (disputeId) => {
-        debug('challengerInputHash: ', await verifier.inputHash());
-        debug('challengerHash: ', await verifier.hash());
         decide(disputeId);
       };
       execPokerSolver.onSlashed = () => {
@@ -119,7 +116,7 @@ async function doGame ({ verifier, code, callData, execPokerSolver, execPokerCha
         }
       };
 
-      execPokerSolver.requestExecution(code, callData, doDeployCode);
+      execPokerSolver.requestExecution(code, callData, tStorage, doDeployCode);
     }
   );
 }
@@ -133,9 +130,9 @@ describe('Verifier', function () {
   before(async () => {
     const taskPeriod = 1000000;
     const challengePeriod = 1000;
-    const timeoutDuration = 10;
+    const timeoutDuration = 50;
     const bondAmount = 1;
-    const maxExecutionDepth = 10;
+    const maxExecutionDepth = 15;
 
     verifier = await deployContract(Verifier, timeoutDuration);
     enforcer = await deployContract(
@@ -175,27 +172,27 @@ describe('Verifier', function () {
     execPokerChallenger.alwaysChallenge = true;
   });
 
-  describe('with contract bytecode deployed', () => {
-    disputeFixtures(
-      async (code, callData, solverMerkle, challengerMerkle, expectedWinner) => {
-        // use merkle tree from fixture
-        execPokerSolver._merkle = solverMerkle;
-        execPokerSolver._steps = [];
-        execPokerChallenger._merkle = challengerMerkle;
-        execPokerChallenger._steps = [];
+  // describe('with contract bytecode deployed', () => {
+  //   disputeFixtures(
+  //     async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
+  //       // use merkle tree from fixture
+  //       execPokerSolver._merkle = solverMerkle;
+  //       execPokerSolver._steps = [];
+  //       execPokerChallenger._merkle = challengerMerkle;
+  //       execPokerChallenger._steps = [];
 
-        const winner = await doGame(
-          { verifier, code, callData, execPokerSolver, execPokerChallenger, doDeployCode: true }
-        );
-        assert.equal(winner, expectedWinner, 'winner should match fixture');
-        await onchainWait(10);
-      }
-    );
-  });
+  //       const winner = await doGame(
+  //         { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode: true }
+  //       );
+  //       assert.equal(winner, expectedWinner, 'winner should match fixture');
+  //       await onchainWait(10);
+  //     }
+  //   );
+  // });
 
   describe('without contract bytecode deployed', () => {
     disputeFixtures(
-      async (code, callData, solverMerkle, challengerMerkle, expectedWinner) => {
+      async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
         // use merkle tree from fixture
         execPokerSolver._merkle = solverMerkle;
         execPokerSolver._steps = [];
@@ -203,7 +200,7 @@ describe('Verifier', function () {
         execPokerChallenger._steps = [];
 
         const winner = await doGame(
-          { verifier, code, callData, execPokerSolver, execPokerChallenger }
+          { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger }
         );
         assert.equal(winner, expectedWinner, 'winner should match fixture');
         await onchainWait(10);

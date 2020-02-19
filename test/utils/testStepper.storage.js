@@ -48,7 +48,10 @@ let code = [
 code = code.join('');
 
 // need to init tStorage
-const tStorage = []; 
+const tStorage = ['0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
+'0x00000000000000000000000000000000000000000000000000000000000003e8',
+'0x0000000000000000000000000000000000000000000000000000000000000002',
+'0x00000000000000000000000000000000000000000000000000000000000003e8',]; 
 
 const accounts = [
   {
@@ -69,12 +72,12 @@ const runtime = new HydratedRuntime();
     const res = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     initStorageProof = res[0];
     steps = res[1];
-    // console.log(steps[0], steps.length);
-    // for (let i = 0; i < steps.length; i++) {
-    //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
-    //     console.log(steps[i])
-    //   }
-    // }
-    merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
-    console.log(merkle.printTree());
+    // console.log(steps, steps.length);
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i], i)
+      }
+    }
+    // merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+    // console.log(merkle.printTree());
 })();

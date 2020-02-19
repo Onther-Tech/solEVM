@@ -62,13 +62,13 @@ const runtime = new HydratedRuntime();
     const res = await runtime.run({ accounts, code, data, stack, mem, tStorage: tStorage, pc: 875, stepCount: 1});
     initStorageProof = res[0];
     steps = res[1];
-    // console.log(steps[0], steps.length);
+    // console.log(steps, steps.length);
     // for (let i = 0; i < steps[0].calleeSteps.length; i++) {
     //   if (steps[0].calleeSteps[i].opCodeName === 'SSTORE') {
     //     console.log(steps[0].calleeSteps[i])
     //   }
     // }
-    // console.log(steps[0].calleeSteps[0]);
+    console.log(steps[0].calleeSteps, steps[0].calleeSteps.length);
     // merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
     // console.log(merkle.printLeave());
 })();
