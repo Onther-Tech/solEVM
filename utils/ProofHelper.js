@@ -10,27 +10,25 @@ module.exports = class ProofHelper {
     const prevOutput = computationPath.left.executionState;
     const execState = computationPath.right.executionState;
     const isFirstStep = computationPath.isFirstExecutionStep;
-    
-    const intermediateStorageProof = execState.intermediateStorageProof;
-    
+    const intoCALLStep = computationPath.intoCALLStep;
+    const isStorageDataRequired = execState.isStorageDataRequired;
+        
     let storageProof = [];
-    for (let i = 0; i < intermediateStorageProof.length; i++) {
+    if (isFirstStep || intoCALLStep || isStorageDataRequired) {
+      const intermediateStorageProof = execState.intermediateStorageProof;
+      for (let i = 0; i < intermediateStorageProof.length; i++) {
       
-      const obj = {
-        rootHash: (isFirstStep || execState.isStorageDataRequired) 
-          ? intermediateStorageProof[i].rootHash : ZERO_HASH,
-        key: (isFirstStep || execState.isStorageDataRequired) 
-          ?  web3.utils.asciiToHex(intermediateStorageProof[i].key) : '0x',
-        val: (isFirstStep || execState.isStorageDataRequired) 
-          ?  web3.utils.asciiToHex(intermediateStorageProof[i].val) : '0x',
-        mptPath: (isFirstStep || execState.isStorageDataRequired) 
-          ? intermediateStorageProof[i].hashedKey : '0x',
-        rlpStack: (isFirstStep || execState.isStorageDataRequired) 
-          ? intermediateStorageProof[i].stack : '0x'
+        const obj = {
+          rootHash: intermediateStorageProof[i].rootHash,
+          key: web3.utils.asciiToHex(intermediateStorageProof[i].key),
+          val: web3.utils.asciiToHex(intermediateStorageProof[i].val),
+          mptPath: intermediateStorageProof[i].hashedKey,
+          rlpStack: intermediateStorageProof[i].stack 
+        }
+        storageProof.push(obj);
       }
-      storageProof.push(obj);
     }
-    // console.log('ProofHelper', storageProof)
+    console.log('ProofHelper', storageProof)
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
@@ -157,6 +155,7 @@ module.exports = class ProofHelper {
         isStorageDataRequired: execState.isStorageDataRequired,
         isFirstStep: isFirstStep,
         callDepth: computationPath.callDepth,
+        intoCALLStep: intoCALLStep,
       },
       storageProof,
     };

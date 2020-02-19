@@ -94,7 +94,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeCallData;
     let calleeTstorage;
     let calleeProof;
-    if (opcode === 0xf1) {
+    if (runState.opName === 'CALL') {
       isCALLExecuted = true;
       calleeCode = runState.calleeCode.toString('hex');
       calleeCallData = '0x' + runState.calleeCallData.toString('hex');
