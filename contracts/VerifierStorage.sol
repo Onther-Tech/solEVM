@@ -211,7 +211,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
 
         EVM memory evm;
 
-        if (executionState.isFirstStep || executionState.isStorageDataRequired) {
+        if (executionState.isFirstStep || executionState.intoCALLStep || executionState.isStorageDataRequired) {
             for (uint i = 0; i < storageProof.length; i++) {
                 (result, val) = validateMPTProof(
                     storageProof[i].rootHash,
@@ -224,6 +224,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
                 }
             }
         }
+        
         if (executionState.callDepth != 0) {
             evm.code = verifyCode(
                 proofs.calleeCodeHash,

@@ -21,6 +21,7 @@ library MerkelizerStorage {
         bool isStorageDataRequired;
         bool isFirstStep;
         uint callDepth;
+        bool intoCALLStep;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {
