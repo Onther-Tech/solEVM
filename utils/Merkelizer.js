@@ -415,4 +415,29 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
 
     return valid;
   }
+
+  static async getStorageRoot(storage) {
+    // console.log('getStorageRoot', storage)
+      const storageTrie = new HexaryTrie();
+        if (storage) {
+          let storageLen = storage.length;
+          
+          for (let i = 0; i < storageLen - 1; i++) {
+            if (i % 2 === 0) {
+                let key = storage[i].replace('0x', '');
+                let val = storage[i+1].replace('0x', '');
+                
+                await storageTrie.putData(key, val);
+                // console.log('111key', key);
+                // console.log('111val', val);
+                
+                
+            }
+          }
+          const storageRoot = storageTrie.trie.root;
+          return storageRoot;
+      } else {
+        return ZERO_HASH;
+      }
+  }
 };
