@@ -118,5 +118,19 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
+    it('solver has an wrong intermediateStorageRoot at SSTORE', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
+      const solverMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong intermediateStorageRoot at SSTORE', async () => {
+      const wrongExecution = JSON.parse(copy);
+      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
+      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
   });
 };

@@ -172,23 +172,23 @@ describe('Verifier', function () {
     execPokerChallenger.alwaysChallenge = true;
   });
 
-  describe('with contract bytecode deployed', () => {
-    disputeFixtures(
-      async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
-        // use merkle tree from fixture
-        execPokerSolver._merkle = solverMerkle;
-        execPokerSolver._steps = [];
-        execPokerChallenger._merkle = challengerMerkle;
-        execPokerChallenger._steps = [];
+  // describe('with contract bytecode deployed', () => {
+  //   disputeFixtures(
+  //     async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
+  //       // use merkle tree from fixture
+  //       execPokerSolver._merkle = solverMerkle;
+  //       execPokerSolver._steps = [];
+  //       execPokerChallenger._merkle = challengerMerkle;
+  //       execPokerChallenger._steps = [];
 
-        const winner = await doGame(
-          { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode: true }
-        );
-        assert.equal(winner, expectedWinner, 'winner should match fixture');
-        await onchainWait(10);
-      }
-    );
-  });
+  //       const winner = await doGame(
+  //         { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode: true }
+  //       );
+  //       assert.equal(winner, expectedWinner, 'winner should match fixture');
+  //       await onchainWait(10);
+  //     }
+  //   );
+  // });
 
   describe('without contract bytecode deployed', () => {
     disputeFixtures(

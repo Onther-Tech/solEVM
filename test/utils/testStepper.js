@@ -47,7 +47,7 @@ const runtime = new HydratedRuntime();
         console.log(steps[i], i)
       }
     }
-    
+    // console.log(steps[0], steps[1], steps.length)
     merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();
