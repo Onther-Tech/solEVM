@@ -229,10 +229,9 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       }
 
       // convenience
-      exec.tStorageSize = exec.tStorage.length;
       let tStorageChanged = false;
       if (!tStorageChanged) {
-        tStorageChanged = prevLeaf.right.executionState.tStorageSize !== exec.tStorageSize;
+        tStorageChanged = prevLeaf.right.executionState.tStorage !== exec.tStorage;
       }
 
       if (!tStorageHash || tStorageChanged) {
