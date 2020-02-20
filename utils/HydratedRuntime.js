@@ -186,15 +186,18 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         // console.log('rootHash', rootHash);
         // console.log('hashedKey', hashedKey);
         // console.log('stack', stack);
+        let copyArr = Array.from(runState.tStorage);
         for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
             isStorageReset = true;
-            runState.tStorage[i+1] = newStorageData[1];
+            copyArr[i+1] = newStorageData[1];
           }
         }
         if (!isStorageReset){
-          runState.tStorage = runState.tStorage.concat(newStorageData);
+          copyArr = copyArr.concat(newStorageData);
         }
+
+        runState.tStorage = copyArr;
         isStorageDataRequired = true;
       } catch (error) {
         console.log(error);
