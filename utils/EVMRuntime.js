@@ -142,15 +142,15 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
                 elem.key = key;
                 elem.val = val;
-                elem.rootHash = rootHash;
+                elem.storageRoot = rootHash;
                 elem.hashedKey = hashedKey;
                 elem.stack = utils.rlp.encode(stack);
                 proof.push(elem);
             }
           }
         }
-        const storageHash = account.storageTrie.trie.root;
-        account.storageHash = '0x' + storageHash.toString('hex');
+        const storageRoot = account.storageTrie.trie.root;
+        account.storageRoot = '0x' + storageRoot.toString('hex');
         account.initStorageProof = proof;
         self.accounts.push(account);
        }

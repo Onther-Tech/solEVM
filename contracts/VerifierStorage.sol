@@ -14,7 +14,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
     bytes32 public hash;
 
     struct StorageProof {
-        bytes32 rootHash;
+        bytes32 storageRoot;
         bytes key;
         bytes val;
         bytes mptPath;
@@ -214,7 +214,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
         if (executionState.isFirstStep || executionState.intoCALLStep || executionState.isStorageDataRequired) {
             for (uint i = 0; i < storageProof.length; i++) {
                 (result, val) = validateMPTProof(
-                    storageProof[i].rootHash,
+                    storageProof[i].storageRoot,
                     storageProof[i].mptPath,
                     RLPReader.toList(RLPReader.toRlpItem(storageProof[i].rlpStack))
                 );

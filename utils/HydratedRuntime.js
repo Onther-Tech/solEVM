@@ -37,9 +37,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.logHash = obj.logHash || OP.ZERO_HASH;
     runState.stateManager = runState.stateManager.copy();
     runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
+    runState.initStorageRoot =  this.accounts[runState.depth].storageRoot;
+    runState.intermediateStorageRoot = this.accounts[runState.depth].storageRoot;
     runState.intermediateStorageProof = this.accounts[runState.depth].initStorageProof || [];
-    runState.intermediateStorageRoot = this.accounts[runState.depth].storageHash;
-    // console.log('initRunState', this.accounts[runState.depth].storageTrie)
+    // console.log('initRunState', this.accounts[runState.depth].storageRoot)
     return runState;
   }
 
@@ -125,9 +126,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,
       callDepth: runState.depth,
-      intermediateStorageRoot: runState.intermediateStorageRoot,
       initStorageProof: runState.initStorageProof,
-      intermediateStorageProof: runState.intermediateStorageProof
+      initStorageRoot: runState.initStorageRoot,
+      intermediateStorageProof: runState.intermediateStorageProof,
+      intermediateStorageRoot: runState.intermediateStorageRoot,
     };
     
     this.calculateMemProof(runState, step);
@@ -171,7 +173,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         let arr = [];
         let obj = {};
         const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
-        obj.rootHash = rootHash;
+        obj.storageRoot = rootHash;
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
@@ -224,7 +226,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         let arr = [];
         let obj = {};
         const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
-        obj.rootHash = rootHash;
+        obj.storageRoot = rootHash;
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
@@ -232,8 +234,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         arr.push(obj);
         runState.intermediateStorageProof = arr;
       }
-
-     
   }
     
     step.tStorage = runState.tStorage;

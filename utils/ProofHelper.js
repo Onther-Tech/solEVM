@@ -16,10 +16,11 @@ module.exports = class ProofHelper {
     let storageProof = [];
     if (isFirstStep || intoCALLStep || isStorageDataRequired) {
       const intermediateStorageProof = execState.intermediateStorageProof;
+      // console.log('ProofHelper', intermediateStorageProof)
       for (let i = 0; i < intermediateStorageProof.length; i++) {
       
         const obj = {
-          rootHash: intermediateStorageProof[i].rootHash,
+          storageRoot: intermediateStorageProof[i].storageRoot,
           key: web3.utils.asciiToHex(intermediateStorageProof[i].key),
           val: web3.utils.asciiToHex(intermediateStorageProof[i].val),
           mptPath: intermediateStorageProof[i].hashedKey,
@@ -28,7 +29,7 @@ module.exports = class ProofHelper {
         storageProof.push(obj);
       }
     }
-    console.log('ProofHelper', storageProof)
+    // console.log('ProofHelper', storageProof)
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;

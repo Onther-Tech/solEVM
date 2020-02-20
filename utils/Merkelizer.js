@@ -2,14 +2,14 @@
 
 const ethers = require('ethers');
 const createKeccakHash = require('keccak');
-
+const HexaryTrie = require('./HexaryTrie');
 const AbstractMerkleTree = require('./AbstractMerkleTree');
 const { ZERO_HASH } = require('./constants');
 
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (intermediateStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -34,12 +34,12 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
         intermediateStorageRoot: initStorageRoot,
-        intermediateStorageProof: intermediateStorageProof,
+        initStorageProof: initStorageProof,
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-    // console.log('initialStateHash', initStorageProof)
+    // console.log('initialStateHash', res.executionState.tStorage)
     return res;
   }
 
