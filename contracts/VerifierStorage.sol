@@ -12,7 +12,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
     bytes public val;
     uint8 public result;
     bytes32 public hash;
-
+           
     struct StorageProof {
         bytes32 storageRoot;
         bytes key;
@@ -178,40 +178,32 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
         Dispute storage dispute = disputes[disputeId];
         require(dispute.treeDepth == 0, "Not at leaf yet");
 
-        // TODO: all sanity checks should go in a common function
-        if (executionState.stack.length > executionState.stackSize) {
-            return;
-        }
-        if (executionState.mem.length > executionState.memSize) {
-            return;
-        }
-        // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-        // bytes32 stackHash = executionState.stackHash(proofs.stackHash);
-        bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
-        bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
-        bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
-        // bytes32 beforeStorageRoot = proofs.beforeStorageRoot;
-        bytes32 inputHash = getInputHash(
-            executionState,
-            proofs,
-            memHash,
-            dataHash,
-            tStorageHash
-        );
-        
-        if ((inputHash != dispute.solver.left && inputHash != dispute.challenger.left) ||
-            ((dispute.state & START_OF_EXECUTION) != 0 && inputHash != dispute.initialStateHash)) {
-            return;
-        }
-        if (dispute.witness != bytes32(0)) {
-            if (inputHash != dispute.witness) {
-                return;
+        if (executionState.intoCALLStep || executionState.outCALLStep) {
+            for (uint i = 0; i < storageProof.length; i++) {
+                (result, val) = validateMPTProof(
+                    storageProof[i].storageRoot,
+                    storageProof[i].mptPath,
+                    RLPReader.toList(RLPReader.toRlpItem(storageProof[i].rlpStack))
+                );
+
+                if (result != PROOF_RESULT_PRESENT) {
+                    return;
+                }
             }
-        }
 
-        EVM memory evm;
+            if (msg.sender == address(dispute.challengerAddr)) {
+                dispute.state |= CHALLENGER_VERIFIED;
+            } else if (msg.sender != address(dispute.challengerAddr)) {
+                dispute.state |= SOLVER_VERIFIED;
+            }
 
-        if (executionState.isFirstStep || executionState.intoCALLStep || executionState.isStorageDataRequired) {
+            if (dispute.state & SOLVER_VERIFIED != 0) {
+                enforcer.result(dispute.executionId, true, dispute.challengerAddr);
+            } else {
+                enforcer.result(dispute.executionId, false, dispute.challengerAddr);
+            }
+        } else {
+        if (executionState.isFirstStep || executionState.isStorageDataRequired) {
             for (uint i = 0; i < storageProof.length; i++) {
                 (result, val) = validateMPTProof(
                     storageProof[i].storageRoot,
@@ -224,95 +216,128 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
                 }
             }
         }
-        
-        if (executionState.callDepth != 0) {
-            evm.code = verifyCode(
-                proofs.calleeCodeHash,
-                proofs.codeFragments,
-                proofs.codeProof,
-                proofs.codeByteLength
-            );
-        } else {
-            evm.code = verifyCode(
-                dispute.codeHash,
-                proofs.codeFragments,
-                proofs.codeProof,
-                proofs.codeByteLength
-            );
-        }
-        
-
-        if ((dispute.state & END_OF_EXECUTION) != 0) {
-            uint8 opcode = evm.code.getOpcodeAt(executionState.pc);
-
-            if (opcode != OP_REVERT && opcode != OP_RETURN && opcode != OP_STOP) {
+            // TODO: all sanity checks should go in a common function
+            if (executionState.stack.length > executionState.stackSize) {
                 return;
             }
-        }
-        //  alive = bytes32(uint(1));
-        HydratedState memory hydratedState = initHydratedState(evm);
+            if (executionState.mem.length > executionState.memSize) {
+                return;
+            }
+            // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
+            // bytes32 stackHash = executionState.stackHash(proofs.stackHash);
+            bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
+            bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
+            bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
+            // bytes32 beforeStorageRoot = proofs.beforeStorageRoot;
+            bytes32 inputHash = getInputHash(
+                executionState,
+                proofs,
+                memHash,
+                dataHash,
+                tStorageHash
+            );
+            
+            if ((inputHash != dispute.solver.left && inputHash != dispute.challenger.left) ||
+                ((dispute.state & START_OF_EXECUTION) != 0 && inputHash != dispute.initialStateHash)) {
+                return;
+            }
+            if (dispute.witness != bytes32(0)) {
+                if (inputHash != dispute.witness) {
+                    return;
+                }
+            }
 
-        hydratedState.stackHash = proofs.stackHash;
-        hydratedState.memHash = memHash;
-        hydratedState.tStorageHash = tStorageHash;
-        hydratedState.logHash = executionState.logHash;
+            EVM memory evm;
 
-        evm.data = executionState.data;
-        evm.gas = executionState.gasRemaining;
-        evm.caller = DEFAULT_CALLER;
-        evm.target = DEFAULT_CONTRACT_ADDRESS;
-        evm.stack = EVMStack.fromArray(executionState.stack);
-        evm.mem = EVMMemory.fromArray(executionState.mem);
-        evm.returnData = executionState.returnData;
-        evm.tStorage = EVMStorageToArray.fromArrayForHash(executionState.tStorage);
-        evm.isStorageReset = executionState.isStorageReset;
-        
-        _run(evm, executionState.pc, 1);
+            if (executionState.callDepth != 0) {
+                evm.code = verifyCode(
+                    proofs.calleeCodeHash,
+                    proofs.codeFragments,
+                    proofs.codeProof,
+                    proofs.codeByteLength
+                );
+            } else {
+                evm.code = verifyCode(
+                    dispute.codeHash,
+                    proofs.codeFragments,
+                    proofs.codeProof,
+                    proofs.codeByteLength
+                );
+            }
+            
 
-        if (evm.errno != NO_ERROR && evm.errno != ERROR_STATE_REVERTED) {
-            return;
-        }
+            if ((dispute.state & END_OF_EXECUTION) != 0) {
+                uint8 opcode = evm.code.getOpcodeAt(executionState.pc);
 
-        executionState.pc = evm.pc;
-        executionState.returnData = evm.returnData;
-        executionState.gasRemaining = evm.gas;
-        executionState.logHash = hydratedState.logHash;
-        
-        if (executionState.stack.length > executionState.stackSize) {
-            return;
-        }
+                if (opcode != OP_REVERT && opcode != OP_RETURN && opcode != OP_STOP) {
+                    return;
+                }
+            }
+            //  alive = bytes32(uint(1));
+            HydratedState memory hydratedState = initHydratedState(evm);
 
-        uint stackSize = executionState.stackSize - executionState.stack.length;
+            hydratedState.stackHash = proofs.stackHash;
+            hydratedState.memHash = memHash;
+            hydratedState.tStorageHash = tStorageHash;
+            hydratedState.logHash = executionState.logHash;
 
-        executionState.stackSize = evm.stack.size + stackSize;
-        // stackSize cant be bigger than 1024 (stack limit)
-        if (executionState.stackSize > MAX_STACK_SIZE) {
-            return;
-        }
+            evm.data = executionState.data;
+            evm.gas = executionState.gasRemaining;
+            evm.caller = DEFAULT_CALLER;
+            evm.target = DEFAULT_CONTRACT_ADDRESS;
+            evm.stack = EVMStack.fromArray(executionState.stack);
+            evm.mem = EVMMemory.fromArray(executionState.mem);
+            evm.returnData = executionState.returnData;
+            evm.tStorage = EVMStorageToArray.fromArrayForHash(executionState.tStorage);
+            evm.isStorageReset = executionState.isStorageReset;
+            
+            _run(evm, executionState.pc, 1);
 
-        // will be changed once we land merkle tree for memory
-        if (evm.mem.size > 0) {
-            executionState.memSize = evm.mem.size;
-        }
-        bytes32 afterStorageRoot = proofs.afterStorageRoot;
-        hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
+            if (evm.errno != NO_ERROR && evm.errno != ERROR_STATE_REVERTED) {
+                return;
+            }
 
-        if (hash != dispute.solver.right && hash != dispute.challenger.right) {
-            return;
-        }
+            executionState.pc = evm.pc;
+            executionState.returnData = evm.returnData;
+            executionState.gasRemaining = evm.gas;
+            executionState.logHash = hydratedState.logHash;
+            
+            if (executionState.stack.length > executionState.stackSize) {
+                return;
+            }
 
-        if (hash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
-            dispute.state |= SOLVER_VERIFIED;
-        }
+            uint stackSize = executionState.stackSize - executionState.stack.length;
 
-        if (hash == dispute.challenger.right) {
-            dispute.state |= CHALLENGER_VERIFIED;
-        }
+            executionState.stackSize = evm.stack.size + stackSize;
+            // stackSize cant be bigger than 1024 (stack limit)
+            if (executionState.stackSize > MAX_STACK_SIZE) {
+                return;
+            }
 
-        if (dispute.state & SOLVER_VERIFIED != 0) {
-            enforcer.result(dispute.executionId, true, dispute.challengerAddr);
-        } else {
-            enforcer.result(dispute.executionId, false, dispute.challengerAddr);
+            // will be changed once we land merkle tree for memory
+            if (evm.mem.size > 0) {
+                executionState.memSize = evm.mem.size;
+            }
+            bytes32 afterStorageRoot = proofs.afterStorageRoot;
+            hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
+
+            if (hash != dispute.solver.right && hash != dispute.challenger.right) {
+                return;
+            }
+
+            if (hash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
+                dispute.state |= SOLVER_VERIFIED;
+            }
+
+            if (hash == dispute.challenger.right) {
+                dispute.state |= CHALLENGER_VERIFIED;
+            }
+
+            if (dispute.state & SOLVER_VERIFIED != 0) {
+                enforcer.result(dispute.executionId, true, dispute.challengerAddr);
+            } else {
+                enforcer.result(dispute.executionId, false, dispute.challengerAddr);
+            }
         }
     }
 
