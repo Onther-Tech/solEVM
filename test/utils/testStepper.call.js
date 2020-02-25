@@ -32,29 +32,22 @@ const accounts = [
     }
   ];
 
-let initStorageProof;
 let steps;
 let copy;
 let merkle;
 const runtime = new HydratedRuntime();
 
 (async function(){
-    const res = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    initStorageProof = res[0];
-    steps = res[1];
-    
-    // console.log(steps[136], steps.length);
+    steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     
     // for (let i = 0; i < steps.length - 1; i++){
     //     if (steps[i].opCodeName === 'CALL') {
-    //         console.log(steps[i].gasRemaining, i);
+    //         console.log(steps[i-1], i);
     //     }
     // }
 
-    console.log(steps[137].calleeSteps[0], steps.length);
-    console.log(steps[137].calleeSteps[1], steps.length);
-   
-    // console.log(steps[147].gasRemaining, steps.length);   
-    merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+    console.log(steps[137])
+      
+    // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printLeave());
 })();

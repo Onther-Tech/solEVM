@@ -4,6 +4,7 @@ const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
+const _ = require('lodash');
 
 module.exports = (callback) => {
   describe('Fixture for Dispute/Verifier Logic #1', function () {
@@ -50,36 +51,36 @@ module.exports = (callback) => {
     code = code.join('');
 
     // need to init tStorage
-    const tStorage = []; 
+    const tStorage = ['0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
+    '0x00000000000000000000000000000000000000000000000000000000000003e8',
+    '0x0000000000000000000000000000000000000000000000000000000000000002',
+    '0x00000000000000000000000000000000000000000000000000000000000003e8']; 
 
     const data = '0x00010203040506070809';
     
-    let initStorageProof;
     let steps;
     let copy;
     let merkle;
     const runtime = new HydratedRuntime();
 
     beforeEach(async () => {
-      const res = await runtime.run({ code, data, tStorage: tStorage });
-      initStorageProof = res[0];
-      steps = res[1];
-      // console.log(initStorageProof)
-      copy = JSON.stringify(steps);
-      merkle = new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+      const steps = await runtime.run({ code, data, tStorage: tStorage });
+      copy = _.cloneDeep(steps);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
     it('both have the same result, solver wins', async () => {
-      await callback(code, data, tStorage, merkle, merkle, 'solver');
+      let cmerkle = new Merkelizer().run(copy, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, cmerkle, 'solver');
     });
 
-    it('challenger has an output error at SSTORE', async () => {
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-      wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
+    // it('challenger has an output error at SSTORE', async () => {
+    //   const wrongExecution = JSON.parse(copy);
+    //   wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+    //   wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+    //   const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    // });
 
     // it('challenger has an output error somewhere', async () => {
     //   const wrongExecution = JSON.parse(copy);
@@ -97,12 +98,12 @@ module.exports = (callback) => {
     //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     // });
 
-    it('challenger first step missing', async () => {
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution.shift();
-      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
+    // it('challenger first step missing', async () => {
+    //   const wrongExecution = JSON.parse(copy);
+    //   wrongExecution.shift();
+    //   const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    // });
 
     // it('solver first step missing', async () => {
     //   const wrongExecution = JSON.parse(copy);

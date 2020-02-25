@@ -4,6 +4,7 @@ const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
+const _ = require('lodash');
 
 let code = [
   OP.PUSH1, '03',
@@ -69,15 +70,16 @@ let merkle;
 const runtime = new HydratedRuntime();
 
 (async function(){
-    const res = await runtime.run({ accounts, code, data, pc: 0, tStorage });
-    initStorageProof = res[0];
-    steps = res[1];
-    console.log(steps.slice(0,2), steps.length);
-    // for (let i = 0; i < steps.length; i++) {
-    //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
-    //     console.log(steps[i], i)
-    //   }
-    // }
-    // merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+    steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
+    copy = _.cloneDeep(steps);
+    // console.log('origin', steps[0]);
+    // console.log('copy', copy[0])
+    // console.log(steps.slice(0,2), steps.length);
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i], i)
+      }
+    }
+    merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();

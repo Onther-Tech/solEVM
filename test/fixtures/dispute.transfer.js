@@ -17,18 +17,15 @@ module.exports = (callback) => {
       '0x00000000000000000000000000000000000000000000000000000000000003e8'
     ];
 
-    let initStorageProof;
     let steps;
     let copy;
     let merkle;
     const runtime = new HydratedRuntime();
 
     beforeEach(async () => {
-      const res = await runtime.run({ code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
-      initStorageProof = res[0];
-      steps = res[1];
+      steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
       copy = JSON.stringify(steps);
-      merkle = new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
     // it('both have the same result, solver wins', async () => {
