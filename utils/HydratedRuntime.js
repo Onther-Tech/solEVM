@@ -45,7 +45,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
     ? this.accounts[runState.depth + 1].tStorage : [];
-    // console.log('initRunState', runState.initStorageProof);
+    // console.log('initRunState', this.accounts[runState.depth]);
     return runState;
   }
 
@@ -152,14 +152,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let isStorageReset = false;
 
      // pick storage trie for an account
-     const address = runState.address.toString('hex');
+     const address = utils.toChecksumAddress(runState.address.toString('hex')).replace('0x', '');
      let storageTrie;
      for (let i = 0; i < this.accounts.length; i++){
        if (address === this.accounts[i].address) {
          storageTrie = this.accounts[i].storageTrie;
        }
      }
-    
+    // console.log('getStorageData', address)
     if( opcodeName === 'SSTORE' ){
       
       try {
