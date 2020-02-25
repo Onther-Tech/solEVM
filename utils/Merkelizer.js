@@ -5,6 +5,7 @@ const createKeccakHash = require('keccak');
 const HexaryTrie = require('./HexaryTrie');
 const AbstractMerkleTree = require('./AbstractMerkleTree');
 const { ZERO_HASH } = require('./constants');
+const _ = require('lodash');
 
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
@@ -34,12 +35,13 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
         intermediateStorageRoot: initStorageRoot,
-        initStorageProof: initStorageProof,
+        intermediateStorageProof: initStorageProof,
+        isStorageDataRequired: false,
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-    // console.log('initialStateHash', res.executionState.tStorage)
+    // console.log('initialStateHash', res.executionState.intermediateStorageProof)
     return res;
   }
 
@@ -100,27 +102,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     return ethers.utils.solidityKeccak256(
       ['bytes[]'],
       [tStorage]
-    );
-  }
-
-  static envHash (execution) {
-    return ethers.utils.solidityKeccak256(
-      [
-        'bytes32',
-        'bytes32',
-        'uint256',
-        'uint256',
-        'uint256',
-        'uint256',
-      ],
-      [
-        execution.logHash,
-        execution.customEnvironmentHash,
-        execution.pc,
-        execution.gasRemaining,
-        execution.stackSize,
-        execution.memSize,
-      ]
     );
   }
 
@@ -190,14 +171,16 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     );
   }
 
-  makeLeave (initStorageProof, executions, code, callData, tStorage, customEnvironmentHash) {
+  makeLeave (executions, code, callData, tStorage, customEnvironmentHash) {
     if (!executions || !executions.length) {
       throw new Error('You need to pass at least one execution step');
     }
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
     
-    let initStorageRoot = executions[0].intermediateStorageRoot;
-    // console.log('makeLeave', initStorageRoot);
+    const initStorageProof = executions[0].initStorageProof;
+    const initStorageRoot = executions[0].initStorageRoot;
+    
+    // console.log('makeLeave', initStorageProof);
     if (!this.tree) {
       this.tree = [[]];
     }
@@ -274,6 +257,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
             callDepth: exec.callDepth,
             code: code,
             intoCALLStep: false,
+            outCALLStep: false,
           }
         );
       }
@@ -287,6 +271,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
           isFirstExecutionStep: isFirstExecutionStep,
           isEndExecutionStep: isEndExecutionStep,
           callDepth: exec.callDepth - 1,
+          intoCALLStep: false,
+          outCALLStep: false,
         };
              
         return obj;
@@ -303,6 +289,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         // console.log('makeLeave', prevLeaf)
       } else if (exec.callDepth !== 0 && isEndExecutionStep) {
         const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right, false, true);
+        afterCall.outCALLStep = true;
         const llen = leaves.push(afterCall);
         prevLeaf = leaves[llen - 1];
       } else {
@@ -311,21 +298,19 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       }
      
       if (exec.isCALLExecuted) {
-        const initStorageProof = exec.calleeProof;
         const steps = exec.calleeSteps;
         const code = exec.calleeCode;
         const callData = exec.calleeCallData;
-        const tStorage = [];
-        // const tStorage = exec.calleeTstorage;
+        const tStorage = exec.calleeTstorage;
         // console.log('makeLeave', tStorage)
         
-        this.makeLeave(initStorageProof, steps, code, callData, tStorage, customEnvironmentHash);    
+        this.makeLeave(steps, code, callData, tStorage, customEnvironmentHash);    
       }
     }
   }
 
-  run (initStorageProof, executions, code, callData, tStorage, customEnvironmentHash) {
-    this.makeLeave(initStorageProof, executions, code, callData, tStorage, customEnvironmentHash);
+  run (executions, code, callData, tStorage, customEnvironmentHash) {
+    this.makeLeave(executions, code, callData, tStorage, customEnvironmentHash);
     this.recal(0);
 
     return this;

@@ -11,12 +11,17 @@ module.exports = class ProofHelper {
     const execState = computationPath.right.executionState;
     const isFirstStep = computationPath.isFirstExecutionStep;
     const intoCALLStep = computationPath.intoCALLStep;
+    const outCALLStep = computationPath.outCALLStep;
     const isStorageDataRequired = execState.isStorageDataRequired;
         
     let storageProof = [];
-    if (isFirstStep || intoCALLStep || isStorageDataRequired) {
+    if (isFirstStep || intoCALLStep || outCALLStep || isStorageDataRequired) {
+      
       const intermediateStorageProof = execState.intermediateStorageProof;
-      // console.log('ProofHelper', intermediateStorageProof)
+            
+      // console.log('ProofHelper prev', prevOutput)
+      // console.log('ProofHelper exec', execState)
+
       for (let i = 0; i < intermediateStorageProof.length; i++) {
       
         const obj = {
@@ -41,7 +46,7 @@ module.exports = class ProofHelper {
     }
 
     const proofs = {
-      stackHash: execState.compactStackHash,
+      stackHash: execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
       tStorageHash: execState.isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
@@ -52,7 +57,7 @@ module.exports = class ProofHelper {
       afterStorageRoot : execState.intermediateStorageRoot,
       calleeCodeHash: ZERO_HASH,
     };
-
+    // console.log('ProofHelper', proofs)
     if (computationPath.callDepth !== 0) {
       // console.log('ProofHelper', 'CALLEE')
       const code = computationPath.code;
@@ -97,7 +102,7 @@ module.exports = class ProofHelper {
         proofs.codeByteLength = leaf.byteLength;
         proofs.calleeCodeHash = calleeCodeHash;
       }  
-    } else if (computationPath.callDepth === 0 && codeFragmentTree) {
+    } else if (computationPath.callDepth === 0 && codeFragmentTree && !intoCALLStep) {
       // console.log('ProofHelper', 'CALLER')
       const leaves = codeFragmentTree.leaves;
       const neededSlots = [];
@@ -157,6 +162,7 @@ module.exports = class ProofHelper {
         isFirstStep: isFirstStep,
         callDepth: computationPath.callDepth,
         intoCALLStep: intoCALLStep,
+        outCALLStep: outCALLStep,
       },
       storageProof,
     };

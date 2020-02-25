@@ -2,6 +2,7 @@
 
 const utils = require('ethereumjs-util');
 const BN = utils.BN;
+const _ = require('lodash');
 
 const OP = require('./constants');
 const ethers = require('ethers');
@@ -38,9 +39,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.stateManager = runState.stateManager.copy();
     runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
     runState.initStorageRoot =  this.accounts[runState.depth].storageRoot;
-    runState.intermediateStorageRoot = this.accounts[runState.depth].storageRoot;
-    runState.intermediateStorageProof = this.accounts[runState.depth].initStorageProof || [];
-    // console.log('initRunState', this.accounts[runState.depth].storageRoot)
+    runState.intermediateStorageProof = _.cloneDeep(this.accounts[runState.depth].initStorageProof);
+    runState.intermediateStorageRoot = _.cloneDeep(this.accounts[runState.depth].storageRoot);
+    // TODO: to get storage of callee contract for now, 
+    // but it should be get storage from local db in future
+    runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
+    ? this.accounts[runState.depth + 1].tStorage : [];
+    // console.log('initRunState', runState.initStorageProof);
     return runState;
   }
 
@@ -51,7 +56,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     if (runState.steps.length > 0) {
       runState.steps[runState.steps.length - 1].stack = toHex(runState.stack);
     }
-    return [runState.initStorageProof, runState.steps];
+    return runState.steps;
   }
 
   async runNextStep (runState) {
@@ -93,13 +98,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let isCALLExecuted = false;
     let calleeCode;
     let calleeCallData;
-    let calleeTstorage;
     let calleeProof;
     if (runState.opName === 'CALL') {
       isCALLExecuted = true;
       calleeCode = runState.calleeCode.toString('hex');
       calleeCallData = '0x' + runState.calleeCallData.toString('hex');
-      calleeTstorage = runState.calleeTstorage;
       calleeProof = runState.calleeProof;
     } 
 
@@ -121,7 +124,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       logHash: runState.logHash,
       calleeCode: calleeCode || '',
       calleeCallData: calleeCallData || '',
-      calleeTstorage: calleeTstorage || [],
+      calleeTstorage: runState.calleeTstorage,
       calleeProof: calleeProof,
       isCALLExecuted: isCALLExecuted,
       calleeSteps: runState.calleeSteps,

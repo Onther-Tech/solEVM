@@ -289,9 +289,11 @@ module.exports = class ExecutionPoker {
     const val = await this.verifier.val();
     const result = await this.verifier.result();
     const hash = await this.verifier.hash();
+    
     this.log('val!!', web3.utils.hexToAscii(val), val);
     this.log('result!!', result);
     this.log('hash!!', hash);
+    this.log('judge!!', judge);
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 
     return tx;
@@ -315,11 +317,8 @@ module.exports = class ExecutionPoker {
 
     const runtime = new HydratedRuntime();
     
-    // @dev modification for initStorageProof
-    const res = await runtime.run({ code, data });
-    const initStorageProof = res[0];
-    const steps = res[1]
-    const merkle = new Merkelizer().run(initStorageProof, steps, bytecode, data, evmParams.customEnvironmentHash);
+    const steps = await runtime.run({ code, data });
+    const merkle = new Merkelizer().run(steps, bytecode, data, evmParams.customEnvironmentHash);
 
     return { steps, merkle, codeFragmentTree };
   }
