@@ -96,11 +96,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     // if CALL set isCallExecuted true 
     let isCALLExecuted = false;
+    let calleeSteps;
     let calleeCode;
     let calleeCallData;
     let calleeProof;
+    
     if (runState.opName === 'CALL') {
       isCALLExecuted = true;
+      calleeSteps = runState.calleeSteps;
       calleeCode = runState.calleeCode.toString('hex');
       calleeCallData = '0x' + runState.calleeCallData.toString('hex');
       calleeProof = runState.calleeProof;
@@ -127,7 +130,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeTstorage: runState.calleeTstorage,
       calleeProof: calleeProof,
       isCALLExecuted: isCALLExecuted,
-      calleeSteps: runState.calleeSteps,
+      calleeSteps: calleeSteps,
       callDepth: runState.depth,
       initStorageProof: runState.initStorageProof,
       initStorageRoot: runState.initStorageRoot,
@@ -151,16 +154,21 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let isStorageDataRequired = false;
     let isStorageReset = false;
 
-     // pick storage trie for an account
-     const address = utils.toChecksumAddress(runState.address.toString('hex')).replace('0x', '');
-     let storageTrie;
-     for (let i = 0; i < this.accounts.length; i++){
-       if (address === this.accounts[i].address) {
-         storageTrie = this.accounts[i].storageTrie;
-       }
+      // pick storage trie for an account
+      const address = utils.toChecksumAddress(runState.address.toString('hex'));
+      let storageTrie;
+      for (let i = 0; i < this.accounts.length; i++){
+        let checksumAddress;
+        if (utils.isValidChecksumAddress(this.accounts[i].address)) {
+          checksumAddress = this.accounts[i].address;
+        } else {
+          checksumAddress = utils.toChecksumAddress(this.accounts[i].address);
+        }
+        if (address === checksumAddress) {
+          storageTrie = this.accounts[i].storageTrie;
+        }
      }
-    // console.log('getStorageData', address)
-    if( opcodeName === 'SSTORE' ){
+     if( opcodeName === 'SSTORE' ){
       
       try {
         let newStorageData = await this.getStorageValue(runState, step.compactStack);

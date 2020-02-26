@@ -178,7 +178,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
         Dispute storage dispute = disputes[disputeId];
         require(dispute.treeDepth == 0, "Not at leaf yet");
 
-        if (executionState.intoCALLStep || executionState.outCALLStep) {
+        if (executionState.callStart || executionState.callEnd) {
             for (uint i = 0; i < storageProof.length; i++) {
                 (result, val) = validateMPTProof(
                     storageProof[i].storageRoot,
@@ -203,19 +203,19 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
                 enforcer.result(dispute.executionId, false, dispute.challengerAddr);
             }
         } else {
-        if (executionState.isFirstStep || executionState.isStorageDataRequired) {
-            for (uint i = 0; i < storageProof.length; i++) {
-                (result, val) = validateMPTProof(
-                    storageProof[i].storageRoot,
-                    storageProof[i].mptPath,
-                    RLPReader.toList(RLPReader.toRlpItem(storageProof[i].rlpStack))
-                );
+            if (executionState.isFirstStep || executionState.isStorageDataRequired) {
+                for (uint i = 0; i < storageProof.length; i++) {
+                    (result, val) = validateMPTProof(
+                        storageProof[i].storageRoot,
+                        storageProof[i].mptPath,
+                        RLPReader.toList(RLPReader.toRlpItem(storageProof[i].rlpStack))
+                    );
 
-                if (result != PROOF_RESULT_PRESENT) {
-                    return;
+                    if (result != PROOF_RESULT_PRESENT) {
+                        return;
+                    }
                 }
             }
-        }
             // TODO: all sanity checks should go in a common function
             if (executionState.stack.length > executionState.stackSize) {
                 return;

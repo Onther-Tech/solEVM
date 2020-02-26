@@ -290,7 +290,7 @@ module.exports = class ExecutionPoker {
     const result = await this.verifier.result();
     const hash = await this.verifier.hash();
     
-    this.log('val!!', web3.utils.hexToAscii(val), val);
+    this.log('val!!', web3.utils.hexToAscii(val));
     this.log('result!!', result);
     this.log('hash!!', hash);
     this.log('judge!!', judge);

@@ -256,8 +256,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
             isEndExecutionStep: isEndExecutionStep,
             callDepth: exec.callDepth,
             code: code,
-            intoCALLStep: false,
-            outCALLStep: false,
+            callStart: false,
+            callEnd: false,
           }
         );
       }
@@ -271,8 +271,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
           isFirstExecutionStep: isFirstExecutionStep,
           isEndExecutionStep: isEndExecutionStep,
           callDepth: exec.callDepth - 1,
-          intoCALLStep: false,
-          outCALLStep: false,
+          callStart: false,
+          callEnd: false,
         };
              
         return obj;
@@ -281,7 +281,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       if (exec.callDepth !== 0 && isFirstExecutionStep) {
         afterCallTemp = leaves[leaves.length-1];
         const beforeCall = recalLeaf(leaves[leaves.length-1].left, prevLeaf.right);
-        beforeCall.intoCALLStep = true;
+        beforeCall.callStart = true;
         // console.log('makeLeave', beforeCall)
         leaves[leaves.length-1] = beforeCall;
         const llen = pushLeaf(prevLeaf);
@@ -289,7 +289,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         // console.log('makeLeave', prevLeaf)
       } else if (exec.callDepth !== 0 && isEndExecutionStep) {
         const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right, false, true);
-        afterCall.outCALLStep = true;
+        afterCall.callEnd = true;
         const llen = leaves.push(afterCall);
         prevLeaf = leaves[llen - 1];
       } else {
