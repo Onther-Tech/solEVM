@@ -54,7 +54,7 @@ module.exports = class ProofHelper {
       calleeCodeHash: ZERO_HASH,
     };
     // console.log('ProofHelper', proofs)
-    if (computationPath.callDepth !== 0) {
+    if (computationPath.callDepth !== 0 && !callStart) {
       // console.log('ProofHelper', 'CALLEE')
       const code = computationPath.code;
       const calleeFragmentTree = new FragmentTree().run(code);
