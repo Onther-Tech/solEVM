@@ -32,22 +32,19 @@ const accounts = [
   }
 ];
 
-let initStorageProof;
 let steps;
 let copy;
 let merkle;
 const runtime = new HydratedRuntime();
 
 (async function(){
-    const res = await runtime.run({ code, data, pc: 0, tStorage: tStorage });
-    initStorageProof = res[0];
-    steps = res[1];
+    steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage });
     for (let i = 0; i < steps.length; i++) {
       if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
         console.log(steps[i], i)
       }
     }
     // console.log(steps[0], steps[1], steps.length)
-    merkle = await new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
+    merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();

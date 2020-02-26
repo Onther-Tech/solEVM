@@ -46,7 +46,7 @@ const runtime = new HydratedRuntime();
     //     }
     // }
 
-    console.log(steps[137])
+    console.log(steps[138])
       
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printLeave());

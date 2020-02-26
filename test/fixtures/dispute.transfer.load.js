@@ -4,6 +4,7 @@ const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
+const _ = require('lodash');
 
 module.exports = (callback) => {
   describe('Fixture for Dispute/Verifier Logic #1', function () {    
@@ -17,74 +18,73 @@ module.exports = (callback) => {
       '0x00000000000000000000000000000000000000000000000000000000000003e8',
     ];
 
-    let initStorageProof;
     let steps;
     let copy;
     let merkle;
     const runtime = new HydratedRuntime();
 
     beforeEach(async () => {
-      const res = await runtime.run({ code, data, pc: 0, tStorage, stepCount: 355 });
-      initStorageProof = res[0];
-      steps = res[1];
-      copy = JSON.stringify(steps);
-      merkle = new Merkelizer().run(initStorageProof, steps, code, data, tStorage);
-      
+      steps = await runtime.run({ code, data, pc: 0, tStorage, stepCount: 355 });
+      copy = _.cloneDeep(steps);
+      merkle = new Merkelizer().run(steps, code, data, tStorage);
+    });
+
+    it('solver has an wrong intermediateStorageRoot at the first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
+      wrongExecution[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong intermediateStorageRoot at the first step', async () => {
+      // console.log(tStorage)
+      const wrongExecution = copy;
+      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
+      wrongExecution[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an output error at the first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an output error at the first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
     it('solver has an wrong intermediateStorageRoot at SSTORE', async () => {
-      const wrongExecution = JSON.parse(copy);
+      const wrongExecution = copy;
       wrongExecution[207].intermediateStorageRoot = OP.ZERO_HASH;
-      const solverMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+      wrongExecution[207].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
       
     });
 
     it('challenger has an wrong intermediateStorageRoot at SSTORE', async () => {
-      const wrongExecution = JSON.parse(copy);
+      const wrongExecution = copy;
       wrongExecution[207].intermediateStorageRoot = OP.ZERO_HASH;
-      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+      wrongExecution[207].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
     it('solver has an output error at SSTORE', async () => {
-      const wrongExecution = JSON.parse(copy);
+      const wrongExecution = copy;
       wrongExecution[207].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
       wrongExecution[207].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      const solverMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
-
-    it('solver has an output error at first step', async () => {
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      const solverMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    });
-
-    it('challenger has an output error at first step', async () => {
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
-
-    it('solver has an wrong intermediateStorageRoot at SSTORE', async () => {
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
-      const solverMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    });
-
-    it('challenger has an wrong intermediateStorageRoot at SSTORE', async () => {
-      // console.log(tStorage)
-      const wrongExecution = JSON.parse(copy);
-      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
-      const challengerMerkle = new Merkelizer().run(initStorageProof, wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
-
   });
 };

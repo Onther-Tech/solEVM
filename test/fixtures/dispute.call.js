@@ -54,7 +54,7 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong intermediateStorageProof at the loading storage step of CALLEE', async () => {
+    it('solver has an wrong intermediateStorageProof at CALL start', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
       
@@ -65,7 +65,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at the loading storage step of CALLEE', async () => {
+    it('challenger has an wrong intermediateStorageProof at CALL start', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
       
@@ -76,7 +76,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solever has an wrong intermediateStorageProof at the loading storage step of CALLER', async () => {
+    it('solever has an wrong intermediateStorageProof at CALL end', async () => {
       const wrongExecution = copy;
       wrongExecution[137].intermediateStorageRoot = OP.ZERO_HASH;
       wrongExecution[137].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
@@ -84,7 +84,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, soleverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at the loading storage step of CALLER', async () => {
+    it('challenger has an wrong intermediateStorageProof at CALL end', async () => {
       const wrongExecution = copy;
       wrongExecution[137].intermediateStorageRoot = OP.ZERO_HASH;
       wrongExecution[137].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
@@ -92,7 +92,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver has an wrong intermediateStorageProof at the first step of CALLEE', async () => {
+    it('solver has an wrong intermediateStorageProof at the first step in CALLEE step', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
@@ -103,12 +103,32 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at the first step of CALLEE', async () => {
+    it('challenger has an wrong intermediateStorageProof at the first step in CALLEE step', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
       wrongCalleeStep[0].intermediateStorageRoot = OP.ZERO_HASH;
       wrongCalleeStep[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver first step missing in CALLEE step', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+
+      wrongCalleeStep.shift();
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });    
+
+    it('challenger first step missing in CALLEE step', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+
+      wrongCalleeStep.shift();
       wrongExecution[137].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
@@ -134,26 +154,6 @@ module.exports = (callback) => {
       wrongCalleeStep[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
       wrongExecution[137].calleeSteps[6] = wrongCalleeStep[6];
       
-      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
-
-    it('solver first step missing in CALLEE step', async () => {
-      const wrongExecution = copy;
-      const wrongCalleeStep = calleeCopy;
-
-      wrongCalleeStep.shift();
-      wrongExecution[137].calleeSteps = wrongCalleeStep;
-      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    });    
-
-    it('challenger first step missing in CALLEE step', async () => {
-      const wrongExecution = copy;
-      const wrongCalleeStep = calleeCopy;
-
-      wrongCalleeStep.shift();
-      wrongExecution[137].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
