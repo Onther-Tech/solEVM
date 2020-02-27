@@ -54,7 +54,7 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong intermediateStorageProof at CALL start', async () => {
+    it('solver has an wrong initStorageProof at CALL start', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
       
@@ -65,7 +65,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at CALL start', async () => {
+    it('challenger has an wrong initStorageProof at CALL start', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
       

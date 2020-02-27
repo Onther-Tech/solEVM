@@ -76,83 +76,83 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    // it('solver has an wrong intermediateStorageProof at CALL start depth 1', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep = calleeCopy1;
+    it('solver has an wrong intermediateStorageProof at CALL start depth 1', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy1;
       
-    //   wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep;
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongExecution[176].calleeSteps = wrongCalleeStep;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong intermediateStorageProof at CALL start depth 1', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep = calleeCopy1;
+    it('challenger has an wrong intermediateStorageProof at CALL start depth 1', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy1;
       
-    //   wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep;
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongExecution[176].calleeSteps = wrongCalleeStep;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong intermediateStorageProof at CALL start depth 2', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
+    it('solver has an wrong intermediateStorageProof at CALL start depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
       
-    //   wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep1;
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
+      wrongExecution[176].calleeSteps = wrongCalleeStep1;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong intermediateStorageProof at CALL start depth 2', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
+    it('challenger has an wrong intermediateStorageProof at CALL start depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
       
-    //   wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep1;
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+      wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
+      wrongExecution[176].calleeSteps = wrongCalleeStep1;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong intermediateStorageProof at CALL start depth 3', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
-    //   const wrongCalleeStep3 = calleeCopy3;
+    it('solver has an wrong intermediateStorageProof at CALL start depth 3', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+      const wrongCalleeStep3 = calleeCopy3;
       
-    //   wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
-    //   wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep1;
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
+      wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
+      wrongExecution[176].calleeSteps = wrongCalleeStep1;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong intermediateStorageProof at CALL start depth 3', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
-    //   const wrongCalleeStep3 = calleeCopy3;
+    it('challenger has an wrong intermediateStorageProof at CALL start depth 3', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+      const wrongCalleeStep3 = calleeCopy3;
       
-    //   wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-    //   wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
-    //   wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[176].calleeSteps = wrongCalleeStep1;
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });    
+      wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
+      wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
+      wrongExecution[176].calleeSteps = wrongCalleeStep1;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });    
 
     it('solever has an wrong intermediateStorageProof at SSTORE', async () => {
       const wrongExecution = copy;
