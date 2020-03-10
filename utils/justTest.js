@@ -1,21 +1,15 @@
-function test ({a,b,c}) {
-    console.log('a', a)
-    console.log('b', b)
-    console.log('c', c)
+function estimateProofSize(accessedNodes, totalNodes){
+    return accessedNodes * 32 * Math.log2(totalNodes / accessedNodes);
+}
+function accountProofSize(n) {
+    return estimateProofSize(n, 2**28) + 112 * n;
 }
 
-const a = 1;
-const b = 2;
-const c = 3;
-
-const d = 1;
-const e = 2;
-const f = 3;
-
-const arg = {
-    a:1,
-    b:2,
-    c:3
+function storageKeyProofSize(n) {
+    return estimateProofSize(n, 2**24) + 32 * n;
 }
 
-test(arg);
+// console.log(accountProofSize(1));
+// console.log(storageKeyProofSize(1))
+
+console.log(Math.log(1e12))

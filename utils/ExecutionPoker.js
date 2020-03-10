@@ -36,7 +36,7 @@ module.exports = class ExecutionPoker {
           codeHash: parameters[7],
           dataHash: parameters[8],
           tStorageHash: parameters[9],
-          storageRoot: parameters[10]
+          stateRoot: parameters[10]
         };
         this.taskParams[taskHash] = params;
         this.taskCallData[params.dataHash] = callData;
@@ -275,13 +275,13 @@ module.exports = class ExecutionPoker {
 
     this.log('submitting proof - proofs', args.proofs);
     this.log('submitting proof - executionState', args.executionInput);
-    this.log('submitting proof - storageProof', args.storageProof);
+    this.log('submitting proof - merkleProof', args.merkleProof);
 
     let tx = await this.verifier.submitProof(
       disputeId,
       args.proofs,
       args.executionInput,
-      args.storageProof,
+      args.merkleProof,
       { gasLimit: this.gasLimit }
     );
 

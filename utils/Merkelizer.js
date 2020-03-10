@@ -10,7 +10,7 @@ const _ = require('lodash');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (initStateProof, initStateRoot, initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -36,6 +36,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         logHash: ZERO_HASH,
         intermediateStorageRoot: initStorageRoot,
         intermediateStorageProof: initStorageProof,
+        intermediateStateRoot: initStateRoot,
+        intermediateStateProof: initStateProof,
         isStorageDataRequired: false,
       },
     };
@@ -119,7 +121,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.memHash,
         execution.dataHash,
         execution.tStorageHash,
-        execution.intermediateStorageRoot,
+        execution.intermediateStateRoot,
       ]
     );
 
@@ -177,15 +179,19 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     }
     customEnvironmentHash = customEnvironmentHash || ZERO_HASH;
     
+    const initStateProof = executions[0].initStateProof;
+    const initStateRoot = executions[0].initStateRoot;
     const initStorageProof = executions[0].initStorageProof;
     const initStorageRoot = executions[0].initStorageRoot;
     
-    // console.log('makeLeave', initStorageProof);
+    // console.log('makeLeave', executions[0].initStateRoot);
     if (!this.tree) {
       this.tree = [[]];
     }
     
-    const initialState = this.constructor.initialStateHash(initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash);
+    const initialState = this.constructor.initialStateHash(
+      initStateProof, initStateRoot, initStorageProof, initStorageRoot, code, callData, tStorage, customEnvironmentHash
+      );
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
 

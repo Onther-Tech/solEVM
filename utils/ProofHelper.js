@@ -13,24 +13,36 @@ module.exports = class ProofHelper {
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
         
-    let storageProof = [];
-    if (isFirstStep || callStart || callEnd || isStorageDataRequired) {
+    let merkleProof = [];
+    if (isFirstStep || callStart || callEnd) {
+      const intermediateStateProof = execState.intermediateStateProof;
+      const obj = {
+        rootHash: intermediateStateProof.stateRoot,
+        key: '0x' + intermediateStateProof.key,
+        val: '0x' + intermediateStateProof.val,
+        mptPath: intermediateStateProof.hashedKey,
+        rlpStack: intermediateStateProof.stack 
+      }
+      merkleProof.push(obj);
+      
+    } else if (isStorageDataRequired) {
       
       const intermediateStorageProof = execState.intermediateStorageProof;
             
       for (let i = 0; i < intermediateStorageProof.length; i++) {
       
         const obj = {
-          storageRoot: intermediateStorageProof[i].storageRoot,
-          key: '0x' + intermediateStorageProof[i].key,
-          val: '0x' + intermediateStorageProof[i].val,
+          rootHash: intermediateStorageProof[i].storageRoot,
+          key: '0x' + intermediateStorageProof[i].key.toString('hex'),
+          val: '0x' + intermediateStorageProof[i].val.toString('hex'),
           mptPath: intermediateStorageProof[i].hashedKey,
           rlpStack: intermediateStorageProof[i].stack 
         }
-        storageProof.push(obj);
+        merkleProof.push(obj);
       }
-    }
-    // console.log('ProofHelper', storageProof)
+      console.log('ProofHelper', merkleProof)
+    } 
+    
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
@@ -49,8 +61,8 @@ module.exports = class ProofHelper {
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
-      beforeStorageRoot : prevOutput.intermediateStorageRoot,
-      afterStorageRoot : execState.intermediateStorageRoot,
+      beforeStateRoot : prevOutput.intermediateStateRoot,
+      afterStateRoot : execState.intermediateStateRoot,
       calleeCodeHash: ZERO_HASH,
     };
     // console.log('ProofHelper', proofs)
@@ -160,7 +172,7 @@ module.exports = class ProofHelper {
         callStart: callStart,
         callEnd: callEnd,
       },
-      storageProof,
+      merkleProof,
     };
   }
 };
