@@ -26,7 +26,7 @@ contract IEnforcerStorage {
         bytes32 codeHash;
         bytes32 dataHash;
         bytes32 tStorageHash;
-        bytes32 storageRoot;
+        bytes32 stateRoot;
     }
 
     struct Task {
@@ -77,7 +77,7 @@ contract IEnforcerStorage {
                 _parameters.codeHash,
                 _parameters.dataHash,
                 _parameters.tStorageHash,
-                _parameters.storageRoot
+                _parameters.stateRoot
             )
         );
     }
