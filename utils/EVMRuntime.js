@@ -3,11 +3,13 @@
 const VM = require('ethereumjs-vm');
 const utils = require('ethereumjs-util');
 const BN = utils.BN;
+const _ = require('lodash');
 
 const OP = require('./constants');
 const OPCODES = require('./Opcodes');
 
 const HexaryTrie = require('./HexaryTrie');
+const SMT = require('./smt/SparseMerkleTrie').SMT;
 
 const PRECOMPILED = {
   '1': require('./precompiled/01-ecrecover.js'),
@@ -95,19 +97,19 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     super({ hardfork: 'petersburg' });
   }
 
-  async initHexaryTrie (accounts) {
+  async initSMTTrie (accounts) {
     const self = this;
-
     return new Promise(async (resolve, reject) => {
-      let len = accounts.length;
+      self.stateTrie = new SMT();
       
+      let len = accounts.length;
       self.accounts = [];
       
       for (let i = 0; i < len; i++) {
         let obj = accounts[i];
         let account = {};
         account.address = obj.address;
-        account.storageTrie = new HexaryTrie();
+        account.storageTrie = new SMT();
         account.tStorage = obj.tStorage;
                 
         let proof = [];
@@ -117,10 +119,11 @@ module.exports = class EVMRuntime extends VM.MetaVM {
           // TODO: need to fix sync to be complete?
           for (let i = 0; i < storageLen - 1; i++) {
             if (i % 2 === 0) {
-                let key = obj.tStorage[i].replace('0x', '');
-                let val = obj.tStorage[i+1].replace('0x', '');
+                let key = Buffer.from(obj.tStorage[i].replace('0x', ''), 'hex');
+                let val = Buffer.from(obj.tStorage[i+1].replace('0x', ''), 'hex');
                 
-                await account.storageTrie.putData(key, val);
+                const hashedKey = utils.keccak256(key);
+                account.storageTrie.putData(hashedKey, val);
                 // console.log('111key', key);
                 // console.log('111val', val);
                 
@@ -131,32 +134,73 @@ module.exports = class EVMRuntime extends VM.MetaVM {
           for (let i = 0; i < storageLen - 1; i++) {
             if (i % 2 === 0) {
                 let elem = {};
-                let key = obj.tStorage[i].replace('0x', '');
-                const {rootHash, hashedKey, stack} = await account.storageTrie.getProof(key);
-                const val = await account.storageTrie.getData(key);
+                let key = Buffer.from(obj.tStorage[i].replace('0x', ''), 'hex');
+                const hashedKey = utils.keccak256(key);
+                const siblings = account.storageTrie.getProof(hashedKey);
+                const val = account.storageTrie.getData(hashedKey);
                 // console.log('222key', key);
-                // console.log('222data', data);
-                // console.log('222rootHash', rootHash);
+                // console.log('222val', val);
                 // console.log('222hashedKey', hashedKey);
-                // console.log('222stack', stack);
+                // console.log('222siblings', siblings);
 
                 elem.key = key;
                 elem.val = val;
-                elem.storageRoot = rootHash;
                 elem.hashedKey = hashedKey;
-                elem.stack = utils.rlp.encode(stack);
+                elem.siblings = siblings;
                 proof.push(elem);
             }
           }
         }
-        const storageRoot = account.storageTrie.trie.root;
-        account.storageRoot = '0x' + storageRoot.toString('hex');
+
+        const bufCode = Buffer.from(obj.code, 'hex');
+        const codeHash = utils.keccak256(bufCode);
+        
+        account.nonce = obj.nonce;
+        account.balance = obj.balance;
+        account.codeHash = codeHash;
+        account.storageRoot = _.cloneDeep(account.storageTrie.root);
         account.initStorageProof = proof;
         self.accounts.push(account);
-       }
+
+        // stateTrie 
+        const bufAddress = Buffer.from(obj.address, 'hex');
+        const hashedkey = utils.keccak256(bufAddress);
+        const rawVal = [];
+        rawVal.push(account.nonce);
+        rawVal.push(account.balance);
+        rawVal.push(account.codeHash);
+        rawVal.push(account.storageRoot);
+        
+        const rlpVal = Buffer.from(utils.rlp.encode(rawVal), 'hex');
+        
+        self.stateTrie.putData(hashedkey, rlpVal);
+      }
+
+      // get state proof for each account when to execute putData is done.
+      for (let i = 0; i < len; i++) {
+        let account = self.accounts[i];
+        
+        const bufAddress = Buffer.from(account.address, 'hex');
+        const hashedKey = utils.keccak256(bufAddress);
+        const rawVal = [];
+        rawVal.push(account.nonce);
+        rawVal.push(account.balance);
+        rawVal.push(account.codeHash);
+        rawVal.push(account.storageRoot);
+        const rlpVal = utils.rlp.encode(rawVal);
        
-      //  console.log('initHexaryTrie', this.accounts)
-       resolve();
+        let elem = {};
+        const siblings = self.stateTrie.getProof(hashedKey);
+        elem.address = account.address;
+        elem.val = rlpVal;
+        elem.stateRoot = _.cloneDeep(self.stateTrie.root);
+        elem.siblings = siblings;
+        account.initStateProof = elem;
+        account.stateRoot = _.cloneDeep(self.stateTrie.root);
+      }
+      self.stateRoot = _.cloneDeep(self.stateTrie.root);
+      // console.log('initHexaryTrie', this.accounts);
+      resolve();
     })
   }
 
@@ -337,7 +381,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       });
     });
 
-    await this.initHexaryTrie(accounts);
+    await this.initSMTTrie(accounts);
        
     // TODO: Support EVMParameters
     const runState = await this.initRunState({

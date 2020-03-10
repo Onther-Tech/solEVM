@@ -45,7 +45,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
     ? this.accounts[runState.depth + 1].tStorage : [];
-    // console.log('initRunState', this.accounts[runState.depth]);
+
+    runState.initStateProof = this.accounts[runState.depth].initStateProof || [];
+    runState.initStateRoot = this.accounts[runState.depth].stateRoot;
+    runState.intermediateStateProof = _.cloneDeep(this.accounts[runState.depth].initStateProof);
+    runState.intermediateStateRoot = _.cloneDeep(this.accounts[runState.depth].stateRoot);
+
+    // console.log('initRunState', runState.initStateProof);
     return runState;
   }
 
@@ -136,6 +142,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       initStorageRoot: runState.initStorageRoot,
       intermediateStorageProof: runState.intermediateStorageProof,
       intermediateStorageRoot: runState.intermediateStorageRoot,
+      initStateProof: runState.initStateProof,
+      initStateRoot: runState.initStateRoot,
+      intermediateStateProof: runState.intermediateStateProof,
+      intermediateStateRoot: runState.intermediateStateRoot,
     };
     
     this.calculateMemProof(runState, step);
@@ -143,8 +153,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     if (runState.opName === 'SSTORE' || runState.opName === 'SLOAD') {
       await this.getStorageData(runState, step);
     }
-    
-        
     runState.steps.push(step);
   }
 
@@ -154,8 +162,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let isStorageDataRequired = false;
     let isStorageReset = false;
 
-      // pick storage trie for an account
+      // support checkSumAddress
       const address = utils.toChecksumAddress(runState.address.toString('hex'));
+      // get storage trie for an account
       let storageTrie;
       for (let i = 0; i < this.accounts.length; i++){
         let checksumAddress;
@@ -168,6 +177,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           storageTrie = this.accounts[i].storageTrie;
         }
      }
+     
      if( opcodeName === 'SSTORE' ){
       
       try {
@@ -175,25 +185,26 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         let key = newStorageData[0].toString();
         let val = newStorageData[1].toString();
         
-        key = key.replace('0x', '');
-        val = val.replace('0x', '');
-
-        await storageTrie.putData(key, val);
+        key = Buffer.from(key.replace('0x', ''), 'hex');
+        val = Buffer.from(val.replace('0x', ''), 'hex');
+        // console.log('HydrateRuntime', key, val)
+        const hashedKey = utils.keccak256(key);
+        storageTrie.putData(hashedKey, val);
         // let data = await storageTrie.getData(key)
         // console.log('data', data);
         let arr = [];
         let obj = {};
-        const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
-        obj.storageRoot = rootHash;
+        const siblings = storageTrie.getProof(hashedKey);
+        obj.storageRoot = storageTrie.root;
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
-        obj.stack = utils.rlp.encode(stack);
+        obj.siblings = siblings;
         arr.push(obj);
 
-        runState.intermediateStorageRoot = '0x' + rootHash.toString('hex');
+        runState.intermediateStorageRoot = '0x' + storageTrie.root.toString('hex');
         runState.intermediateStorageProof = arr;
-        
+
         // console.log('rootHash', rootHash);
         // console.log('hashedKey', hashedKey);
         // console.log('stack', stack);
@@ -213,6 +224,35 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       } catch (error) {
         console.log(error);
       }
+
+      try {
+        // calaulate stateRoot and proof 
+        const account = this.accounts[runState.depth];
+        account.storageRoot = _.cloneDeep(account.storageTrie.root);
+        const bufAddress = Buffer.from(account.address, 'hex');
+        const hashedKey = utils.keccak256(bufAddress);
+        const val = [];
+        val.push(account.nonce);
+        val.push(account.balance);
+        val.push(account.codeHash);
+        val.push(account.storageRoot);
+        
+        const rlpVal = utils.rlp.encode(val);
+        
+        this.stateTrie.putData(hashedKey, rlpVal);
+        let elem = {};
+        const siblings = this.stateTrie.getProof(hashedKey);
+        elem.stateRoot = _.cloneDeep(this.stateTrie.root);
+        elem.address = account.address;
+        elem.val = rlpVal;
+        elem.hashedKey = hashedKey;
+        elem.siblings = siblings;
+                
+        runState.intermediateStateRoot = '0x' + this.stateTrie.root.toString('hex');
+        runState.intermediateStateProof = elem;
+      } catch (error) {
+        console.log(error);
+      }
     }
 
     let isStorageLoaded = false;
@@ -224,6 +264,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       for (let i = 0; i < runState.tStorage.length - 1; i++){
         if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
           isStorageLoaded = true;
+          break;
         } 
       }
       if (!isStorageLoaded) {
@@ -236,15 +277,17 @@ module.exports = class HydratedRuntime extends EVMRuntime {
   
         key = key.replace('0x', '');
         val = val.replace('0x', '');
-       
+        
+        const bufKey = Buffer.from(key, 'hex');
+        const hashedKey = utils.keccak256(bufKey);
         let arr = [];
         let obj = {};
-        const {rootHash, hashedKey, stack} = await storageTrie.getProof(key);
-        obj.storageRoot = rootHash;
+        const siblings = storageTrie.getProof(hashedKey);
+        obj.storageRoot = _.cloneDeep(storageTrie.root);
         obj.key = key;
         obj.val = val;
         obj.hashedKey = hashedKey;
-        obj.stack = utils.rlp.encode(stack);
+        obj.siblings = siblings;
         arr.push(obj);
         runState.intermediateStorageProof = arr;
       }
@@ -256,6 +299,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     step.tStorageSize = runState.tStorage.length;
     step.intermediateStorageRoot = runState.intermediateStorageRoot;
     step.intermediateStorageProof = runState.intermediateStorageProof;
+    step.intermediateStateRoot = runState.intermediateStateRoot;
+    step.intermediateStateProof = runState.intermediateStateProof;
   }
 
   async getStorageValue(runState, compactStack) {
