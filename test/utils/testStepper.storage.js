@@ -58,7 +58,11 @@ const accounts = [
   {
     address: OP.DEFAULT_CONTRACT_ADDRESS,
     code: code,
-    tStorage: tStorage
+    tStorage: tStorage,
+    nonce: 0,
+    balance: 10,
+    storageRoot: OP.ZERO_HASH,
+    codeHash: OP.ZERO_HASH
   }
 ];
 
@@ -72,14 +76,13 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     copy = _.cloneDeep(steps);
-    // console.log('origin', steps[0]);
-    // console.log('copy', copy[0])
-    // console.log(steps.slice(0,2), steps.length);
-    for (let i = 0; i < steps.length; i++) {
-      if (steps[i].opCodeName === 'SSTORE') { 
-        console.log(steps[i], i)
-      }
-    }
+    
+    // for (let i = 0; i < steps.length; i++) {
+    //   if (steps[i].opCodeName === 'SSTORE') { 
+    //     console.log(steps[i], i)
+    //   }
+    // }
+    console.log(steps[0].initStateProof.stack)
     merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();
