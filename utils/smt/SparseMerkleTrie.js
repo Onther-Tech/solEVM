@@ -1,7 +1,12 @@
+// based on s1na's Sparse Merkle Trie implementation 
+// https://github.com/s1na/smt
+
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const assert = require("assert");
 const ethereumjs_util_1 = require("ethereumjs-util");
+const web3 = require("web3");
+
 const db_1 = require("./db");
 const KEY_SIZE = 32;
 const DEPTH = KEY_SIZE * 8;
@@ -15,7 +20,7 @@ var Direction;
  * Sparse Merkle tree
  */
 class SMT {
-    constructor(hasher = ethereumjs_util_1.sha256) {
+    constructor(hasher = web3.utils.soliditySha3) {
         this._hasher = hasher;
         this._db = new db_1.DB();
         this._defaultValues = new Array(DEPTH + 1);
@@ -163,7 +168,10 @@ class SMT {
         return proof;
     }
     hash(value) {
-        return this._hasher(value);
+        let v = this._hasher(value);
+        v = v.replace('0x', '');
+        const hash = Buffer.from(v, 'hex');
+        return hash;
     }
 }
 exports.SMT = SMT;

@@ -13,36 +13,18 @@ module.exports = class ProofHelper {
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
         
-    let merkleProof = [];
-    if (isFirstStep || callStart || callEnd) {
+    let merkleProof;
+    if (isFirstStep || isStorageDataRequired || callStart || callEnd) {
       const intermediateStateProof = execState.intermediateStateProof;
-      const obj = {
+      // console.log('proofHelper', intermediateStateProof)
+      merkleProof = {
         rootHash: intermediateStateProof.stateRoot,
-        key: '0x' + intermediateStateProof.key,
-        val: '0x' + intermediateStateProof.val,
-        mptPath: intermediateStateProof.hashedKey,
-        rlpStack: intermediateStateProof.stack 
+        hashedKey: intermediateStateProof.hashedKey,
+        leaf: intermediateStateProof.leaf,
+        siblings: intermediateStateProof.siblings, 
       }
-      merkleProof.push(obj);
-      
-    } else if (isStorageDataRequired) {
-      
-      const intermediateStorageProof = execState.intermediateStorageProof;
-            
-      for (let i = 0; i < intermediateStorageProof.length; i++) {
-      
-        const obj = {
-          rootHash: intermediateStorageProof[i].storageRoot,
-          key: '0x' + intermediateStorageProof[i].key.toString('hex'),
-          val: '0x' + intermediateStorageProof[i].val.toString('hex'),
-          mptPath: intermediateStorageProof[i].hashedKey,
-          rlpStack: intermediateStorageProof[i].stack 
-        }
-        merkleProof.push(obj);
-      }
-      console.log('ProofHelper', merkleProof)
     } 
-    
+   
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;

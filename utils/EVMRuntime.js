@@ -8,7 +8,6 @@ const _ = require('lodash');
 const OP = require('./constants');
 const OPCODES = require('./Opcodes');
 
-const HexaryTrie = require('./HexaryTrie');
 const SMT = require('./smt/SparseMerkleTrie').SMT;
 
 const PRECOMPILED = {
@@ -92,6 +91,11 @@ function divCeil (a, b) {
   return div.isNeg() ? div.isubn(1) : div.iaddn(1);
 }
 
+function HexToBuf (val) {
+  val = val.replace('0x', '');
+  return Buffer.from(val, 'hex');
+}
+
 module.exports = class EVMRuntime extends VM.MetaVM {
   constructor () {
     super({ hardfork: 'petersburg' });
@@ -101,6 +105,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     const self = this;
     return new Promise(async (resolve, reject) => {
       self.stateTrie = new SMT();
+      const stateTrie = self.stateTrie;
       
       let len = accounts.length;
       self.accounts = [];
@@ -111,94 +116,81 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         account.address = obj.address;
         account.storageTrie = new SMT();
         account.tStorage = obj.tStorage;
-                
-        let proof = [];
+        const storageTrie = account.storageTrie;
+
+        let elem = {};
         if (obj.tStorage) {
           let storageLen = obj.tStorage.length;
 
-          // TODO: need to fix sync to be complete?
           for (let i = 0; i < storageLen - 1; i++) {
             if (i % 2 === 0) {
-                let key = Buffer.from(obj.tStorage[i].replace('0x', ''), 'hex');
-                let val = Buffer.from(obj.tStorage[i+1].replace('0x', ''), 'hex');
+                const key = HexToBuf(obj.tStorage[i]);
+                const val = HexToBuf(obj.tStorage[i+1]);
                 
-                const hashedKey = utils.keccak256(key);
-                account.storageTrie.putData(hashedKey, val);
-                // console.log('111key', key);
-                // console.log('111val', val);
-                
-                
+                const hashedKey = storageTrie.hash(key);
+                storageTrie.putData(hashedKey, val);
             }
           }
-                  
+
+          // get storage proof for each account when to execute putData is done.
           for (let i = 0; i < storageLen - 1; i++) {
             if (i % 2 === 0) {
-                let elem = {};
-                let key = Buffer.from(obj.tStorage[i].replace('0x', ''), 'hex');
-                const hashedKey = utils.keccak256(key);
-                const siblings = account.storageTrie.getProof(hashedKey);
-                const val = account.storageTrie.getData(hashedKey);
-                // console.log('222key', key);
-                // console.log('222val', val);
-                // console.log('222hashedKey', hashedKey);
-                // console.log('222siblings', siblings);
-
-                elem.key = key;
-                elem.val = val;
+                const key = HexToBuf(obj.tStorage[i]);
+                const val = HexToBuf(obj.tStorage[i+1]);
+                
+                const hashedKey = storageTrie.hash(key);
+                const leaf = storageTrie.hash(val);
+                const siblings = storageTrie.getProof(hashedKey);
+               
                 elem.hashedKey = hashedKey;
-                elem.siblings = siblings;
-                proof.push(elem);
+                elem.leaf = leaf;
+                elem.storageRoot = _.cloneDeep(storageTrie.root);
+                elem.siblings = Buffer.concat(siblings);
             }
           }
         }
 
-        const bufCode = Buffer.from(obj.code, 'hex');
+        const bufCode = HexToBuf(obj.code);
         const codeHash = utils.keccak256(bufCode);
         
         account.nonce = obj.nonce;
         account.balance = obj.balance;
         account.codeHash = codeHash;
-        account.storageRoot = _.cloneDeep(account.storageTrie.root);
-        account.initStorageProof = proof;
+        account.storageRoot = _.cloneDeep(storageTrie.root);
+        account.initStorageProof = elem;
         self.accounts.push(account);
 
         // stateTrie 
-        const bufAddress = Buffer.from(obj.address, 'hex');
-        const hashedkey = utils.keccak256(bufAddress);
+        const bufAddress = HexToBuf(obj.address);
+        const hashedkey = stateTrie.hash(bufAddress);
         const rawVal = [];
         rawVal.push(account.nonce);
         rawVal.push(account.balance);
         rawVal.push(account.codeHash);
         rawVal.push(account.storageRoot);
         
-        const rlpVal = Buffer.from(utils.rlp.encode(rawVal), 'hex');
+        const rlpVal = utils.rlp.encode(rawVal);
         
-        self.stateTrie.putData(hashedkey, rlpVal);
+        stateTrie.putData(hashedkey, rlpVal);
       }
 
       // get state proof for each account when to execute putData is done.
       for (let i = 0; i < len; i++) {
-        let account = self.accounts[i];
-        
-        const bufAddress = Buffer.from(account.address, 'hex');
-        const hashedKey = utils.keccak256(bufAddress);
-        const rawVal = [];
-        rawVal.push(account.nonce);
-        rawVal.push(account.balance);
-        rawVal.push(account.codeHash);
-        rawVal.push(account.storageRoot);
-        const rlpVal = utils.rlp.encode(rawVal);
+        const account = self.accounts[i];
+        const bufAddress = HexToBuf(account.address);
+        const hashedKey = stateTrie.hash(bufAddress);
+        const rlpVal = stateTrie.getData(hashedKey);
        
         let elem = {};
-        const siblings = self.stateTrie.getProof(hashedKey);
-        elem.address = account.address;
-        elem.val = rlpVal;
-        elem.stateRoot = _.cloneDeep(self.stateTrie.root);
-        elem.siblings = siblings;
+        const siblings = stateTrie.getProof(hashedKey);
+        elem.hashedKey = hashedKey;
+        elem.leaf = stateTrie.hash(rlpVal);
+        elem.stateRoot = _.cloneDeep(stateTrie.root);
+        elem.siblings = Buffer.concat(siblings);
         account.initStateProof = elem;
-        account.stateRoot = _.cloneDeep(self.stateTrie.root);
+        account.stateRoot = _.cloneDeep(stateTrie.root);
       }
-      self.stateRoot = _.cloneDeep(self.stateTrie.root);
+      self.stateRoot = _.cloneDeep(stateTrie.root);
       // console.log('initHexaryTrie', this.accounts);
       resolve();
     })

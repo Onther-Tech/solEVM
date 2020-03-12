@@ -184,7 +184,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const initStorageProof = executions[0].initStorageProof;
     const initStorageRoot = executions[0].initStorageRoot;
     
-    // console.log('makeLeave', executions[0].initStateRoot);
     if (!this.tree) {
       this.tree = [[]];
     }

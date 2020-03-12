@@ -17,6 +17,11 @@ const OP_SWAP16 = parseInt(OP.SWAP16, 16);
 const OP_DUP1 = parseInt(OP.DUP1, 16);
 const OP_DUP16 = parseInt(OP.DUP16, 16);
 
+function HexToBuf (val) {
+  val = val.replace('0x', '');
+  return Buffer.from(val, 'hex');
+}
+
 module.exports = class HydratedRuntime extends EVMRuntime {
   async initRunState (obj) {
     const runState = await super.initRunState(obj);
@@ -37,10 +42,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.tStorage = this.accounts[runState.depth].tStorage || [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
     runState.stateManager = runState.stateManager.copy();
-    runState.initStorageProof = this.accounts[runState.depth].initStorageProof || [];
+    runState.initStorageProof = this.accounts[runState.depth].initStorageProof;
     runState.initStorageRoot =  this.accounts[runState.depth].storageRoot;
-    runState.intermediateStorageProof = _.cloneDeep(this.accounts[runState.depth].initStorageProof);
-    runState.intermediateStorageRoot = _.cloneDeep(this.accounts[runState.depth].storageRoot);
+    runState.intermediateStorageProof = runState.initStorageProof;
+    runState.intermediateStorageRoot = runState.initStorageRoot;
     // TODO: to get storage of callee contract for now, 
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
@@ -48,10 +53,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     runState.initStateProof = this.accounts[runState.depth].initStateProof || [];
     runState.initStateRoot = this.accounts[runState.depth].stateRoot;
-    runState.intermediateStateProof = _.cloneDeep(this.accounts[runState.depth].initStateProof);
-    runState.intermediateStateRoot = _.cloneDeep(this.accounts[runState.depth].stateRoot);
+    runState.intermediateStateProof = runState.initStateProof;
+    runState.intermediateStateRoot = runState.initStateRoot;
 
     // console.log('initRunState', runState.initStateProof);
+    // console.log('initRunState', runState.initStateRoot);
     return runState;
   }
 
@@ -164,6 +170,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       // support checkSumAddress
       const address = utils.toChecksumAddress(runState.address.toString('hex'));
+     
+      // get state trie for an account
+      const stateTrie = this.stateTrie;
+      
       // get storage trie for an account
       let storageTrie;
       for (let i = 0; i < this.accounts.length; i++){
@@ -182,33 +192,25 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       
       try {
         let newStorageData = await this.getStorageValue(runState, step.compactStack);
-        let key = newStorageData[0].toString();
-        let val = newStorageData[1].toString();
-        
-        key = Buffer.from(key.replace('0x', ''), 'hex');
-        val = Buffer.from(val.replace('0x', ''), 'hex');
-        // console.log('HydrateRuntime', key, val)
-        const hashedKey = utils.keccak256(key);
+       
+        const key = HexToBuf(newStorageData[0]);
+        const val = HexToBuf(newStorageData[1]);
+               
+        const hashedKey = storageTrie.hash(key);
+        // console.log('HydrateRuntime', hashedKey)
         storageTrie.putData(hashedKey, val);
-        // let data = await storageTrie.getData(key)
-        // console.log('data', data);
-        let arr = [];
+        
         let obj = {};
         const siblings = storageTrie.getProof(hashedKey);
-        obj.storageRoot = storageTrie.root;
-        obj.key = key;
-        obj.val = val;
+        obj.storageRoot = _.cloneDeep(storageTrie.root);
         obj.hashedKey = hashedKey;
-        obj.siblings = siblings;
-        arr.push(obj);
-
-        runState.intermediateStorageRoot = '0x' + storageTrie.root.toString('hex');
-        runState.intermediateStorageProof = arr;
-
-        // console.log('rootHash', rootHash);
-        // console.log('hashedKey', hashedKey);
-        // console.log('stack', stack);
-        let copyArr = Array.from(runState.tStorage);
+        obj.leaf = storageTrie.hash(val);
+        obj.siblings = Buffer.concat(siblings);
+               
+        runState.intermediateStorageRoot = _.cloneDeep(storageTrie.root);
+        runState.intermediateStorageProof = obj;
+       
+        let copyArr = _.cloneDeep(runState.tStorage);
         for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
             isStorageReset = true;
@@ -228,9 +230,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       try {
         // calaulate stateRoot and proof 
         const account = this.accounts[runState.depth];
-        account.storageRoot = _.cloneDeep(account.storageTrie.root);
-        const bufAddress = Buffer.from(account.address, 'hex');
-        const hashedKey = utils.keccak256(bufAddress);
+        account.storageRoot = _.cloneDeep(storageTrie.root);
+        const bufAddress = HexToBuf(account.address);
+        const hashedKey = stateTrie.hash(bufAddress);
         const val = [];
         val.push(account.nonce);
         val.push(account.balance);
@@ -239,16 +241,16 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         
         const rlpVal = utils.rlp.encode(val);
         
-        this.stateTrie.putData(hashedKey, rlpVal);
+        stateTrie.putData(hashedKey, rlpVal);
         let elem = {};
-        const siblings = this.stateTrie.getProof(hashedKey);
-        elem.stateRoot = _.cloneDeep(this.stateTrie.root);
+        const siblings = stateTrie.getProof(hashedKey);
+        elem.stateRoot = _.cloneDeep(stateTrie.root);
         elem.address = account.address;
         elem.val = rlpVal;
         elem.hashedKey = hashedKey;
-        elem.siblings = siblings;
+        elem.siblings = Buffer.concat(siblings);
                 
-        runState.intermediateStateRoot = '0x' + this.stateTrie.root.toString('hex');
+        runState.intermediateStateRoot = _.cloneDeep(stateTrie.root);
         runState.intermediateStateProof = elem;
       } catch (error) {
         console.log(error);
@@ -272,24 +274,19 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       } else {
         // @dev in case of not loaded from state (ie the key with val = 0) 
         // it needs the exclusion proof?
-        let key = newStorageData[0].toString();
-        let val = newStorageData[1].toString();
-  
-        key = key.replace('0x', '');
-        val = val.replace('0x', '');
+        const key = HexToBuf(newStorageData[0]);
+        const val = HexToBuf(newStorageData[1]);
+               
+        const hashedKey = storageTrie.hash(key);;
         
-        const bufKey = Buffer.from(key, 'hex');
-        const hashedKey = utils.keccak256(bufKey);
-        let arr = [];
         let obj = {};
         const siblings = storageTrie.getProof(hashedKey);
         obj.storageRoot = _.cloneDeep(storageTrie.root);
-        obj.key = key;
-        obj.val = val;
         obj.hashedKey = hashedKey;
-        obj.siblings = siblings;
-        arr.push(obj);
-        runState.intermediateStorageProof = arr;
+        obj.leaf = storageTrie.hash(val);
+        obj.siblings = Buffer.concat(siblings);
+        
+        runState.intermediateStorageProof = obj;
       }
   }
     
