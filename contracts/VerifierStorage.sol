@@ -4,21 +4,21 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/IVerifierStorage.sol";
 import "./HydratedRuntimeStorage.sol";
 import "./MerkelizerStorage.slb";
-import "./ProvethVerifier.sol";
+import "./SMTVerifier.sol";
 
 
-contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVerifier {
+contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
     bytes public val;
     uint8 public result;
     bytes32 public hash;
+    bool public isValid;
            
     struct MerkleProof {
         bytes32 rootHash;
-        bytes key;
-        bytes val;
-        bytes mptPath;
-        bytes rlpStack;
+        bytes32 hashedKey;
+        bytes32 leaf;
+        bytes siblings;
     }
 
     struct Proofs {
@@ -178,17 +178,17 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
         Dispute storage dispute = disputes[disputeId];
         require(dispute.treeDepth == 0, "Not at leaf yet");
 
-        if (executionState.isFirstStep || executionState.callStart || executionState.callEnd) {
-            (result, val) = validateMPTProof(
-                merkleProof.rootHash,
-                merkleProof.mptPath,
-                RLPReader.toList(RLPReader.toRlpItem(merkleProof.rlpStack))
-            );
-
-            if (result != PROOF_RESULT_PRESENT) {
+        if (executionState.callStart || executionState.callEnd) {
+            isValid = checkMembership(
+                    merkleProof.hashedKey,
+                    merkleProof.leaf,
+                    merkleProof.rootHash,
+                    merkleProof.siblings
+                );
+            if (isValid != true) {
                 return;
             }
-            
+
             if (msg.sender == address(dispute.challengerAddr)) {
                 dispute.state |= CHALLENGER_VERIFIED;
             } else if (msg.sender != address(dispute.challengerAddr)) {
@@ -201,14 +201,24 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, ProvethVer
                 enforcer.result(dispute.executionId, false, dispute.challengerAddr);
             }
         } else {
-            if (executionState.isStorageDataRequired) {
-                (result, val) = validateMPTProof(
+            if (executionState.isFirstStep) {
+                isValid = checkMembership(
+                    merkleProof.hashedKey,
+                    merkleProof.leaf,
                     merkleProof.rootHash,
-                    merkleProof.mptPath,
-                    RLPReader.toList(RLPReader.toRlpItem(merkleProof.rlpStack))
+                    merkleProof.siblings
                 );
-
-                if (result != PROOF_RESULT_PRESENT) {
+                if (isValid != true) {
+                    return;
+                }
+            } else if (executionState.isStorageDataRequired) {
+                isValid = checkMembership(
+                    merkleProof.hashedKey,
+                    merkleProof.leaf,
+                    merkleProof.rootHash,
+                    merkleProof.siblings
+                );
+                if (isValid != true) {
                     return;
                 }
             }
