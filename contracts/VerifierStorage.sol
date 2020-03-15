@@ -9,16 +9,19 @@ import "./SMTVerifier.sol";
 
 contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
-    bytes public val;
-    uint8 public result;
-    bytes32 public hash;
-    bool public isValid;
-           
+   
     struct MerkleProof {
-        bytes32 rootHash;
-        bytes32 hashedKey;
-        bytes32 leaf;
-        bytes siblings;
+        bytes32 callerKey;
+        bytes32 calleeKey;
+        bytes32 callerBeforeLeaf;
+        bytes32 callerAfterLeaf;
+        bytes32 calleeBeforeLeaf;
+        bytes32 calleeAfterLeaf;
+        bytes32 beforeRoot;
+        bytes32 intermediateRoot;
+        bytes32 afterRoot;
+        bytes callerSiblings;
+        bytes calleeSiblings;
     }
 
     struct Proofs {
@@ -177,14 +180,36 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     ) public onlyPlaying(disputeId) {
         Dispute storage dispute = disputes[disputeId];
         require(dispute.treeDepth == 0, "Not at leaf yet");
-
+        bool isValid = false;
         if (executionState.callStart || executionState.callEnd) {
-            isValid = checkMembership(
-                    merkleProof.hashedKey,
-                    merkleProof.leaf,
-                    merkleProof.rootHash,
-                    merkleProof.siblings
+            if (executionState.callValue) {
+                isValid = verifyCALLVALUE (
+                    merkleProof.callerKey,
+                    merkleProof.calleeKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.callerAfterLeaf,
+                    merkleProof.calleeBeforeLeaf,
+                    merkleProof.calleeAfterLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.intermediateRoot,
+                    merkleProof.afterRoot,
+                    merkleProof.callerSiblings,
+                    merkleProof.calleeSiblings
                 );
+            } else {
+                // in the case of CALLStart and CALLEnd, check here.
+                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
+                isValid = verifyCALL (
+                    merkleProof.callerKey,
+                    merkleProof.calleeKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.calleeBeforeLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.callerSiblings,
+                    merkleProof.calleeSiblings
+                );
+            }
+           
             if (isValid != true) {
                 return;
             }
@@ -202,25 +227,34 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             }
         } else {
             if (executionState.isFirstStep) {
+                // in the case of FirstStep, check here.
+                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
                 isValid = checkMembership(
-                    merkleProof.hashedKey,
-                    merkleProof.leaf,
-                    merkleProof.rootHash,
-                    merkleProof.siblings
+                    merkleProof.callerKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.callerSiblings
                 );
-                if (isValid != true) {
-                    return;
-                }
             } else if (executionState.isStorageDataRequired) {
-                isValid = checkMembership(
-                    merkleProof.hashedKey,
-                    merkleProof.leaf,
-                    merkleProof.rootHash,
-                    merkleProof.siblings
+                isValid = verifySSTORE (
+                    merkleProof.callerKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.callerAfterLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.afterRoot,
+                    merkleProof.callerSiblings
                 );
-                if (isValid != true) {
-                    return;
-                }
+            }
+
+            // return if chcek failed.
+            if (isValid != true) {
+                return;
+            }
+            // check if beforeStateRoot and afterStateRoot is same. Except for call.value != 0
+            // or SSTORE, they must be same. in the case of CALL, it is checked in advance.
+            // but we check SSTORE case here.
+            if (!executionState.isStorageDataRequired) {
+               require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
             }
             // TODO: all sanity checks should go in a common function
             if (executionState.stack.length > executionState.stackSize) {
@@ -278,7 +312,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     return;
                 }
             }
-            //  alive = bytes32(uint(1));
+            
             HydratedState memory hydratedState = initHydratedState(evm);
 
             hydratedState.stackHash = proofs.stackHash;
@@ -324,7 +358,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 executionState.memSize = evm.mem.size;
             }
             bytes32 afterStorageRoot = proofs.afterStateRoot;
-            hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
+            bytes32 hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
 
             if (hash != dispute.solver.right && hash != dispute.challenger.right) {
                 return;
