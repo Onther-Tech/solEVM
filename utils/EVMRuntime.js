@@ -131,23 +131,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
                 storageTrie.putData(hashedKey, val);
             }
           }
-
-          // get storage proof for each account when to execute putData is done.
-          for (let i = 0; i < storageLen - 1; i++) {
-            if (i % 2 === 0) {
-                const key = HexToBuf(obj.tStorage[i]);
-                const val = HexToBuf(obj.tStorage[i+1]);
-                
-                const hashedKey = storageTrie.hash(key);
-                const leaf = storageTrie.hash(val);
-                const siblings = storageTrie.getProof(hashedKey);
-               
-                elem.hashedKey = hashedKey;
-                elem.leaf = leaf;
-                elem.storageRoot = _.cloneDeep(storageTrie.root);
-                elem.siblings = Buffer.concat(siblings);
-            }
-          }
         }
 
         const bufCode = HexToBuf(obj.code);
@@ -157,7 +140,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         account.balance = obj.balance;
         account.codeHash = codeHash;
         account.storageRoot = _.cloneDeep(storageTrie.root);
-        account.initStorageProof = elem;
         self.accounts.push(account);
 
         // stateTrie 
@@ -191,7 +173,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         account.stateRoot = _.cloneDeep(stateTrie.root);
       }
       self.stateRoot = _.cloneDeep(stateTrie.root);
-      // console.log('initHexaryTrie', this.accounts);
+      // console.log('initHexaryTrie', stateTrie.root);
       resolve();
     })
   }

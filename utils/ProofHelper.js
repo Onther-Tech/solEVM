@@ -12,19 +12,73 @@ module.exports = class ProofHelper {
     const callStart = computationPath.callStart;
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
-        
+    
+    const beforeStateProof = prevOutput.intermediateStateProof;
+    const afterStateProof = execState.intermediateStateProof;
+    const callValueProof = execState.callValueProof;
+    const isCALLValue = execState.isCALLValue;
+
+    // console.log('proofHelper', isCALLValue);
+    
     let merkleProof;
-    if (isFirstStep || isStorageDataRequired || callStart || callEnd) {
-      const intermediateStateProof = execState.intermediateStateProof;
-      // console.log('proofHelper', intermediateStateProof)
+    if (isFirstStep) {
       merkleProof = {
-        rootHash: intermediateStateProof.stateRoot,
-        hashedKey: intermediateStateProof.hashedKey,
-        leaf: intermediateStateProof.leaf,
-        siblings: intermediateStateProof.siblings, 
+        callerKey: beforeStateProof.hashedKey,
+        calleeKey: Buffer.alloc(32),
+        callerBeforeLeaf: beforeStateProof.leaf,
+        callerAfterLeaf: Buffer.alloc(32),
+        calleeBeforeLeaf: Buffer.alloc(32),
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: beforeStateProof.stateRoot,
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: Buffer.alloc(32),
+        callerSiblings: beforeStateProof.siblings,
+        calleeSiblings:  Buffer.alloc(32),
+      }
+    } else if (isStorageDataRequired) {
+      merkleProof = {
+        callerKey: beforeStateProof.hashedKey,
+        calleeKey: Buffer.alloc(32),
+        callerBeforeLeaf: beforeStateProof.leaf,
+        callerAfterLeaf: afterStateProof.leaf,
+        calleeBeforeLeaf: Buffer.alloc(32),
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: beforeStateProof.stateRoot,
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: afterStateProof.stateRoot,
+        callerSiblings: beforeStateProof.siblings,
+        calleeSiblings:  Buffer.alloc(32),
+      }
+    } else if (isCALLValue) {
+      merkleProof = {
+        callerKey: callValueProof.callerKey,
+        calleeKey: callValueProof.calleeKey,
+        callerBeforeLeaf: callValueProof.callerBeforeLeaf,
+        callerAfterLeaf: callValueProof.callerAfterLeaf,
+        calleeBeforeLeaf: callValueProof.calleeBeforeLeaf,
+        calleeAfterLeaf: callValueProof.calleeAfterLeaf,
+        beforeRoot: callValueProof.beforeRoot,
+        intermediateRoot: callValueProof.intermediateRoot,
+        afterRoot: callValueProof.afterRoot,
+        callerSiblings: callValueProof.callerSiblings,
+        calleeSiblings: callValueProof.calleeSiblings,
+      }
+    } else if (callStart || callEnd) {
+      merkleProof = {
+        callerKey: beforeStateProof.hashedKey,
+        calleeKey: afterStateProof.hashedKey,
+        callerBeforeLeaf: beforeStateProof.leaf,
+        callerAfterLeaf: Buffer.alloc(32),
+        calleeBeforeLeaf: afterStateProof.leaf,
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: beforeStateProof.stateRoot,
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: afterStateProof.stateRoot,
+        callerSiblings: beforeStateProof.siblings,
+        calleeSiblings: afterStateProof.siblings,
       }
     } 
-   
+    // console.log('Proof Helper', merkleProof);
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
@@ -153,6 +207,7 @@ module.exports = class ProofHelper {
         callDepth: computationPath.callDepth,
         callStart: callStart,
         callEnd: callEnd,
+        callValue: isCALLValue,
       },
       merkleProof,
     };

@@ -42,10 +42,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.tStorage = this.accounts[runState.depth].tStorage || [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
     runState.stateManager = runState.stateManager.copy();
-    runState.initStorageProof = this.accounts[runState.depth].initStorageProof;
-    runState.initStorageRoot =  this.accounts[runState.depth].storageRoot;
-    runState.intermediateStorageProof = runState.initStorageProof;
-    runState.intermediateStorageRoot = runState.initStorageRoot;
     // TODO: to get storage of callee contract for now, 
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
@@ -55,6 +51,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.initStateRoot = this.accounts[runState.depth].stateRoot;
     runState.intermediateStateProof = runState.initStateProof;
     runState.intermediateStateRoot = runState.initStateRoot;
+    
+    this.accounts[runState.depth].intermediateStateProof = runState.initStateProof;
 
     // console.log('initRunState', runState.initStateProof);
     // console.log('initRunState', runState.initStateRoot);
@@ -108,19 +106,98 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     // if CALL set isCallExecuted true 
     let isCALLExecuted = false;
+    let isCALLValue = false;
     let calleeSteps;
     let calleeCode;
     let calleeCallData;
-    let calleeProof;
     
+    let callValueProof = {};
     if (runState.opName === 'CALL') {
       isCALLExecuted = true;
       calleeSteps = runState.calleeSteps;
       calleeCode = runState.calleeCode.toString('hex');
       calleeCallData = '0x' + runState.calleeCallData.toString('hex');
-      calleeProof = runState.calleeProof;
-    } 
+     
+      // get call value from the stack
+      const prevStack = runState.prevStack;
+      const callValueStack = prevStack[prevStack.length-3];
+      let callValue = parseInt(callValueStack);
+     
+      const stateTrie = this.stateTrie;
+      
+      // update stateProof for caller account 
+      const caller = this.accounts[runState.depth];
+      caller.intermediateStateProof.stateRoot = stateTrie.root;
+      const siblings = stateTrie.getProof(caller.intermediateStateProof.hashedKey);
+      caller.intermediateStateProof.siblings = Buffer.concat(siblings);
+      const callerProof = caller.intermediateStateProof;
+   
+      // get stateProof for callee account 
+      const callee = this.accounts[runState.depth+1];
+      const calleeProof = callee.intermediateStateProof;
+      // console.log('callee', calleeProof)
 
+      if (callValue !== 0 ) {
+        isCALLValue = true;
+        
+        const beforeRoot = _.cloneDeep(stateTrie.root);
+        // console.log('HydratedRuntime', beforeRoot);
+        const callerKey = callerProof.hashedKey;
+        const callerBeforeLeaf = callerProof.leaf;
+        const callerSiblings = callerProof.siblings;
+
+        const calleeKey = calleeProof.hashedKey;
+        const calleeBeforeLeaf = calleeProof.leaf;
+        
+        caller.balance -= callValue;
+        callee.balance += callValue;
+  
+        // caller put data
+        let rawVal = [];
+        rawVal.push(caller.nonce);
+        rawVal.push(caller.balance);
+        rawVal.push(caller.codeHash);
+        rawVal.push(caller.storageRoot);
+        
+        let rlpVal = utils.rlp.encode(rawVal);
+        stateTrie.putData(callerKey, rlpVal);
+        const intermediateRoot = _.cloneDeep(stateTrie.root);
+        // console.log('HydratedRuntime', intermediateRoot);
+        const callerAfterLeaf = stateTrie.hash(rlpVal);        
+        // get proof from callee node at intermediateRoot
+        const calleeSiblings = stateTrie.getProof(calleeKey);
+        
+        // callee put data 
+        rawVal = [];
+        rawVal.push(callee.nonce);
+        rawVal.push(callee.balance);
+        rawVal.push(callee.codeHash);
+        rawVal.push(callee.storageRoot);
+        
+        rlpVal = utils.rlp.encode(rawVal);
+        stateTrie.putData(calleeKey, rlpVal);
+        const afterRoot = _.cloneDeep(stateTrie.root);
+        // console.log('HydratedRuntime', afterRoot);
+        const calleeAfterLeaf = stateTrie.hash(rlpVal);
+
+        callValueProof.callerKey = callerKey;
+        callValueProof.calleeKey = calleeKey;
+        callValueProof.callerBeforeLeaf = callerBeforeLeaf;
+        callValueProof.callerAfterLeaf = callerAfterLeaf;
+        callValueProof.calleeBeforeLeaf = calleeBeforeLeaf;
+        callValueProof.calleeAfterLeaf = calleeAfterLeaf;
+        callValueProof.beforeRoot = beforeRoot;
+        callValueProof.intermediateRoot = intermediateRoot;
+        callValueProof.afterRoot = afterRoot;
+        callValueProof.callerSiblings = callerSiblings;
+        callValueProof.calleeSiblings = Buffer.concat(calleeSiblings);
+        const len = calleeSteps.length;
+        calleeSteps[len-1].callValueProof = callValueProof;
+        calleeSteps[len-1].isCALLValue = isCALLValue;
+      }
+      runState.intermediateStateRoot = stateTrie.root;
+    } 
+    
     const step = {
       opCodeName: runState.opName,
       stack: toHex(runState.stack),
@@ -140,14 +217,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       calleeCode: calleeCode || '',
       calleeCallData: calleeCallData || '',
       calleeTstorage: runState.calleeTstorage,
-      calleeProof: calleeProof,
       isCALLExecuted: isCALLExecuted,
       calleeSteps: calleeSteps,
       callDepth: runState.depth,
-      initStorageProof: runState.initStorageProof,
-      initStorageRoot: runState.initStorageRoot,
-      intermediateStorageProof: runState.intermediateStorageProof,
-      intermediateStorageRoot: runState.intermediateStorageRoot,
+      isCALLValue: isCALLValue,
+      callValueProof: callValueProof,
       initStateProof: runState.initStateProof,
       initStateRoot: runState.initStateRoot,
       intermediateStateProof: runState.intermediateStateProof,
@@ -244,14 +318,14 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         stateTrie.putData(hashedKey, rlpVal);
         let elem = {};
         const siblings = stateTrie.getProof(hashedKey);
-        elem.stateRoot = _.cloneDeep(stateTrie.root);
-        elem.address = account.address;
-        elem.val = rlpVal;
         elem.hashedKey = hashedKey;
+        elem.leaf = stateTrie.hash(rlpVal);
+        elem.stateRoot = _.cloneDeep(stateTrie.root);
         elem.siblings = Buffer.concat(siblings);
                 
         runState.intermediateStateRoot = _.cloneDeep(stateTrie.root);
         runState.intermediateStateProof = elem;
+        this.accounts[runState.depth].intermediateStateProof = elem;
       } catch (error) {
         console.log(error);
       }
@@ -271,31 +345,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
       if (!isStorageLoaded) {
         runState.tStorage = runState.tStorage.concat(newStorageData);
-      } else {
-        // @dev in case of not loaded from state (ie the key with val = 0) 
-        // it needs the exclusion proof?
-        const key = HexToBuf(newStorageData[0]);
-        const val = HexToBuf(newStorageData[1]);
-               
-        const hashedKey = storageTrie.hash(key);;
-        
-        let obj = {};
-        const siblings = storageTrie.getProof(hashedKey);
-        obj.storageRoot = _.cloneDeep(storageTrie.root);
-        obj.hashedKey = hashedKey;
-        obj.leaf = storageTrie.hash(val);
-        obj.siblings = Buffer.concat(siblings);
-        
-        runState.intermediateStorageProof = obj;
-      }
+      } 
   }
     
     step.tStorage = runState.tStorage;
     step.isStorageReset = isStorageReset;
     step.isStorageDataRequired = isStorageDataRequired;
     step.tStorageSize = runState.tStorage.length;
-    step.intermediateStorageRoot = runState.intermediateStorageRoot;
-    step.intermediateStorageProof = runState.intermediateStorageProof;
     step.intermediateStateRoot = runState.intermediateStateRoot;
     step.intermediateStateProof = runState.intermediateStateProof;
   }

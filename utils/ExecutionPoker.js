@@ -286,15 +286,6 @@ module.exports = class ExecutionPoker {
     );
 
     tx = await tx.wait();
-    const val = await this.verifier.val();
-    const result = await this.verifier.result();
-    const hash = await this.verifier.hash();
-    const isValid = await this.verifier.isValid();
-    
-    this.log('val!!', web3.utils.hexToAscii(val));
-    this.log('result!!', result);
-    this.log('hash!!', hash);
-    this.log('isValid!!', isValid);
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 
     return tx;
