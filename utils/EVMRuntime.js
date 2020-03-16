@@ -118,7 +118,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         account.tStorage = obj.tStorage;
         const storageTrie = account.storageTrie;
 
-        let elem = {};
         if (obj.tStorage) {
           let storageLen = obj.tStorage.length;
 
@@ -169,7 +168,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         elem.leaf = stateTrie.hash(rlpVal);
         elem.stateRoot = _.cloneDeep(stateTrie.root);
         elem.siblings = Buffer.concat(siblings);
-        account.initStateProof = elem;
+        account.stateProof = elem;
         account.stateRoot = _.cloneDeep(stateTrie.root);
       }
       self.stateRoot = _.cloneDeep(stateTrie.root);
@@ -202,11 +201,10 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         
         self.stateManager.putContractStorage(
           addr,
-          NumToBuf32(address),
-          NumToBuf32(value | 0),
+          HexToBuf(address),
+          HexToBuf(value),
           cb
         );  
-
         return;
               
         });
@@ -229,11 +227,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
          
             for (let i = 0; i < storageLen - 1; i++) {
               if (i % 2 === 0) {
-                  let address = obj.tStorage[i].replace('0x', '');
-                  let value = obj.tStorage[i+1].replace('0x', '');
-                  address = new BN(address, 16);
-                  value = new BN(value, 16);
-                  
+                  const address = obj.tStorage[i].replace('0x', '');
+                  const value = obj.tStorage[i+1].replace('0x', '');
+                                   
                   await setStorage(addr, address, value);
               }
             }
@@ -369,8 +365,8 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       mem,
       stack,
       tStorage: tStorage,
-      gasRemaining
-    });
+      gasRemaining,
+   });
     
     stepCount = stepCount | 0;
 

@@ -13,14 +13,26 @@ module.exports = class ProofHelper {
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
     
-    const beforeStateProof = prevOutput.intermediateStateProof;
-    const afterStateProof = execState.intermediateStateProof;
+    const beforeStateProof = prevOutput.stateProof;
+    const afterStateProof = execState.stateProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
 
-    // console.log('proofHelper', isCALLValue);
-    
-    let merkleProof;
+    // console.log('proofHelper prevOutput', prevOutput);
+    // console.log('proofHelper execState', execState);
+    let merkleProof = {
+        callerKey: Buffer.alloc(32),
+        calleeKey: Buffer.alloc(32),
+        callerBeforeLeaf: Buffer.alloc(32),
+        callerAfterLeaf: Buffer.alloc(32),
+        calleeBeforeLeaf: Buffer.alloc(32),
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: Buffer.alloc(32),
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: Buffer.alloc(32),
+        callerSiblings: Buffer.alloc(32),
+        calleeSiblings:  Buffer.alloc(32),
+    };
     if (isFirstStep) {
       merkleProof = {
         callerKey: beforeStateProof.hashedKey,
@@ -97,8 +109,8 @@ module.exports = class ProofHelper {
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
-      beforeStateRoot : prevOutput.intermediateStateRoot,
-      afterStateRoot : execState.intermediateStateRoot,
+      beforeStateRoot : prevOutput.stateRoot,
+      afterStateRoot : execState.stateRoot,
       calleeCodeHash: ZERO_HASH,
     };
     // console.log('ProofHelper', proofs)
@@ -202,7 +214,7 @@ module.exports = class ProofHelper {
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
         isStorageReset: execState.isStorageReset ? true : false,
-        isStorageDataRequired: execState.isStorageDataRequired,
+        isStorageDataChanged: execState.isStorageDataChanged,
         isFirstStep: isFirstStep,
         callDepth: computationPath.callDepth,
         callStart: callStart,
