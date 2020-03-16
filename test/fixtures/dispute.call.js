@@ -12,7 +12,7 @@ module.exports = (callback) => {
     
     const code = '6080604052600436106100505760003560e01c63ffffffff168063141f32ff146100555780632e52d606146100a257806367e404ce146100cd5780639b58bc2614610124578063eea4c86414610171575b600080fd5b34801561006157600080fd5b506100a0600480360381019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803590602001909291905050506101be565b005b3480156100ae57600080fd5b506100b7610242565b6040518082815260200191505060405180910390f35b3480156100d957600080fd5b506100e2610248565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b34801561013057600080fd5b5061016f600480360381019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061026e565b005b34801561017d57600080fd5b506101bc600480360381019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803590602001909291905050506102f0565b005b8173ffffffffffffffffffffffffffffffffffffffff1660405180807f7365744e2875696e743235362900000000000000000000000000000000000000815250600d019050604051809103902060e01c826040518263ffffffff1660e01b8152600401808281526020019150506000604051808303816000875af292505050505050565b60005481565b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b8173ffffffffffffffffffffffffffffffffffffffff1660405180807f7365744e2875696e743235362900000000000000000000000000000000000000815250600d019050604051809103902060e01c826040518263ffffffff1660e01b815260040180828152602001915050600060405180830381865af492505050505050565b8173ffffffffffffffffffffffffffffffffffffffff1660405180807f7365744e2875696e743235362900000000000000000000000000000000000000815250600d019050604051809103902060e01c826040518263ffffffff1660e01b8152600401808281526020019150506000604051808303816000875af1925050505050505600a165627a7a72305820ef6419e53bb5b6911db1b3e53234cb7ec9e96849b62583cdcb667d933794ea860029';
     const data = '0xeea4c8640000000000000000000000000dcd2f752394c41875e259e00bb44fd505297caf000000000000000000000000000000000000000000000000000000000000000a';
-    const tStorage = [ '0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
+    const tStorage = ['0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737',
     '0x00000000000000000000000000000000000000000000000000000000000003e8',
     '0x0000000000000000000000000000000000000000000000000000000000000002',
     '0x00000000000000000000000000000000000000000000000000000000000003e8'];
@@ -30,13 +30,21 @@ module.exports = (callback) => {
         {
           address: 'bBF289D846208c16EDc8474705C748aff07732dB',
           code: code,
-          tStorage: tStorage
+          tStorage: tStorage,
+          nonce: 0,
+          balance: 10,
+          storageRoot: OP.ZERO_HASH,
+          codeHash: OP.ZERO_HASH
         },
         // callee
         {
-            address: '0dcd2f752394c41875e259e00bb44fd505297caf',
-            code: calleeCode,
-            tStorage: calleeTstorage
+          address: '0dcd2f752394c41875e259e00bb44fd505297caf',
+          code: calleeCode,
+          tStorage: calleeTstorage,
+          nonce: 0,
+          balance: 10,
+          storageRoot: OP.ZERO_HASH,
+          codeHash: OP.ZERO_HASH
         }
     ];
 
@@ -47,68 +55,46 @@ module.exports = (callback) => {
     const runtime = new HydratedRuntime();
 
     beforeEach(async () => {
-      steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
+      steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, pc: 0 });
       copy = _.cloneDeep(steps);
       // opcode CALL step
       calleeCopy = _.cloneDeep(steps[137].calleeSteps);
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong initStorageProof at CALL start', async () => {
+    it('solver has an wrong stateRoot at CALL end', async () => {
+      const wrongExecution = copy;
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong stateRoot at CALL end', async () => {
+      const wrongExecution = copy;
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong stateProof at the first step in CALLEE step', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
-      
-      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongExecution[137].calleeSteps = wrongCalleeStep;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong initStorageProof at CALL start', async () => {
-      const wrongExecution = copy;
-      const wrongCalleeStep = calleeCopy;
-      
-      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
-      wrongExecution[137].calleeSteps = wrongCalleeStep;
-      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
-
-    it('solever has an wrong intermediateStorageProof at CALL end', async () => {
-      const wrongExecution = copy;
-      wrongExecution[137].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongExecution[137].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
-      const soleverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, soleverMerkle, merkle, 'challenger');
-    });
-
-    it('challenger has an wrong intermediateStorageProof at CALL end', async () => {
-      const wrongExecution = copy;
-      wrongExecution[137].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongExecution[137].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
-      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    });
-
-    it('solver has an wrong intermediateStorageProof at the first step in CALLEE step', async () => {
+    it('challenger has an wrong stateProof at the first step in CALLEE step', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
-      wrongCalleeStep[0].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
-      wrongExecution[137].calleeSteps = wrongCalleeStep;
-      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    });
-
-    it('challenger has an wrong intermediateStorageProof at the first step in CALLEE step', async () => {
-      const wrongExecution = copy;
-      const wrongCalleeStep = calleeCopy;
-
-      wrongCalleeStep[0].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongExecution[137].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
@@ -152,7 +138,7 @@ module.exports = (callback) => {
       
       wrongCalleeStep[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
       wrongCalleeStep[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      wrongExecution[137].calleeSteps[6] = wrongCalleeStep[6];
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
       
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');

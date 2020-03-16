@@ -29,15 +29,15 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong intermediateStorageRoot at the first step', async () => {
+    it('solver has an wrong intermediateStateRoot at the first step', async () => {
       const wrongExecution = copy;
-      wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongExecution[0].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongExecution[0].intermediateStateRoot = OP.ZERO_HASH;
+      wrongExecution[0].intermediateStateProof[0].stateRoot = OP.ZERO_HASH;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageRoot at the first step', async () => {
+    it('challenger has an wrong intermediateStateRoot at the first step', async () => {
       // console.log(tStorage)
       const wrongExecution = copy;
       wrongExecution[0].intermediateStorageRoot = OP.ZERO_HASH;

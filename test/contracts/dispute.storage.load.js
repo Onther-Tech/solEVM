@@ -23,7 +23,7 @@ const EVMParameters = {
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   tStorageHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-  stateRoot: '0x0000000000000000000000000000000000000000000000000000000000000000',
+  stateRoot: '0xcd769cf585cefd4d69e6c2738b304d385fd259f1010413f84963f03fb8ca0b34',
 };
 
 class MyExecutionPoker extends ExecutionPoker {
@@ -64,8 +64,7 @@ class MyExecutionPoker extends ExecutionPoker {
 
     const dataHash = Merkelizer.dataHash(callData);
     const tStorageHash = Merkelizer.storageHash(tStorage);
-    const storageRoot = await Merkelizer.getStorageRoot(tStorage);
-    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash, storageRoot});
+    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash });
 
     return super.requestExecution(evmParams, callData);
   }

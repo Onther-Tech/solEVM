@@ -76,13 +76,14 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     copy = _.cloneDeep(steps);
+   
+    for (let i = 0; i < steps.length; i++) {
+      // if (steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i].stateProof.stateRoot.toString('hex'), i)
+          
+      // }
+    }
     
-    // for (let i = 0; i < steps.length; i++) {
-    //   if (steps[i].opCodeName === 'SSTORE') { 
-    //     console.log(steps[i], i)
-    //   }
-    // }
-    console.log(steps[0].initStateProof.stack)
-    merkle = await new Merkelizer().run(steps, code, data, tStorage);
+    // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();

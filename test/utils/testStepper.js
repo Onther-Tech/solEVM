@@ -39,12 +39,12 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ code, data, pc: 0, tStorage: tStorage });
-    // for (let i = 0; i < steps.length; i++) {
-    //   if (steps[i].opCodeName === 'SLOAD' || steps[i].opCodeName === 'SSTORE') { 
-    //     console.log(steps[i], i)
-    //   }
-    // }
-    // console.log(steps[0], steps[1], steps.length)
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i-1], steps[i]);
+      }
+    }
+    // console.log(steps[0].storageProof);
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();

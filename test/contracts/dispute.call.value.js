@@ -5,7 +5,7 @@ const debug = require('debug')('vgame-test');
 const assert = require('assert');
 
 const { Merkelizer, ExecutionPoker, Constants, FragmentTree } = require('./../../utils');
-const disputeFixtures = require('./../fixtures/dispute.call');
+const disputeFixtures = require('./../fixtures/dispute.call.value');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
@@ -23,7 +23,7 @@ const EVMParameters = {
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   tStorageHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-  stateRoot: '0x4a420229b72d7e03d4db2183a85e756d5b524de726ffa6f5998118d0c40a4127'
+  stateRoot: '0x2a0fe5da5747d42e251a6ef3f1cae6a1b17e6f5a75320982044aed2915d0599f'
 };
 
 class MyExecutionPoker extends ExecutionPoker {
