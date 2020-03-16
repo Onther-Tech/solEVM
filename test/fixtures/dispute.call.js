@@ -62,23 +62,51 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong stateRoot at CALL end', async () => {
+    it('solver has an wrong stateProof at FirstStep', async () => {
       const wrongExecution = copy;
-      wrongExecution[137].stateRoot = Buffer.alloc(32);
-      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+     
+      wrongExecution[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[0].stateProof.stateRoot = Buffer.alloc(32);
+      
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong stateRoot at CALL end', async () => {
+    it('challenger has an wrong stateProof at FirstStep', async () => {
       const wrongExecution = copy;
-      wrongExecution[137].stateRoot = Buffer.alloc(32);
-      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+     
+      wrongExecution[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[0].stateProof.stateRoot = Buffer.alloc(32);
+
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver has an wrong stateProof at the first step in CALLEE step', async () => {
+    it('solver has an wrong stateProof at SSTORE', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+
+      wrongCalleeStep[81].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[81].stateProof.stateRoot = Buffer.alloc(32);
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+            
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong stateProof at SSTORE', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+      
+      wrongCalleeStep[81].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[81].stateProof.stateRoot = Buffer.alloc(32);
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong stateProof at CALLStart', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
@@ -89,7 +117,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong stateProof at the first step in CALLEE step', async () => {
+    it('challenger has an wrong stateProof at CALLStart', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
@@ -100,7 +128,23 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver first step missing in CALLEE step', async () => {
+    it('solver has an wrong stateProof at CALLEnd', async () => {
+      const wrongExecution = copy;
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong stateProof at CALLEnd', async () => {
+      const wrongExecution = copy;
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].stateProof.stateRoot = Buffer.alloc(32);
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver first step missing in CALLEE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
@@ -110,12 +154,88 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });    
 
-    it('challenger first step missing in CALLEE step', async () => {
+    it('challenger first step missing in CALLEE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
 
       wrongCalleeStep.shift();
       wrongExecution[137].calleeSteps = wrongCalleeStep;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong afterStateRoot at FirstStep', async () => {
+      const wrongExecution = copy;
+     
+      wrongExecution[0].stateRoot = Buffer.alloc(32);
+            
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong afterStateRoot at FirstStep', async () => {
+      const wrongExecution = copy;
+     
+      wrongExecution[0].stateRoot = Buffer.alloc(32);
+     
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong afterStateRoot at CALLStart', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong afterStateRoot at CALLStart', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy;
+
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[137].calleeSteps = wrongCalleeStep;
+      
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong afterStateRoot at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong afterStateRoot at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      wrongExecution[137].stateRoot = Buffer.alloc(32);
+      
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver has an wrong afterStateRoot at SLOAD', async () => {
+      const wrongExecution = copy;
+      // opcode SLOAD
+      wrongExecution[68].stateRoot = Buffer.alloc(32);
+      
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong afterStateRoot at SLOAD', async () => {
+      const wrongExecution = copy;
+      // opcode SLOAD
+      wrongExecution[68].stateRoot = Buffer.alloc(32);
+      
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
@@ -138,7 +258,7 @@ module.exports = (callback) => {
       
       wrongCalleeStep[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
       wrongCalleeStep[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-      wrongExecution[137].calleeSteps = wrongCalleeStep;
+      wrongExecution[137].calleeSteps[6] = wrongCalleeStep[6];
       
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');

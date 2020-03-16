@@ -76,62 +76,62 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
-    it('solver has an wrong intermediateStorageProof at CALL start depth 1', async () => {
+    it('solver has an wrong stateProof at CALL start depth 1', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy1;
       
-      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongExecution[176].calleeSteps = wrongCalleeStep;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at CALL start depth 1', async () => {
+    it('challenger has an wrong stateProof at CALL start depth 1', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy1;
       
-      wrongCalleeStep[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongExecution[176].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver has an wrong intermediateStorageProof at CALL start depth 2', async () => {
+    it('solver has an wrong stateProof at CALL start depth 2', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       
-      wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep2[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at CALL start depth 2', async () => {
+    it('challenger has an wrong stateProof at CALL start depth 2', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       
-      wrongCalleeStep2[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep2[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep2[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep2[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver has an wrong intermediateStorageProof at CALL start depth 3', async () => {
+    it('solver has an wrong stateProof at CALL start depth 3', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
@@ -139,14 +139,14 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at CALL start depth 3', async () => {
+    it('challenger has an wrong stateProof at CALL start depth 3', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[0].initStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[0].initStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[0].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[0].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
@@ -154,14 +154,14 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });    
 
-    it('solever has an wrong intermediateStorageProof at SSTORE', async () => {
+    it('solever has an wrong stateProof at SSTORE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[60].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[60].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[60].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[60].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
@@ -169,14 +169,14 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, soleverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at SSTORE', async () => {
+    it('challenger has an wrong stateProof at SSTORE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[60].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[60].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[60].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[60].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
@@ -184,14 +184,14 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });    
 
-    it('solever has an wrong intermediateStorageProof at SSTORE', async () => {
+    it('solever has an wrong stateProof at SSTORE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[81].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[81].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[81].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[81].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;
@@ -199,14 +199,14 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, soleverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong intermediateStorageProof at SSTORE', async () => {
+    it('challenger has an wrong stateProof at SSTORE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
       const wrongCalleeStep3 = calleeCopy3;
       
-      wrongCalleeStep3[81].intermediateStorageRoot = OP.ZERO_HASH;
-      wrongCalleeStep3[81].intermediateStorageProof[0].storageRoot = OP.ZERO_HASH;
+      wrongCalleeStep3[81].stateRoot = Buffer.alloc(32);
+      wrongCalleeStep3[81].stateProof.stateRoot = Buffer.alloc(32);
       wrongCalleeStep2[127].calleeSteps = wrongCalleeStep3;
       wrongCalleeStep1[139].calleeSteps = wrongCalleeStep2;
       wrongExecution[176].calleeSteps = wrongCalleeStep1;

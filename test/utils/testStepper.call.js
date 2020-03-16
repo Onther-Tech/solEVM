@@ -51,20 +51,19 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     
-    // for (let i = 0; i < steps.length; i++){
-    //     // console.log(steps[i].stateRoot.toString('hex'))
-    //     if (steps[i].opCodeName === 'CALL') {
-    //       console.log(steps[i].stateRoot, i)
-    //         const calleeSteps = steps[i].calleeSteps;
-    //         const len = calleeSteps.length;
-    //         console.log(calleeSteps[len-1], i);
-    //         // for (let i = 0; i < len; i++ ) {
-                
-    //         //     console.log(calleeSteps[i].stateRoot, i);
-                
-    //         // }
-    //     }
-    // }
+    for (let i = 0; i < steps.length; i++){
+        if (steps[i].opCodeName === 'CALL') {
+          const calleeSteps = steps[i].calleeSteps;
+          const len = calleeSteps.length;
+          for (let i = 0; i < len; i++){
+            if (calleeSteps[i].opCodeName === 'SLOAD') {
+              console.log(i)
+            }
+            
+          }
+        
+        }
+    }
 
     // console.log(steps[138])
       

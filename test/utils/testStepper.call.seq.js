@@ -61,8 +61,9 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    
+    console.log(steps[0].stateRoot.toString('hex'));
     for (let i = 0; i < steps.length - 1; i++){
+       
         if (steps[i].opCodeName === 'CALL') {
             let calleeSteps1 = steps[i].calleeSteps;
             console.log('1', i);
