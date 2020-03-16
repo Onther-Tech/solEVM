@@ -18,7 +18,7 @@ library MerkelizerStorage {
         uint memSize;
         bool isStorageReset;
         bytes32 logHash;
-        bool isStorageDataRequired;
+        bool isStorageDataChanged;
         bool isFirstStep;
         uint callDepth;
         bool callStart;

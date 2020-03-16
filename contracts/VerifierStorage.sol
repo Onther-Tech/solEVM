@@ -235,7 +235,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     merkleProof.beforeRoot,
                     merkleProof.callerSiblings
                 );
-            } else if (executionState.isStorageDataRequired) {
+                // return if chcek failed.
+                if (isValid != true) {
+                    return;
+                }
+            } else if (executionState.isStorageDataChanged) {
                 isValid = verifySSTORE (
                     merkleProof.callerKey,
                     merkleProof.callerBeforeLeaf,
@@ -244,16 +248,15 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     merkleProof.afterRoot,
                     merkleProof.callerSiblings
                 );
-            }
-
-            // return if chcek failed.
-            if (isValid != true) {
-                return;
+                // return if chcek failed.
+                if (isValid != true) {
+                    return;
+                }
             }
             // check if beforeStateRoot and afterStateRoot is same. Except for call.value != 0
             // or SSTORE, they must be same. in the case of CALL, it is checked in advance.
             // but we check SSTORE case here.
-            if (!executionState.isStorageDataRequired) {
+            if (!executionState.isStorageDataChanged) {
                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
             }
             // TODO: all sanity checks should go in a common function
@@ -357,8 +360,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (evm.mem.size > 0) {
                 executionState.memSize = evm.mem.size;
             }
-            bytes32 afterStorageRoot = proofs.afterStateRoot;
-            bytes32 hash = getStateHash(executionState, hydratedState, dataHash, afterStorageRoot);
+            bytes32 afterStateRoot = proofs.afterStateRoot;
+            bytes32 hash = getStateHash(executionState, hydratedState, dataHash, afterStateRoot);
 
             if (hash != dispute.solver.right && hash != dispute.challenger.right) {
                 return;
