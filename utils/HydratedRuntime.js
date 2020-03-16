@@ -147,10 +147,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         isCALLValue = true;
         
         const beforeRoot = _.cloneDeep(stateTrie.root);
+        // console.log('HydratedRuntime', beforeRoot);
         const callerKey = callerProof.hashedKey;
         const callerBeforeLeaf = callerProof.leaf;
         const callerSiblings = callerProof.siblings;
-
+       
         const calleeKey = calleeProof.hashedKey;
         const calleeBeforeLeaf = calleeProof.leaf;
         
@@ -167,6 +168,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         let rlpVal = utils.rlp.encode(rawVal);
         stateTrie.putData(callerKey, rlpVal);
         const intermediateRoot = _.cloneDeep(stateTrie.root);
+        // console.log('HydratedRuntime', intermediateRoot);
         const callerAfterLeaf = stateTrie.hash(rlpVal);        
         // get proof from callee node at intermediateRoot
         const calleeSiblings = stateTrie.getProof(calleeKey);
@@ -195,6 +197,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         callValueProof.afterRoot = afterRoot;
         callValueProof.callerSiblings = callerSiblings;
         callValueProof.calleeSiblings = Buffer.concat(calleeSiblings);
+
         // attach callValueProof at CALLEnd
         const len = calleeSteps.length;
         calleeSteps[len-1].callValueProof = callValueProof;

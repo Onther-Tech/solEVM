@@ -12,7 +12,7 @@ module.exports = class ProofHelper {
     const callStart = computationPath.callStart;
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
-    
+    const isStorageDataChanged = execState.isStorageDataChanged;
     const beforeStateProof = prevOutput.stateProof;
     const afterStateProof = execState.stateProof;
     const callValueProof = execState.callValueProof;
@@ -47,7 +47,7 @@ module.exports = class ProofHelper {
         callerSiblings: beforeStateProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
-    } else if (isStorageDataRequired) {
+    } else if (isStorageDataChanged) {
       merkleProof = {
         callerKey: beforeStateProof.hashedKey,
         calleeKey: Buffer.alloc(32),
@@ -105,7 +105,7 @@ module.exports = class ProofHelper {
       stackHash: execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
-      tStorageHash: execState.isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
+      tStorageHash: isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
@@ -113,9 +113,9 @@ module.exports = class ProofHelper {
       afterStateRoot : execState.stateRoot,
       calleeCodeHash: ZERO_HASH,
     };
-    // console.log('ProofHelper', proofs)
-    if (computationPath.callDepth !== 0 && !callStart) {
-      // console.log('ProofHelper', 'CALLEE')
+    
+    if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
+      
       const code = computationPath.code;
       const calleeFragmentTree = new FragmentTree().run(code);
       const calleeCodeHash = calleeFragmentTree.root.hash;
@@ -205,7 +205,7 @@ module.exports = class ProofHelper {
         data: isCallDataRequired ? prevOutput.data : '0x',
         stack: execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
-        tStorage: execState.isStorageDataRequired ? prevOutput.tStorage : [],
+        tStorage: isStorageDataRequired ? prevOutput.tStorage : [],
         logHash: prevOutput.logHash,
         customEnvironmentHash: prevOutput.customEnvironmentHash,
         returnData: prevOutput.returnData,
@@ -214,7 +214,7 @@ module.exports = class ProofHelper {
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
         isStorageReset: execState.isStorageReset ? true : false,
-        isStorageDataChanged: execState.isStorageDataChanged,
+        isStorageDataChanged: isStorageDataChanged,
         isFirstStep: isFirstStep,
         callDepth: computationPath.callDepth,
         callStart: callStart,
