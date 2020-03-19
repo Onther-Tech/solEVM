@@ -10,7 +10,7 @@ const _ = require('lodash');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (stateProof, stateRoot, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -36,6 +36,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         logHash: ZERO_HASH,
         stateRoot: stateRoot,
         stateProof: stateProof,
+        storageRoot: storageRoot,
         isStorageDataRequired: false,
         isStorageDataChanged: false,
         isCALLValue: false,
@@ -115,12 +116,14 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
+        'bytes32',
       ],
       [
         execution.stackHash,
         execution.memHash,
         execution.dataHash,
         execution.tStorageHash,
+        execution.storageRoot,
         execution.stateRoot,
       ]
     );
@@ -181,13 +184,14 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     
     const stateProof = executions[0].stateProof;
     const stateRoot = executions[0].stateRoot;
+    const storageRoot = executions[0].storageRoot;
          
     if (!this.tree) {
       this.tree = [[]];
     }
     
     const initialState = this.constructor.initialStateHash(
-      stateProof, stateRoot, code, callData, tStorage, customEnvironmentHash
+      stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash
     );
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);

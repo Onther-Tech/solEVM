@@ -47,6 +47,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
     ? this.accounts[runState.depth + 1].tStorage : [];
 
+    runState.storageProof = {};
+    runState.storageRoot = this.accounts[runState.depth].storageRoot;
+
     if (runState.depth === 0) {
       // get stateProof at FirstStep
       runState.stateProof = _.cloneDeep(this.accounts[runState.depth].stateProof) || [];
@@ -62,7 +65,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
     }
        
-    // console.log('initRunState', runState.stateProof);
+    console.log('initRunState', this.accounts[runState.depth]);
     return runState;
   }
 
@@ -233,6 +236,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       callDepth: runState.depth,
       isCALLValue: isCALLValue,
       callValueProof: callValueProof,
+      storageProof: {},
+      storageRoot: runState.storageRoot,
       stateProof: runState.stateProof,
       stateRoot: runState.stateRoot,
     };
@@ -281,8 +286,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         const val = HexToBuf(newStorageData[1]);
                
         const hashedKey = storageTrie.hash(key);
-        storageTrie.putData(hashedKey, val);
-        
+                
         let copyArr = _.cloneDeep(runState.tStorage);
         for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
@@ -290,8 +294,21 @@ module.exports = class HydratedRuntime extends EVMRuntime {
             copyArr[i+1] = newStorageData[1];
           }
         }
-        if (!isStorageReset){
+        if (!isStorageReset) {
           copyArr = copyArr.concat(newStorageData);
+         
+          const EMPTY_VALUE = utils.zeros(32);
+          storageTrie.putData(hashedKey, val);
+          const siblings = storageTrie.getProof(hashedKey);
+          let obj = {};
+          obj.storageRoot = _.cloneDeep(storageTrie.root);
+          obj.hashedKey = hashedKey;
+          obj.beforeLeaf = EMPTY_VALUE;
+          obj.afterLeaf = storageTrie.hash(val);
+          obj.siblings = Buffer.concat(siblings);
+                 
+          runState.storageRoot = _.cloneDeep(storageTrie.root);
+          runState.storageProof = obj;
         }
 
         runState.tStorage = copyArr;
@@ -354,6 +371,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     step.isStorageDataRequired = isStorageDataRequired;
     step.isStorageDataChanged = isStorageDataChanged;
     step.tStorageSize = runState.tStorage.length;
+    step.storageRoot = runState.storageRoot;
+    step.storageProof = runState.storageProof;
     step.stateRoot = runState.stateRoot;
     step.stateProof = runState.stateProof;
   }

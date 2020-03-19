@@ -15,6 +15,7 @@ module.exports = class ProofHelper {
     const isStorageDataChanged = execState.isStorageDataChanged;
     const beforeStateProof = prevOutput.stateProof;
     const afterStateProof = execState.stateProof;
+    const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
 
@@ -49,16 +50,16 @@ module.exports = class ProofHelper {
       }
     } else if (isStorageDataChanged) {
       merkleProof = {
-        callerKey: beforeStateProof.hashedKey,
+        callerKey: storageProof.hashedKey,
         calleeKey: Buffer.alloc(32),
-        callerBeforeLeaf: beforeStateProof.leaf,
-        callerAfterLeaf: afterStateProof.leaf,
+        callerBeforeLeaf: storageProof.beforeLeaf,
+        callerAfterLeaf: storageProof.afterLeaf,
         calleeBeforeLeaf: Buffer.alloc(32),
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: beforeStateProof.stateRoot,
+        beforeRoot: prevOutput.storageRoot,
         intermediateRoot: Buffer.alloc(32),
-        afterRoot: afterStateProof.stateRoot,
-        callerSiblings: beforeStateProof.siblings,
+        afterRoot: execState.storageRoot,
+        callerSiblings: storageProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
     } else if (isCALLValue) {
@@ -111,6 +112,8 @@ module.exports = class ProofHelper {
       codeProof: [],
       beforeStateRoot : prevOutput.stateRoot,
       afterStateRoot : execState.stateRoot,
+      beforeStorageRoot : prevOutput.storageRoot,
+      afterStorageRoot : execState.storageRoot,
       calleeCodeHash: ZERO_HASH,
     };
     
