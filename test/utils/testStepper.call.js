@@ -53,13 +53,12 @@ const runtime = new HydratedRuntime();
     
     for (let i = 0; i < steps.length; i++){
         if (steps[i].opCodeName === 'CALL') {
+          console.log('calldepth 0', steps[i-1].stateProof, steps[i].stateProof)
           const calleeSteps = steps[i].calleeSteps;
           const len = calleeSteps.length;
           for (let i = 0; i < len; i++){
-            if (calleeSteps[i].opCodeName === 'SLOAD') {
-              console.log(i)
-            }
-            
+            console.log('calldepth 1', calleeSteps[0].stateProof)
+            break;
           }
         
         }
