@@ -116,6 +116,7 @@ contract EnforcerStorage is IEnforcerStorage {
             _parameters.codeHash,
             _parameters.dataHash,
             _parameters.tStorageHash,
+            _parameters.storageRoot,
             _parameters.stateRoot,
             // challenger
             msg.sender

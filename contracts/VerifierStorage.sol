@@ -9,6 +9,14 @@ import "./SMTVerifier.sol";
 
 contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
+
+    // struct Account {
+    //     address addr;
+    //     uint8 nonce;
+    //     uint balance;
+    //     bytes32 codeHash;
+    //     bytes32 storageRoot;
+    // } 
    
     struct MerkleProof {
         bytes32 callerKey;
@@ -34,7 +42,18 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32[] codeProof;
         bytes32 beforeStateRoot;
         bytes32 afterStateRoot;
+        bytes32 beforeStorageRoot;
+        bytes32 afterStorageRoot;
+        bytes32 accountHash;
         bytes32 calleeCodeHash;
+    }
+
+    struct Hashes {
+        bytes32 dataHash;
+        bytes32 memHash;
+        bytes32 tStorageHash;
+        bytes32 inputHash;
+        bytes32 resultHash;
     }
 
     /**
@@ -86,10 +105,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 codeHash,
         bytes32 dataHash,
         bytes32 tStorageHash,
+        bytes32 storageRoot,
         bytes32 stateRoot,
         address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
-        bytes32 initialStateHash = MerkelizerStorage.initialStateHash(dataHash, tStorageHash, stateRoot, customEnvironmentHash);
+        bytes32 initialStateHash = MerkelizerStorage.initialStateHash(dataHash, tStorageHash, storageRoot, stateRoot, customEnvironmentHash);
 
         disputeId = keccak256(
             abi.encodePacked(
@@ -175,7 +195,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 disputeId,
         Proofs memory proofs,
         MerkelizerStorage.ExecutionState memory executionState,
-        MerkleProof memory merkleProof
+        MerkleProof memory merkleProof,
+        Account memory account
         // solhint-disable-next-line function-max-lines
     ) public onlyPlaying(disputeId) {
         Dispute storage dispute = disputes[disputeId];
@@ -183,6 +204,9 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bool isValid = false;
         if (executionState.callStart || executionState.callEnd) {
             if (executionState.callValue) {
+                require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
+                require(merkleProof.afterRoot == proofs.afterStateRoot, 'they must be same state root ');
+                
                 isValid = verifyCALLVALUE (
                     merkleProof.callerKey,
                     merkleProof.calleeKey,
@@ -240,6 +264,14 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     return;
                 }
             } else if (executionState.isStorageDataChanged) {
+                require(merkleProof.beforeRoot == proofs.beforeStorageRoot, 'they must be same state root ');
+                require(merkleProof.afterRoot == proofs.afterStorageRoot, 'they must be same state root ');
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.stack[1]))) {
+                    return;
+                }
+                if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
+                    return;
+                }
                 isValid = verifySSTORE (
                     merkleProof.callerKey,
                     merkleProof.callerBeforeLeaf,
@@ -267,24 +299,23 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 return;
             }
             // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-            // bytes32 stackHash = executionState.stackHash(proofs.stackHash);
-            bytes32 dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
-            bytes32 memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
-            bytes32 tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
-            bytes32 inputHash = getInputHash(
+            Hashes memory hashes;
+
+            hashes.dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
+            hashes.memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
+            hashes.tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
+            hashes.inputHash = getInputHash(
                 executionState,
                 proofs,
-                memHash,
-                dataHash,
-                tStorageHash
+                hashes
             );
             
-            if ((inputHash != dispute.solver.left && inputHash != dispute.challenger.left) ||
-                ((dispute.state & START_OF_EXECUTION) != 0 && inputHash != dispute.initialStateHash)) {
+            if ((hashes.inputHash != dispute.solver.left && hashes.inputHash != dispute.challenger.left) ||
+                ((dispute.state & START_OF_EXECUTION) != 0 && hashes.inputHash != dispute.initialStateHash)) {
                 return;
             }
             if (dispute.witness != bytes32(0)) {
-                if (inputHash != dispute.witness) {
+                if (hashes.inputHash != dispute.witness) {
                     return;
                 }
             }
@@ -319,8 +350,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             HydratedState memory hydratedState = initHydratedState(evm);
 
             hydratedState.stackHash = proofs.stackHash;
-            hydratedState.memHash = memHash;
-            hydratedState.tStorageHash = tStorageHash;
+            hydratedState.memHash = hashes.memHash;
+            hydratedState.tStorageHash = hashes.tStorageHash;
             hydratedState.logHash = executionState.logHash;
 
             evm.data = executionState.data;
@@ -360,18 +391,18 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (evm.mem.size > 0) {
                 executionState.memSize = evm.mem.size;
             }
-            bytes32 afterStateRoot = proofs.afterStateRoot;
-            bytes32 hash = getStateHash(executionState, hydratedState, dataHash, afterStateRoot);
+           
+            hashes.resultHash = getStateHash(executionState, hydratedState, hashes.dataHash, proofs.afterStorageRoot, proofs.afterStateRoot);
 
-            if (hash != dispute.solver.right && hash != dispute.challenger.right) {
+            if (hashes.resultHash != dispute.solver.right && hashes.resultHash != dispute.challenger.right) {
                 return;
             }
 
-            if (hash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
+            if (hashes.resultHash == dispute.solver.right && executionState.memSize < MAX_MEM_WORD_COUNT) {
                 dispute.state |= SOLVER_VERIFIED;
             }
 
-            if (hash == dispute.challenger.right) {
+            if (hashes.resultHash == dispute.challenger.right) {
                 dispute.state |= CHALLENGER_VERIFIED;
             }
 
@@ -386,18 +417,16 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     function getInputHash(
         MerkelizerStorage.ExecutionState memory executionState,
         Proofs memory proofs,
-        bytes32 memHash,
-        bytes32 dataHash,
-        bytes32 tStorageHash
+        Hashes memory hashes
     ) internal pure returns (bytes32) {
         bytes32 stackHash = executionState.stackHash(proofs.stackHash);
-        bytes32 beforeStateRoot = proofs.beforeStateRoot;
         bytes32 intermediateHash = executionState.intermediateHash(
             stackHash,
-            memHash,
-            dataHash,
-            tStorageHash,
-            beforeStateRoot
+            hashes.memHash,
+            hashes.dataHash,
+            hashes.tStorageHash,
+            proofs.beforeStorageRoot,
+            proofs.beforeStateRoot
         );
         bytes32 envHash = executionState.envHash();
         return executionState.stateHash(
@@ -410,6 +439,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         MerkelizerStorage.ExecutionState memory _executionState,
         HydratedState memory _hydratedState,
         bytes32 _dataHash,
+        bytes32 _storageRoot,
         bytes32 _stateRoot
     ) internal pure returns (bytes32) {
         bytes32 intermediateHash = _executionState.intermediateHash(
@@ -417,6 +447,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             _hydratedState.memHash,
             _dataHash,
             _hydratedState.tStorageHash,
+            _storageRoot,
             _stateRoot
         );
         bytes32 envHash = _executionState.envHash();
