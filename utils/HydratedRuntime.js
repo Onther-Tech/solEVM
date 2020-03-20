@@ -65,7 +65,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
     }
        
-    console.log('initRunState', this.accounts[runState.depth]);
+    // console.log('initRunState', this.accounts[runState.depth]);
     return runState;
   }
 
@@ -284,7 +284,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
        
         const key = HexToBuf(newStorageData[0]);
         const val = HexToBuf(newStorageData[1]);
-               
+        
         const hashedKey = storageTrie.hash(key);
                 
         let copyArr = _.cloneDeep(runState.tStorage);
