@@ -81,10 +81,10 @@ const runtime = new HydratedRuntime();
     copy = _.cloneDeep(steps);
   //  console.log(steps[0].storageRoot.toString('hex'))
     for (let i = 0; i < steps.length; i++) {
-      if (steps[i].opCodeName === 'SSTORE') { 
-        console.log(steps[i].callerAccount)
+      // if (steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i].tStorage)
           
-      }
+      // }
     }
     
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);

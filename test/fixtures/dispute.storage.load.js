@@ -201,33 +201,33 @@ module.exports = (callback) => {
     //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     // });
 
-    it('solver manipulate stateRoot at SSTORE 5', async () => {
-      const wrongExecution = copy;
+    // it('solver manipulate stateRoot at SSTORE 5', async () => {
+    //   const wrongExecution = copy;
       
-      // smt simulation
-      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+    //   // smt simulation
+    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
       
-      // get hashedKey
-      let key = wrongExecution[5].compactStack[1];
-      key = HexToBuf(key);
-      const hashedKey = smt.hash(key);
+    //   // get hashedKey
+    //   let key = wrongExecution[5].compactStack[1];
+    //   key = HexToBuf(key);
+    //   const hashedKey = smt.hash(key);
 
-      // get wrong val
-      let val = wrongExecution[5].compactStack[0];
-      val = HexToBuf(val);
+    //   // get wrong val
+    //   let val = wrongExecution[5].compactStack[0];
+    //   val = HexToBuf(val);
      
-      // put wrong val
-      smt.putData(hashedKey, val);
+    //   // put wrong val
+    //   smt.putData(hashedKey, val);
 
-      // get wrong rootHash
-      const rootHash = smt.root;
+    //   // get wrong rootHash
+    //   const rootHash = smt.root;
 
-      wrongExecution[5].stateRoot = rootHash;
-      wrongExecution[5].storageProof.afterLeaf = val;
+    //   wrongExecution[5].storageRoot = rootHash;
+    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
 
-      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    });
+    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    // });
 
     it('challenger manipulate stateRoot at SSTORE 5', async () => {
       const wrongExecution = copy;
@@ -238,8 +238,9 @@ module.exports = (callback) => {
       // get hashedKey
       let key = wrongExecution[5].compactStack[1];
       key = HexToBuf(key);
-      const hashedKey = smt.hash(key);
 
+      const hashedKey = smt.hash(key);
+      
       // get wrong val
       let val = wrongExecution[5].compactStack[0];
       val = HexToBuf(val);
@@ -249,9 +250,9 @@ module.exports = (callback) => {
 
       // get wrong rootHash
       const rootHash = smt.root;
-
-      wrongExecution[5].stateRoot = rootHash;
-      wrongExecution[5].storageProof.afterLeaf = val;   
+      console.log(rootHash);
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);   
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
