@@ -26,6 +26,9 @@ let code = [
   OP.MSTORE,
   OP.PUSH1, 'ff',
   OP.POP,
+  OP.PUSH1, 'aa',
+  OP.PUSH1, '01',
+  OP.SSTORE,
   OP.PUSH1, '00',
   OP.PUSH1, '01',
   OP.DUP1,
@@ -77,12 +80,12 @@ const runtime = new HydratedRuntime();
     steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     copy = _.cloneDeep(steps);
   //  console.log(steps[0].storageRoot.toString('hex'))
-    // for (let i = 0; i < steps.length; i++) {
-    //   // if (steps[i].opCodeName === 'SSTORE') { 
-    //     console.log(steps[i].storageRoot, i)
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].opCodeName === 'SSTORE') { 
+        console.log(steps[i].callerAccount)
           
-    //   // }
-    // }
+      }
+    }
     
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());

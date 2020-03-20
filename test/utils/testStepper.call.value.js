@@ -47,12 +47,19 @@ const runtime = new HydratedRuntime();
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     
     for (let i = 0; i < steps.length; i++){
+      if (steps[i].opCodeName === 'CALL') {
+        console.log('calldepth 0', steps[i].callerAccount);
+        console.log('calldepth 0', steps[i].calleeAccount);
+        const calleeSteps = steps[i].calleeSteps;
+        const len = calleeSteps.length;
+        for (let i = 0; i < len; i++){
+          console.log('calldepth 1', calleeSteps[i].callerAccount)
+          console.log('calldepth 1', calleeSteps[i].calleeAccount)
+          break;
+        }
       
-      if (steps[i].opCodeName === 'SLOAD') {
-           console.log(i)
-        
-      }         
-    }
+      }
+  }
    
     // merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printLeave());

@@ -5,6 +5,11 @@ const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
 const _ = require('lodash');
+const SMT = require('../../utils/smt/SparseMerkleTrie').SMT;
+function HexToBuf (val) {
+  val = val.replace('0x', '');
+  return Buffer.from(val, 'hex');
+}
 
 module.exports = (callback) => {
   describe('Fixture for Dispute/Verifier Logic #1', function () {
@@ -28,6 +33,9 @@ module.exports = (callback) => {
       OP.MSTORE,
       OP.PUSH1, 'ff',
       OP.POP,
+      OP.PUSH1, 'aa',
+      OP.PUSH1, '01',
+      OP.SSTORE,
       OP.PUSH1, '00',
       OP.PUSH1, '01',
       OP.DUP1,
@@ -74,11 +82,23 @@ module.exports = (callback) => {
     let copy;
     let merkle;
     const runtime = new HydratedRuntime();
+    let smt;
 
     beforeEach(async () => {
       steps = await runtime.run({ accounts, code, data, tStorage: tStorage });
       copy = _.cloneDeep(steps);
       merkle = new Merkelizer().run(steps, code, data, tStorage);
+      
+      smt = new SMT();
+      const k1 = Buffer.from('af63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737', 'hex');
+      const v1 = Buffer.from('00000000000000000000000000000000000000000000000000000000000003e8', 'hex');
+      const k2 = Buffer.from('0000000000000000000000000000000000000000000000000000000000000002', 'hex');
+      const v2 = Buffer.from('00000000000000000000000000000000000000000000000000000000000003e8', 'hex');
+
+      const hashedK1 = smt.hash(k1);
+      const hashedK2 = smt.hash(k2);
+      smt.putData(hashedK1,v1);
+      smt.putData(hashedK2,v2);
     });
 
     // it('solver has an wrong stateProof at first step', async () => {
@@ -181,27 +201,80 @@ module.exports = (callback) => {
     //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     // });
 
-    it('solver has an wrong compactStack (storage val) at SSTORE 5', async () => {
+    it('solver manipulate stateRoot at SSTORE 5', async () => {
       const wrongExecution = copy;
-      wrongExecution[4].stack[1] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
-      wrongExecution[5].stateRoot = Buffer.alloc(32);
-      wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
+      
+      // smt simulation
       wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
+
+      // get wrong val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
+     
+      // put wrong val
+      smt.putData(hashedKey, val);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+
+      wrongExecution[5].stateRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = val;
+
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // console.log(solverMerkle.tree[0][5].right.executionState.compactStack);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong compactStack (storage val) at SSTORE 5', async () => {
+    it('challenger manipulate stateRoot at SSTORE 5', async () => {
       const wrongExecution = copy;
-      wrongExecution[4].stack[1] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
-      wrongExecution[5].stateRoot = Buffer.alloc(32);
-      wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
-      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';      
+     
+     // smt simulation
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
+
+      // get wrong val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
+     
+      // put wrong val
+      smt.putData(hashedKey, val);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+
+      wrongExecution[5].stateRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = val;   
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // console.log(challengerMerkle.tree[0][5].right.executionState.compactStack);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
+
+    // it('solver has an wrong stack at SSTORE 21 in case of reset storage', async () => {
+    //   const wrongExecution = copy;
+    //   wrongExecution[21].stateRoot = Buffer.alloc(32);
+    //   wrongExecution[21].storageProof.beforeLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
+    //   wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+    //   // console.log(solverMerkle.tree[0][5].right.executionState.compactStack);
+    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    // });
+
+    // it('challenger has an wrong stack at SSTORE 21 in case of reset storage', async () => {
+    //   const wrongExecution = copy;
+    //   wrongExecution[21].stateRoot = Buffer.alloc(32);
+    //   wrongExecution[21].storageProof.beforeLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
+    //   wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';      
+    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+    //   // console.log(challengerMerkle.tree[0][5].right.executionState.compactStack);
+    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    // });
 
     // it('solver has an wrong intermediateStateRoot at SSTORE 8', async () => {
     //   const wrongExecution = copy;
