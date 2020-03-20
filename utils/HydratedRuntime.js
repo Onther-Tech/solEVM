@@ -288,32 +288,44 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         const hashedKey = storageTrie.hash(key);
                 
         let copyArr = _.cloneDeep(runState.tStorage);
+        let beforeVal;
         for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
             isStorageReset = true;
+            beforeVal = copyArr[i+1];
             copyArr[i+1] = newStorageData[1];
           }
         }
+        let obj = {};
         if (!isStorageReset) {
           copyArr = copyArr.concat(newStorageData);
          
           const EMPTY_VALUE = utils.zeros(32);
           storageTrie.putData(hashedKey, val);
           const siblings = storageTrie.getProof(hashedKey);
-          let obj = {};
+        
           obj.storageRoot = _.cloneDeep(storageTrie.root);
           obj.hashedKey = hashedKey;
           obj.beforeLeaf = EMPTY_VALUE;
           obj.afterLeaf = storageTrie.hash(val);
           obj.siblings = Buffer.concat(siblings);
-                 
-          runState.storageRoot = _.cloneDeep(storageTrie.root);
-          runState.storageProof = obj;
+        } else {
+          storageTrie.putData(hashedKey, val);
+          const siblings = storageTrie.getProof(hashedKey);
+          beforeVal = HexToBuf(beforeVal);
+                  
+          obj.storageRoot = _.cloneDeep(storageTrie.root);
+          obj.hashedKey = hashedKey;
+          obj.beforeLeaf = storageTrie.hash(beforeVal);
+          obj.afterLeaf = storageTrie.hash(val);
+          obj.siblings = Buffer.concat(siblings);
         }
 
         runState.tStorage = copyArr;
         isStorageDataRequired = true;
         isStorageDataChanged = true;
+        runState.storageRoot = _.cloneDeep(storageTrie.root);
+        runState.storageProof = obj;
       } catch (error) {
         console.log(error);
       }
