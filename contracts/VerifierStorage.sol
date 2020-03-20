@@ -10,14 +10,6 @@ import "./SMTVerifier.sol";
 contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
 
-    // struct Account {
-    //     address addr;
-    //     uint8 nonce;
-    //     uint balance;
-    //     bytes32 codeHash;
-    //     bytes32 storageRoot;
-    // } 
-   
     struct MerkleProof {
         bytes32 callerKey;
         bytes32 calleeKey;
@@ -44,7 +36,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 afterStateRoot;
         bytes32 beforeStorageRoot;
         bytes32 afterStorageRoot;
-        bytes32 accountHash;
         bytes32 calleeCodeHash;
     }
 
@@ -195,8 +186,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 disputeId,
         Proofs memory proofs,
         MerkelizerStorage.ExecutionState memory executionState,
-        MerkleProof memory merkleProof,
-        Account memory account
+        MerkleProof memory merkleProof
         // solhint-disable-next-line function-max-lines
     ) public onlyPlaying(disputeId) {
         Dispute storage dispute = disputes[disputeId];
@@ -266,9 +256,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             } else if (executionState.isStorageDataChanged) {
                 require(merkleProof.beforeRoot == proofs.beforeStorageRoot, 'they must be same state root ');
                 require(merkleProof.afterRoot == proofs.afterStorageRoot, 'they must be same state root ');
+                // storage key check
                 if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.stack[1]))) {
                     return;
                 }
+                // storage val check
                 if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
                     return;
                 }
