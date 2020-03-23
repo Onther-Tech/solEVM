@@ -54,6 +54,15 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       // get stateProof at FirstStep
       runState.stateProof = _.cloneDeep(this.accounts[runState.depth].stateProof) || [];
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
+
+      runState.callerAccount = {};
+      runState.callerAccount.addr = this.accounts[runState.depth].address;
+      runState.callerAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth].rlpVal);
+      if (this.accounts[runState.depth+1]) {
+        runState.calleeAccount = {};
+        runState.calleeAccount.addr = this.accounts[runState.depth+1].address;
+        runState.calleeAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth+1].rlpVal);
+      }
     } else {
       // update stateProof of calllee at CALLStart(runState.depth > 0)
       this.accounts[runState.depth].stateProof.stateRoot = _.cloneDeep(this.stateTrie.root);
@@ -63,6 +72,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       this.accounts[runState.depth].stateProof.siblings = Buffer.concat(siblings);
       runState.stateProof = _.cloneDeep(this.accounts[runState.depth].stateProof);
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
+
+      runState.callerAccount = {};
+      runState.callerAccount.addr = this.accounts[runState.depth-1].address;
+      runState.callerAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth-1].rlpVal);
+      runState.calleeAccount = {};
+      runState.calleeAccount.addr = this.accounts[runState.depth].address;
+      runState.calleeAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth].rlpVal);
     }
        
     // console.log('initRunState', this.accounts[runState.depth]);
@@ -175,6 +191,12 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         const callerAfterLeaf = stateTrie.hash(rlpVal);        
         // get proof from callee node at intermediateRoot
         const calleeSiblings = stateTrie.getProof(calleeKey);
+
+        // update caller account
+        let obj = {};
+        obj.addr = caller.address;
+        obj.rlpVal = rlpVal;
+        runState.callerAccount = obj;
         
         // callee put data 
         rawVal = [];
@@ -189,6 +211,12 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         // console.log('HydratedRuntime', afterRoot);
         const calleeAfterLeaf = stateTrie.hash(rlpVal);
 
+         // update callee account
+         obj = {};
+         obj.addr = callee.address;
+         obj.rlpVal = rlpVal;
+         runState.calleeAccount = obj;
+                 
         callValueProof.callerKey = callerKey;
         callValueProof.calleeKey = calleeKey;
         callValueProof.callerBeforeLeaf = callerBeforeLeaf;
@@ -240,6 +268,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       storageRoot: runState.storageRoot,
       stateProof: runState.stateProof,
       stateRoot: runState.stateRoot,
+      callerAccount: runState.callerAccount,
+      calleeAccount: runState.calleeAccount
     };
     
     this.calculateMemProof(runState, step);
@@ -333,17 +363,23 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       try {
         // calaulate stateRoot and proof 
         const account = this.accounts[runState.depth];
+        const addr = this.accounts[runState.depth].addr;
         account.storageRoot = _.cloneDeep(storageTrie.root);
         const bufAddress = HexToBuf(account.address);
         const hashedKey = stateTrie.hash(bufAddress);
+        let obj = {};
         const val = [];
         val.push(account.nonce);
         val.push(account.balance);
         val.push(account.codeHash);
         val.push(account.storageRoot);
+        // console.log(account.storageRoot)
         
         const rlpVal = utils.rlp.encode(val);
-        
+
+        obj.addr = addr;
+        obj.rlpVal = rlpVal;
+
         stateTrie.putData(hashedKey, rlpVal);
         let elem = {};
         const siblings = stateTrie.getProof(hashedKey);
@@ -354,7 +390,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
                 
         runState.stateRoot = _.cloneDeep(stateTrie.root);
         runState.stateProof = elem;
-        // update stateProof at SSTORE
+
+        // update account at SSTORE
+        if (runState.depth === 0) {
+          runState.callerAccount = obj;
+        } else {
+          runState.calleeAccount = obj;
+        }
         this.accounts[runState.depth].stateProof = elem;
       } catch (error) {
         console.log(error);
@@ -387,6 +429,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     step.storageProof = runState.storageProof;
     step.stateRoot = runState.stateRoot;
     step.stateProof = runState.stateProof;
+    step.callerAccount = runState.callerAccount;
+    step.calleeAccount = runState.calleeAccount;
   }
 
   async getStorageValue(runState, compactStack) {
