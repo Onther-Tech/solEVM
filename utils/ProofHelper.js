@@ -102,6 +102,15 @@ module.exports = class ProofHelper {
       isCallDataRequired = true;
     }
 
+    let beforeAccount = [];
+    let afterAccount = [];
+
+    beforeAccount.push(prevOutput.calleeAccount);
+    beforeAccount.push(prevOutput.callerAccount);
+
+    afterAccount.push(execState.calleeAccount);
+    afterAccount.push(execState.callerAccount);
+
     const proofs = {
       stackHash: execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
@@ -114,6 +123,8 @@ module.exports = class ProofHelper {
       afterStateRoot : execState.stateRoot,
       beforeStorageRoot : prevOutput.storageRoot,
       afterStorageRoot : execState.storageRoot,
+      beforeAccount : beforeAccount,
+      afterAccount : afterAccount,
       calleeCodeHash: ZERO_HASH,
     };
     

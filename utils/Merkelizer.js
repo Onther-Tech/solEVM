@@ -10,7 +10,7 @@ const _ = require('lodash');
 module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
-  static initialStateHash (stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash) {
+  static initialStateHash (callerAccount, calleeAccount, stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash) {
     const DEFAULT_GAS = 0x0fffffffffffff;
     const res = {
       executionState: {
@@ -34,17 +34,20 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         dataHash: this.dataHash(callData),
         tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
+        accountHash: this.accountHash(callerAccount, calleeAccount),
         stateRoot: stateRoot,
         stateProof: stateProof,
         storageRoot: storageRoot,
         isStorageDataRequired: false,
         isStorageDataChanged: false,
         isCALLValue: false,
+        callerAccount: callerAccount,
+        calleeAccount: calleeAccount
       },
     };
     
     res.hash = this.stateHash(res.executionState);
-    // console.log('initialStateHash', res.executionState)
+    console.log('initialStateHash', res.executionState.accountHash)
     return res;
   }
 
@@ -76,6 +79,28 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
 
     hashes.push(`0x${hash.digest().toString('hex')}`);
     return hashes;
+  }
+
+  static accountHash (caller, callee) {
+    // console.log('accountHash', callee)
+    const callerHash = ethers.utils.solidityKeccak256(
+      ['address', 'bytes'],
+      [caller.addr, caller.rlpVal]
+    );
+    let calleeHash;
+    if (callee) {
+      calleeHash = ethers.utils.solidityKeccak256(
+        ['address', 'bytes'],
+        [callee.addr, callee.rlpVal]
+      );
+    } else {
+      calleeHash = ZERO_HASH;
+    }
+    // console.log(calleeHash)
+    return ethers.utils.solidityKeccak256(
+      ['bytes32', 'bytes32'],
+      [callerHash, calleeHash]
+    );
   }
 
   static stackHash (stack, sibling) {
@@ -117,8 +142,10 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
+        'bytes32',
       ],
       [
+        execution.accountHash,
         execution.stackHash,
         execution.memHash,
         execution.dataHash,
@@ -185,14 +212,17 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const stateProof = executions[0].stateProof;
     const stateRoot = executions[0].stateRoot;
     const storageRoot = executions[0].storageRoot;
-         
+    const callerAccount = executions[0].callerAccount;
+    const calleeAccount = executions[0].calleeAccount;
+   
     if (!this.tree) {
       this.tree = [[]];
     }
-    
+   
     const initialState = this.constructor.initialStateHash(
-      stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash
+      callerAccount, calleeAccount, stateProof, stateRoot, storageRoot, code, callData, tStorage, customEnvironmentHash
     );
+
     const leaves = this.tree[0];
     const callDataHash = this.constructor.dataHash(callData);
 
@@ -200,11 +230,13 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     let len = executions.length;
     let memHash;
     let tStorageHash;
+    let accountHash;
     let afterCallTemp;
 
     for (let i = 0; i < len; i++) {
+     
       const exec = executions[i];
-      // console.log('makeLeave', exec)
+      
       const stackHash = exec.stackHash;
       let logHash = exec.logHash;
       
@@ -227,13 +259,16 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       if (!tStorageHash || tStorageChanged) {
         tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
       }
-
+      
+      accountHash = this.constructor.accountHash(exec.callerAccount, exec.calleeAccount);
+      
        // convenience
        exec.memSize = exec.mem.length;
        exec.data = callData;
        exec.dataHash = callDataHash;
        exec.memHash = memHash;
        exec.tStorageHash = tStorageHash;
+       exec.accountHash = accountHash;
       //  console.log('merkle', exec.intermediateStorageRoot)
        
        // TODO: the runtime should ultimately support and supply that
