@@ -257,7 +257,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    it('solver has an wrong stack at SSTORE 21 in case of reset storage', async () => {
+    it('solver manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
       const wrongExecution = copy;
       
       // smt simulation
@@ -285,7 +285,7 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
-    it('challenger has an wrong stack at SSTORE 21 in case of reset storage', async () => {
+    it('challenger manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
       const wrongExecution = copy;
      
       // smt simulation
