@@ -54,13 +54,14 @@ contract IVerifierStorage {
         bytes32 challengerHashRoot,
         uint256 executionDepth,
         // optional for implementors
-        bytes32 customEnvironmentHash,
+        // bytes32 customEnvironmentHash,
         // TODO: should be the bytes32 root hash later on
         bytes32 codeHash,
         bytes32 dataHash,
         bytes32 tStorageHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
+        bytes32 accountHash,
         address challenger
     ) public returns (bytes32 disputeId);
 }

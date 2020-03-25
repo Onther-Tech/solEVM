@@ -71,8 +71,8 @@ contract SMTVerifier {
         bytes32 key,
         bytes32 leaf,
         bytes32 root,
-        bytes memory proof) public view returns (bool)
-    {
+        bytes memory proof
+    ) public view returns (bool) {
         bytes32 computedHash = getRoot(key, leaf, proof);
         return (computedHash == root);
     }

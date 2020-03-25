@@ -91,9 +91,10 @@ contract EnforcerStorage is IEnforcerStorage {
     function dispute(bytes32 _solverPathRoot, bytes32 _challengerPathRoot, EVMParameters memory _parameters)
         public payable
     {
+        Ids memory ids;
         bytes32 taskHash = parameterHash(_parameters);
-        bytes32 executionId = keccak256(abi.encodePacked(taskHash, _solverPathRoot));
-        ExecutionResult memory executionResult = executions[executionId];
+        ids.executionId = keccak256(abi.encodePacked(taskHash, _solverPathRoot));
+        ExecutionResult memory executionResult = executions[ids.executionId];
 
         require(msg.value == bondAmount, "Bond amount is required");
         require(executionResult.startTime != 0, "Execution does not exist");
@@ -107,22 +108,23 @@ contract EnforcerStorage is IEnforcerStorage {
         bonds[msg.sender] += bondAmount;
 
         // TODO: Verifier needs to support all EVMParameters
-        bytes32 disputeId = verifier.initGame(
-            executionId,
+        ids.disputeId = verifier.initGame(
+            ids.executionId,
             _solverPathRoot,
             _challengerPathRoot,
             executionResult.executionDepth,
-            _parameters.customEnvironmentHash,
+            // _parameters.customEnvironmentHash,
             _parameters.codeHash,
             _parameters.dataHash,
             _parameters.tStorageHash,
             _parameters.storageRoot,
             _parameters.stateRoot,
+            _parameters.accountHash,
             // challenger
             msg.sender
         );
 
-        emit DisputeInitialised(disputeId, executionId);
+        emit DisputeInitialised(ids.disputeId, ids.executionId);
     }
 
     /// only callable from verifier

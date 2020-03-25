@@ -20,7 +20,7 @@ contract IEnforcerStorage {
         // tx gas limit
         uint256 txGasLimit;
         // customEnvironmentHash - for custom implementations like Plasma Exit
-        bytes32 customEnvironmentHash;
+        // bytes32 customEnvironmentHash;
         // codeHash / dataHash should be the root hash of the given merkle tree
         // Except that codeHash could also be the contract address (addr + right-padded with zeros to 32 bytes)
         bytes32 codeHash;
@@ -28,6 +28,7 @@ contract IEnforcerStorage {
         bytes32 tStorageHash;
         bytes32 storageRoot;
         bytes32 stateRoot;
+        bytes32 accountHash;
     }
 
     struct Task {
@@ -42,6 +43,11 @@ contract IEnforcerStorage {
         bytes32 resultHash;
         uint256 executionDepth;
         address solver;
+    }
+
+    struct Ids {
+        bytes32 executionId;
+        bytes32 disputeId;
     }
 
     uint256 public taskPeriod;
@@ -74,12 +80,13 @@ contract IEnforcerStorage {
                 _parameters.blockNumber,
                 _parameters.time,
                 _parameters.txGasLimit,
-                _parameters.customEnvironmentHash,
+                // _parameters.customEnvironmentHash,
                 _parameters.codeHash,
                 _parameters.dataHash,
                 _parameters.tStorageHash,
                 _parameters.storageRoot,
-                _parameters.stateRoot
+                _parameters.stateRoot,
+                _parameters.accountHash
             )
         );
     }
