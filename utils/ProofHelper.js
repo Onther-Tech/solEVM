@@ -3,7 +3,10 @@
 const Merkelizer = require('./Merkelizer');
 const { ZERO_HASH } = require('./constants');
 const FragmentTree = require('./FragmentTree');
-
+const utils = require('ethereumjs-util');
+const web3 = require('web3');
+const SMT = require('./smt/SparseMerkleTrie').SMT;
+const smt = new SMT();
 module.exports = class ProofHelper {
   static constructProof (computationPath, { merkle, codeFragmentTree } = {}) {
     const prevOutput = computationPath.left.executionState;
@@ -102,15 +105,9 @@ module.exports = class ProofHelper {
       isCallDataRequired = true;
     }
 
-    let beforeAccount = [];
-    let afterAccount = [];
-
-    beforeAccount.push(prevOutput.calleeAccount);
-    beforeAccount.push(prevOutput.callerAccount);
-
-    afterAccount.push(execState.calleeAccount);
-    afterAccount.push(execState.callerAccount);
-
+    const beforeAccountHash = prevOutput.accountHash;
+    const afterAccountHash = execState.accountHash;
+    
     const proofs = {
       stackHash: execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
@@ -123,13 +120,15 @@ module.exports = class ProofHelper {
       afterStateRoot : execState.stateRoot,
       beforeStorageRoot : prevOutput.storageRoot,
       afterStorageRoot : execState.storageRoot,
-      beforeAccount : beforeAccount,
-      afterAccount : afterAccount,
+      beforeAccountHash : beforeAccountHash,
+      afterAccountHash : afterAccountHash,
+      beforeCallerAccount: prevOutput.callerAccount,
+      beforeCalleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
     
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
-      
+      // console.log('ProofHelper', 'test1')
       const code = computationPath.code;
       const calleeFragmentTree = new FragmentTree().run(code);
       const calleeCodeHash = calleeFragmentTree.root.hash;
@@ -173,7 +172,7 @@ module.exports = class ProofHelper {
         proofs.calleeCodeHash = calleeCodeHash;
       }  
     } else if (computationPath.callDepth === 0 && codeFragmentTree && !callStart) {
-      // console.log('ProofHelper', 'CALLER')
+      // console.log('ProofHelper', 'test2')
       const leaves = codeFragmentTree.leaves;
       const neededSlots = [];
 
@@ -221,7 +220,7 @@ module.exports = class ProofHelper {
         mem: isMemoryRequired ? prevOutput.mem : [],
         tStorage: isStorageDataRequired ? prevOutput.tStorage : [],
         logHash: prevOutput.logHash,
-        customEnvironmentHash: prevOutput.customEnvironmentHash,
+        // customEnvironmentHash: prevOutput.customEnvironmentHash,
         returnData: prevOutput.returnData,
         pc: prevOutput.pc,
         gasRemaining: prevOutput.gasRemaining,
@@ -234,6 +233,8 @@ module.exports = class ProofHelper {
         callStart: callStart,
         callEnd: callEnd,
         callValue: isCALLValue,
+        afterCallerAccount: execState.callerAccount,
+        afterCalleeAccount: execState.calleeAccount
       },
       merkleProof,
     };

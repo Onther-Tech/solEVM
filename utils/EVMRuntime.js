@@ -144,6 +144,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         // stateTrie 
         const bufAddress = HexToBuf(obj.address);
         const hashedkey = stateTrie.hash(bufAddress);
+        
         const rawVal = [];
         rawVal.push(account.nonce);
         rawVal.push(account.balance);
@@ -151,7 +152,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         rawVal.push(account.storageRoot);
         
         const rlpVal = utils.rlp.encode(rawVal);
-        
         stateTrie.putData(hashedkey, rlpVal);
       }
 

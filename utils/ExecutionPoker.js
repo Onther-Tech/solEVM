@@ -32,12 +32,13 @@ module.exports = class ExecutionPoker {
           blockNumber: parameters[3],
           time: parameters[4],
           txGasLimit: parameters[5],
-          customEnvironmentHash: parameters[6],
-          codeHash: parameters[7],
-          dataHash: parameters[8],
-          tStorageHash: parameters[9],
-          storageRoot: parameters[10],
-          stateRoot: parameters[11]
+          // customEnvironmentHash: parameters[6],
+          codeHash: parameters[6],
+          dataHash: parameters[7],
+          tStorageHash: parameters[8],
+          storageRoot: parameters[9],
+          stateRoot: parameters[10],
+          accountHash: parameters[11]
         };
         this.taskParams[taskHash] = params;
         this.taskCallData[params.dataHash] = callData;
@@ -287,6 +288,14 @@ module.exports = class ExecutionPoker {
     );
 
     tx = await tx.wait();
+    this.log('val!', await this.verifier.val());
+    this.log('callerBalance!', await this.verifier.callerBalance());
+    this.log('calleeBalance!', await this.verifier.calleeBalance());
+    this.log('callerRlpVal!', await this.verifier.callerRlpVal());
+    this.log('calleeRlpVal!', await this.verifier.calleeRlpVal());
+    this.log('callerAfterLeaf!', await this.verifier.callerAfterLeaf());
+    this.log('calleeAfterLeaf!', await this.verifier.calleeAfterLeaf());
+
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 
     return tx;
@@ -311,7 +320,7 @@ module.exports = class ExecutionPoker {
     const runtime = new HydratedRuntime();
     
     const steps = await runtime.run({ code, data });
-    const merkle = new Merkelizer().run(steps, bytecode, data, evmParams.customEnvironmentHash);
+    const merkle = new Merkelizer().run(steps, bytecode, data/*, evmParams.customEnvironmentHash*/);
 
     return { steps, merkle, codeFragmentTree };
   }
