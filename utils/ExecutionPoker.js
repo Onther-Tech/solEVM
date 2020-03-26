@@ -288,6 +288,8 @@ module.exports = class ExecutionPoker {
     );
 
     tx = await tx.wait();
+    this.log('callerKey!', await this.verifier.callerKey());
+    this.log('inputHash!', await this.verifier.inputHash());
     this.log('val!', await this.verifier.val());
     this.log('callerBalance!', await this.verifier.callerBalance());
     this.log('calleeBalance!', await this.verifier.calleeBalance());

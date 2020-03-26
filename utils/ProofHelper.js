@@ -109,7 +109,8 @@ module.exports = class ProofHelper {
     const afterAccountHash = execState.accountHash;
     
     const proofs = {
-      stackHash: execState.compactStackHash || Merkelizer.stackHash([]),
+      stackHash: (callStart || callEnd) ? prevOutput.stackHash || Merkelizer.stackHash([]) 
+        : execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
       tStorageHash: isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
@@ -211,7 +212,7 @@ module.exports = class ProofHelper {
         proofs.codeByteLength = leaf.byteLength;
       }
     }
-    
+    // console.log('ProofHelper', prevOutput)
     return {
       proofs,
       executionInput: {
