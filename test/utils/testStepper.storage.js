@@ -79,14 +79,16 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     copy = _.cloneDeep(steps);
-  //  console.log(steps[0].storageRoot.toString('hex'))
+       
     for (let i = 0; i < steps.length; i++) {
-      // if (steps[i].opCodeName === 'SSTORE') { 
-        console.log(steps[i].tStorage)
+     
+        
+          console.log(steps[i].storageProof, i)
+        
           
-      // }
+     
     }
     
-    // merkle = await new Merkelizer().run(steps, code, data, tStorage);
+    merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printTree());
 })();
