@@ -6,6 +6,12 @@ const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
 const web3 = require('web3');
 const _ = require('lodash');
+const SMT = require('../../utils/smt/SparseMerkleTrie').SMT;
+const utils = require('ethereumjs-util');
+function HexToBuf (val) {
+  val = val.replace('0x', '');
+  return Buffer.from(val, 'hex');
+}
 
 module.exports = (callback) => {
   describe('Fixture for Dispute/Verifier Logic #1', function () {    
@@ -33,7 +39,7 @@ module.exports = (callback) => {
         },
         // callee
         {
-          address: '9876e235a87F520c827317a8987C9E1FDe804485',
+          address: '9876e235a87f520c827317a8987c9e1fde804485',
           code: calleeCode,
           tStorage: calleeTstorage,
           nonce: 0,
@@ -48,6 +54,19 @@ module.exports = (callback) => {
     let calleeCopy;
     let merkle;
     const runtime = new HydratedRuntime();
+    let smt;
+
+    let caller;
+    let callee;
+
+    let callerKey;
+    let calleeKey;
+
+    let callerVal;
+    let calleeVal;
+
+    let callerRlpVal;
+    let calleeRlpVal;
 
     beforeEach(async () => {
       steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
@@ -55,6 +74,179 @@ module.exports = (callback) => {
       // opcode CALL step
       calleeCopy = _.cloneDeep(steps[101].calleeSteps);
       merkle = new Merkelizer().run(steps, code, data, tStorage);
+
+      smt = new SMT();
+     
+      caller = accounts[0];
+      callee = accounts[1];
+
+      callerKey = smt.hash('0x' + caller.address);
+      calleeKey = smt.hash('0x' + callee.address);
+      
+      caller.storageRoot = '0x9bf1b85fa895da31951507ae8a9850517887beed56396c9313e183d610d3a2b8';
+      callee.storageRoot = '0xa7ff9e28ffd3def443d324547688c2c4eb98edf7da757d6bfa22bff55b9ce24a';
+
+      caller.codeHash = utils.keccak256(HexToBuf(caller.code));
+      callee.codeHash = utils.keccak256(HexToBuf(callee.code));
+
+      callerVal = [
+        caller.nonce, caller.balance, caller.codeHash, caller.storageRoot
+      ];
+      calleeVal = [
+        callee.nonce, callee.balance, callee.codeHash, callee.storageRoot
+      ];
+
+      callerRlpVal = utils.rlp.encode(callerVal);
+      calleeRlpVal = utils.rlp.encode(calleeVal);
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
+
+      // console.log(smt.root);
+    });
+
+    it('solver manipulate stateRoot #1 - replace with wrong value at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      // get wrong val - 11
+      wrongExecution[101].compactStack[4] = '0x' + 'b'.padStart(64,0);
+      const wrongVal = 11;
+     
+      // get wrong rlpVal
+      callerVal[1] -= wrongVal;
+      calleeVal[1] += wrongVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
+      
+      // correct storageRoot
+      callerVal[3] = '0xbe8d9277420fbf59dcad4525000c8a1d5e9aecd0e37f1a592b6d808bd06c1d22';
+
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
+
+      // put wrong val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
+     
+      wrongExecution[101].stateRoot = rootHash;
+      wrongExecution[101].callValueProof.afterRoot = rootHash;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger manipulate stateRoot #1 - replace with wrong value at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      // get wrong val - 11
+      wrongExecution[101].compactStack[4] = '0x' + 'b'.padStart(64,0);
+      
+      const wrongVal = 11;
+     
+      // get wrong rlpVal
+      callerVal[1] -= wrongVal;
+      calleeVal[1] += wrongVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
+
+      // correct storageRoot
+      callerVal[3] = '0xbe8d9277420fbf59dcad4525000c8a1d5e9aecd0e37f1a592b6d808bd06c1d22';
+
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
+
+      // put wrong val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
+     
+      wrongExecution[101].stateRoot = rootHash;
+      wrongExecution[101].callValueProof.afterRoot = rootHash;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver manipulate stateRoot #2 - add wrong value at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      // get correct val - 10
+      const correctValStack = wrongExecution[101].compactStack[4]; 
+      const correctVal = parseInt(correctValStack);
+
+      // get correct rlpVal
+      callerVal[1] -= correctVal;
+      calleeVal[1] += correctVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
+      
+      // correct storageRoot
+      callerVal[3] = '0xbe8d9277420fbf59dcad4525000c8a1d5e9aecd0e37f1a592b6d808bd06c1d22';
+
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
+
+      // put correct val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
+
+      // put wrong val
+      const wrongKey = utils.keccak256('0');
+      const wrongRlpVal = callerRlpVal;
+      smt.putData(wrongKey, wrongRlpVal);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
+     
+      wrongExecution[101].stateRoot = rootHash;
+      wrongExecution[101].callValueProof.afterRoot = rootHash;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger manipulate stateRoot #2 - add wrong value at CALLEnd', async () => {
+      const wrongExecution = copy;
+      
+      // get correct val - 10
+      const correctValStack = wrongExecution[101].compactStack[4]; 
+      const correctVal = parseInt(correctValStack);
+
+      // get correct rlpVal
+      callerVal[1] -= correctVal;
+      calleeVal[1] += correctVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
+      
+      // correct storageRoot
+      callerVal[3] = '0xbe8d9277420fbf59dcad4525000c8a1d5e9aecd0e37f1a592b6d808bd06c1d22';
+
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
+
+      // put correct val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
+
+      // put wrong val
+      const wrongKey = utils.keccak256('0');
+      const wrongRlpVal = callerRlpVal;
+      smt.putData(wrongKey, wrongRlpVal);
+
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
+     
+      wrongExecution[101].stateRoot = rootHash;
+      wrongExecution[101].callValueProof.afterRoot = rootHash;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
     it('solver has an wrong stateProof at FirstStep', async () => {
@@ -81,7 +273,7 @@ module.exports = (callback) => {
       const wrongExecution = copy;
      
       wrongExecution[59].stateRoot = Buffer.alloc(32);
-      wrongExecution[59].stateProof.stateRoot = Buffer.alloc(32);
+      wrongExecution[59].storageRoot = Buffer.alloc(32);
       
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
@@ -91,7 +283,7 @@ module.exports = (callback) => {
       const wrongExecution = copy;
      
       wrongExecution[59].stateRoot = Buffer.alloc(32);
-      wrongExecution[59].stateProof.stateRoot = Buffer.alloc(32);
+      wrongExecution[59].storageRoot = Buffer.alloc(32);
 
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
@@ -122,7 +314,7 @@ module.exports = (callback) => {
     it('solver has an wrong callValueProof at CALLEnd', async () => {
       const wrongExecution = copy;
       wrongExecution[101].stateRoot = Buffer.alloc(32);
-      wrongExecution[101].callValueProof.beforeRoot = Buffer.alloc(32);
+      wrongExecution[101].callValueProof.intermediateRoot = Buffer.alloc(32);
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
@@ -130,7 +322,7 @@ module.exports = (callback) => {
     it('challenger has an wrong callValueProof at CALLEnd', async () => {
       const wrongExecution = copy;
       wrongExecution[101].stateRoot = Buffer.alloc(32);
-      wrongExecution[101].callValueProof.beforeRoot = Buffer.alloc(32);
+      wrongExecution[101].callValueProof.intermediateRoot = Buffer.alloc(32);
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
@@ -138,10 +330,12 @@ module.exports = (callback) => {
     it('solver first step missing in CALLEE', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep = calleeCopy;
-
+      // console.log(wrongCalleeStep[0])
       wrongCalleeStep.shift();
+      // console.log(wrongCalleeStep[0])
       wrongExecution[101].calleeSteps = wrongCalleeStep;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      // console.log(solverMerkle.tree[0][102])
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });    
 
@@ -152,6 +346,7 @@ module.exports = (callback) => {
       wrongCalleeStep.shift();
       wrongExecution[101].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      // console.log(challengerMerkle.tree[0][102])
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
