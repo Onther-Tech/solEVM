@@ -87,14 +87,10 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       ['address', 'bytes'],
       [caller.addr, caller.rlpVal]
     );
-    let calleeHash;
-    if (callee) {
-      calleeHash = ethers.utils.solidityKeccak256(
+    const calleeHash = ethers.utils.solidityKeccak256(
         ['address', 'bytes'],
         [callee.addr, callee.rlpVal]
-      );
-    } 
-    // console.log(calleeHash)
+    );
     return ethers.utils.solidityKeccak256(
       ['bytes32', 'bytes32'],
       [callerHash, calleeHash]

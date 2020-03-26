@@ -58,10 +58,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       runState.callerAccount = {};
       runState.callerAccount.addr = '0x' + this.accounts[runState.depth].address;
       runState.callerAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth].rlpVal);
+      runState.calleeAccount = {};
       if (this.accounts[runState.depth+1]) {
-        runState.calleeAccount = {};
         runState.calleeAccount.addr = '0x' + this.accounts[runState.depth+1].address;
         runState.calleeAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth+1].rlpVal);
+      } else {
+        runState.calleeAccount.addr = '0x' + '0'.padStart(40,0);
+        runState.calleeAccount.rlpVal = '0x';
       }
     } else {
       // update stateProof of calllee at CALLStart(runState.depth > 0)
@@ -156,19 +159,27 @@ module.exports = class HydratedRuntime extends EVMRuntime {
            
       // get callee account at CALLEnd
       const callee = this.accounts[runState.depth+1];
-           
+      
+      const beforeRoot = _.cloneDeep(stateTrie.root);
+      const callerKey = stateTrie.hash(HexToBuf(caller.address));
+      const callerBeforeLeaf = stateTrie.hash(runState.callerAccount.rlpVal);
+      const callerSiblings = Buffer.concat(stateTrie.getProof(callerKey));
+      const callerStorageRoot = _.cloneDeep(caller.storageTrie.root);
+      const calleeKey = stateTrie.hash(HexToBuf(callee.address));
+      const calleeBeforeLeaf = stateTrie.hash(runState.calleeAccount.rlpVal);
+
+      // update stateRoot and stateProof
+      runState.stateRoot = _.cloneDeep(stateTrie.root);
+      let obj = {};
+      obj.hashedKey = callerKey;
+      obj.leaf = callerBeforeLeaf;
+      obj.stateRoot = _.cloneDeep(stateTrie.root);
+      obj.siblings = callerSiblings;
+      runState.stateProof = obj;
+
       if (callValue !== 0 ) {
         isCALLValue = true;
-
-        const beforeRoot = _.cloneDeep(stateTrie.root);
-        const callerKey = stateTrie.hash(HexToBuf(caller.address));
-        const callerBeforeLeaf = stateTrie.hash(runState.callerAccount.rlpVal);
-        const callerSiblings = Buffer.concat(stateTrie.getProof(callerKey));
-        const callerStorageRoot = _.cloneDeep(caller.storageTrie.root);
-        
-        const calleeKey = stateTrie.hash(HexToBuf(callee.address));
-        const calleeBeforeLeaf = stateTrie.hash(runState.calleeAccount.rlpVal);
-
+               
         caller.balance -= callValue;
         callee.balance += callValue;
         
@@ -239,7 +250,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         obj.siblings = callerSiblings;
         runState.stateProof = obj;
       }
-     
     } 
     
     const step = {
@@ -330,10 +340,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           }
         }
         let obj = {};
+        const EMPTY_VALUE = utils.zeros(32);
         if (!isStorageReset) {
           copyArr = copyArr.concat(newStorageData);
-         
-          const EMPTY_VALUE = utils.zeros(32);
+                  
           storageTrie.putData(hashedKey, val);
           const siblings = storageTrie.getProof(hashedKey);
         
@@ -346,10 +356,16 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           storageTrie.putData(hashedKey, val);
           const siblings = storageTrie.getProof(hashedKey);
           beforeVal = HexToBuf(beforeVal);
-                  
+                
           obj.storageRoot = _.cloneDeep(storageTrie.root);
           obj.hashedKey = hashedKey;
-          obj.beforeLeaf = storageTrie.hash(beforeVal);
+          
+          if (parseInt('0x' + beforeVal.toString('hex')) === 0) {
+              obj.beforeLeaf = EMPTY_VALUE;
+          } else {
+            obj.beforeLeaf = storageTrie.hash(beforeVal);
+          }
+          
           obj.afterLeaf = storageTrie.hash(val);
           obj.siblings = Buffer.concat(siblings);
         }

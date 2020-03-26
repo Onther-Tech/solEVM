@@ -79,7 +79,7 @@ module.exports = class ProofHelper {
         callerSiblings: callValueProof.callerSiblings,
         calleeSiblings: callValueProof.calleeSiblings,
       }
-    } else if (callStart || callEnd) {
+    } else if (callStart) {
       merkleProof = {
         callerKey: beforeStateProof.hashedKey,
         calleeKey: afterStateProof.hashedKey,
@@ -93,7 +93,21 @@ module.exports = class ProofHelper {
         callerSiblings: beforeStateProof.siblings,
         calleeSiblings: afterStateProof.siblings,
       }
-    } 
+    } else if (callEnd) {
+      merkleProof = {
+        callerKey: afterStateProof.hashedKey,
+        calleeKey: beforeStateProof.hashedKey,
+        callerBeforeLeaf: afterStateProof.leaf,
+        callerAfterLeaf: Buffer.alloc(32),
+        calleeBeforeLeaf: beforeStateProof.leaf,
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: beforeStateProof.stateRoot,
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: afterStateProof.stateRoot,
+        callerSiblings: afterStateProof.siblings,
+        calleeSiblings: beforeStateProof.siblings,
+      }
+    }
     // console.log('Proof Helper', merkleProof);
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
