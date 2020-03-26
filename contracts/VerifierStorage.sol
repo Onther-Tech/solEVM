@@ -25,6 +25,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     bytes public calleeRlpVal;
     bytes32 public callerAfterLeaf;
     bytes32 public calleeAfterLeaf;
+    bytes32 public inputHash;
+    bytes32 public callerKey;
 
     struct MerkleProof {
         bytes32 callerKey;
@@ -252,144 +254,98 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     ) internal returns (bool) {
         Hashes memory hashes;
         hashes.isValid = false;
-        
-        if (executionState.callStart || executionState.callEnd) {
+                   
+        if (executionState.callValue) {
+            require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
+            require(merkleProof.afterRoot == proofs.afterStateRoot, 'they must be same state root ');
             
-            if (executionState.callValue) {
-                require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
-                require(merkleProof.afterRoot == proofs.afterStateRoot, 'they must be same state root ');
-                
-                hashes.callerHash = keccak256(abi.encodePacked(
-                    proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
-                ));
+            hashes.callerHash = keccak256(abi.encodePacked(
+                proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
+            ));
 
-                hashes.calleeHash = keccak256(abi.encodePacked(
-                    proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
-                ));
+            hashes.calleeHash = keccak256(abi.encodePacked(
+                proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
+            ));
 
-                hashes.accountHash = keccak256(abi.encodePacked(
-                    hashes.callerHash, hashes.calleeHash
-                ));
+            hashes.accountHash = keccak256(abi.encodePacked(
+                hashes.callerHash, hashes.calleeHash
+            ));
 
-                if (proofs.beforeAccountHash != hashes.accountHash) {
-                    return (hashes.isValid);
-                }
-
-                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                    return (hashes.isValid);
-                }
-
-                if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
-                    return (hashes.isValid);
-                }
-
-                val = uint(executionState.stack[4]);
-                
-                MerkelizerStorage.Account memory callerAccount = decodeAccount(
-                    proofs.beforeCallerAccount
-                );
-                MerkelizerStorage.Account memory calleeAccount = decodeAccount(
-                    proofs.beforeCalleeAccount
-                );
-
-                callerAccount.balance -= val;
-                calleeAccount.balance += val;
-
-                callerRlpVal = encodeAccount(callerAccount);
-                calleeRlpVal = encodeAccount(calleeAccount);
-
-                callerAfterLeaf = keccak256(abi.encodePacked(callerRlpVal));
-                calleeAfterLeaf = keccak256(abi.encodePacked(calleeRlpVal));
-
-                if (merkleProof.callerAfterLeaf != callerAfterLeaf ||
-                    merkleProof.calleeAfterLeaf != calleeAfterLeaf) {
-                    return (hashes.isValid);
-                }
-
-                require(merkleProof.callerAfterLeaf == callerAfterLeaf &&
-                    merkleProof.calleeAfterLeaf == calleeAfterLeaf, 'gotcha');
-
-                hashes.isValid = verifyCALLVALUE (
-                    merkleProof.callerKey,
-                    merkleProof.calleeKey,
-                    merkleProof.callerBeforeLeaf,
-                    merkleProof.callerAfterLeaf,
-                    merkleProof.calleeBeforeLeaf,
-                    merkleProof.calleeAfterLeaf,
-                    merkleProof.beforeRoot,
-                    merkleProof.intermediateRoot,
-                    merkleProof.afterRoot,
-                    merkleProof.callerSiblings,
-                    merkleProof.calleeSiblings
-                );
-            } else {
-                // in the case of CALLStart and CALLEnd, check here.
-                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
-                require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
-               
-                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                    return (hashes.isValid);
-                }
-                if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
-                    return (hashes.isValid);
-                }
-
-                hashes.isValid = verifyCALL (
-                    merkleProof.callerKey,
-                    merkleProof.calleeKey,
-                    merkleProof.callerBeforeLeaf,
-                    merkleProof.calleeBeforeLeaf,
-                    merkleProof.beforeRoot,
-                    merkleProof.callerSiblings,
-                    merkleProof.calleeSiblings
-                );
+            if (proofs.beforeAccountHash != hashes.accountHash) {
+                return (hashes.isValid);
             }
+
+            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                return (hashes.isValid);
+            }
+
+            if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                return (hashes.isValid);
+            }
+
+            val = uint(executionState.stack[4]);
+            
+            MerkelizerStorage.Account memory callerAccount = decodeAccount(
+                proofs.beforeCallerAccount
+            );
+            MerkelizerStorage.Account memory calleeAccount = decodeAccount(
+                proofs.beforeCalleeAccount
+            );
+
+            callerAccount.balance -= val;
+            calleeAccount.balance += val;
+
+            callerRlpVal = encodeAccount(callerAccount);
+            calleeRlpVal = encodeAccount(calleeAccount);
+
+            callerAfterLeaf = keccak256(abi.encodePacked(callerRlpVal));
+            calleeAfterLeaf = keccak256(abi.encodePacked(calleeRlpVal));
+
+            if (merkleProof.callerAfterLeaf != callerAfterLeaf ||
+                merkleProof.calleeAfterLeaf != calleeAfterLeaf) {
+                return (hashes.isValid);
+            }
+
+            require(merkleProof.callerAfterLeaf == callerAfterLeaf &&
+                merkleProof.calleeAfterLeaf == calleeAfterLeaf, 'they must be same state root');
+
+            hashes.isValid = verifyCALLVALUE (
+                merkleProof.callerKey,
+                merkleProof.calleeKey,
+                merkleProof.callerBeforeLeaf,
+                merkleProof.callerAfterLeaf,
+                merkleProof.calleeBeforeLeaf,
+                merkleProof.calleeAfterLeaf,
+                merkleProof.beforeRoot,
+                merkleProof.intermediateRoot,
+                merkleProof.afterRoot,
+                merkleProof.callerSiblings,
+                merkleProof.calleeSiblings
+            );
             return (hashes.isValid);
         } else {
+            // in the case of CALLStart and CALLEnd, check here.
+            require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
+            require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
             
-            if (executionState.isFirstStep) {
-                // in the case of FirstStep, check here.
-                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
-                require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
-               
-                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                    return (hashes.isValid);
-                }
-                
-                hashes.isValid = checkMembership(
-                    merkleProof.callerKey,
-                    merkleProof.callerBeforeLeaf,
-                    merkleProof.beforeRoot,
-                    merkleProof.callerSiblings
-                );
-
-                // return if chcek failed.
-                return (hashes.isValid);
-
-            } else if (executionState.isStorageDataChanged) {
-                require(merkleProof.beforeRoot == proofs.beforeStorageRoot, 'they must be same state root ');
-                require(merkleProof.afterRoot == proofs.afterStorageRoot, 'they must be same state root ');
-                // storage key check
-                if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.stack[1]))) {
-                    return (false);
-                }
-                // storage val check
-                if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
-                    return (false);
-                }
-                hashes.isValid = verifySSTORE (
-                    merkleProof.callerKey,
-                    merkleProof.callerBeforeLeaf,
-                    merkleProof.callerAfterLeaf,
-                    merkleProof.beforeRoot,
-                    merkleProof.afterRoot,
-                    merkleProof.callerSiblings
-                );
-                // return if chcek failed.
+            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
                 return (hashes.isValid);
             }
+            if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                return (hashes.isValid);
+            }
+
+            hashes.isValid = verifyCALL (
+                merkleProof.callerKey,
+                merkleProof.calleeKey,
+                merkleProof.callerBeforeLeaf,
+                merkleProof.calleeBeforeLeaf,
+                merkleProof.beforeRoot,
+                merkleProof.callerSiblings,
+                merkleProof.calleeSiblings
+            );
+            return (hashes.isValid);
         }
-        return (hashes.isValid);
     }
 
     function submitProof(
@@ -401,35 +357,9 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     ) public onlyPlaying(disputeId) {
         Dispute storage dispute = disputes[disputeId];
         require(dispute.treeDepth == 0, "Not at leaf yet");
-        
         Hashes memory hashes;
-        (hashes.isValid) = verifyAccount(
-            proofs,
-            executionState,
-            merkleProof
-        );
 
-        if (hashes.isValid) {
-            if (msg.sender == address(dispute.challengerAddr)) {
-                dispute.state |= CHALLENGER_VERIFIED;
-            } else if (msg.sender != address(dispute.challengerAddr)) {
-                dispute.state |= SOLVER_VERIFIED;
-            }
-
-            if (dispute.state & SOLVER_VERIFIED != 0) {
-                enforcer.result(dispute.executionId, true, dispute.challengerAddr);
-            } else {
-                enforcer.result(dispute.executionId, false, dispute.challengerAddr);
-            }
-        } else if (!hashes.isValid) {
-            return;
-        } else {
-            // check if beforeStateRoot and afterStateRoot is same. Except for call.value != 0
-            // or SSTORE, they must be same. in the case of CALL, it is checked in advance.
-            // but we check SSTORE case here.
-            if (!executionState.isStorageDataChanged) {
-               require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
-            }
+        if (!(executionState.callStart || executionState.callEnd)) {
             // TODO: all sanity checks should go in a common function
             if (executionState.stack.length > executionState.stackSize) {
                 return;
@@ -437,27 +367,119 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (executionState.mem.length > executionState.memSize) {
                 return;
             }
-            // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
-            
-            hashes.dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
-            hashes.memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
-            hashes.tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
-            hashes.inputHash = getInputHash(
-                executionState,
-                proofs,
-                hashes
-            );
-            
-            if ((hashes.inputHash != dispute.solver.left && hashes.inputHash != dispute.challenger.left) ||
-                ((dispute.state & START_OF_EXECUTION) != 0 && hashes.inputHash != dispute.initialStateHash)) {
+        }
+      
+        // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
+        hashes.dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
+        hashes.memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
+        hashes.tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
+        inputHash = getInputHash(
+            executionState,
+            proofs,
+            hashes
+        );
+        
+        if ((inputHash != dispute.solver.left && inputHash != dispute.challenger.left) ||
+            ((dispute.state & START_OF_EXECUTION) != 0 && inputHash != dispute.initialStateHash)) {
+            return;
+        }
+        if (dispute.witness != bytes32(0)) {
+            if (inputHash != dispute.witness) {
                 return;
             }
-            if (dispute.witness != bytes32(0)) {
-                if (hashes.inputHash != dispute.witness) {
+        }
+
+        if (executionState.callStart || executionState.callEnd) {
+            hashes.isValid = verifyAccount(
+                proofs,
+                executionState,
+                merkleProof
+            );
+            if (hashes.isValid) {
+                if (msg.sender == address(dispute.challengerAddr)) {
+                    dispute.state |= CHALLENGER_VERIFIED;
+                } else if (msg.sender != address(dispute.challengerAddr)) {
+                    dispute.state |= SOLVER_VERIFIED;
+                }
+
+                if (dispute.state & SOLVER_VERIFIED != 0) {
+                    enforcer.result(dispute.executionId, true, dispute.challengerAddr);
+                } else {
+                    enforcer.result(dispute.executionId, false, dispute.challengerAddr);
+                }
+            } else {
+                return;
+            }
+        } else if (executionState.isStorageDataChanged) {
+            require(merkleProof.beforeRoot == proofs.beforeStorageRoot, 'they must be same state root ');
+            require(merkleProof.afterRoot == proofs.afterStorageRoot, 'they must be same state root ');
+            // storage key check
+            if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.stack[1]))) {
+                return;
+            }
+            // storage val check
+            if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
+                return;
+            }
+            hashes.isValid = verifySSTORE (
+                merkleProof.callerKey,
+                merkleProof.callerBeforeLeaf,
+                merkleProof.callerAfterLeaf,
+                merkleProof.beforeRoot,
+                merkleProof.afterRoot,
+                merkleProof.callerSiblings
+            );
+             if (hashes.isValid) {
+                if (msg.sender == address(dispute.challengerAddr)) {
+                    dispute.state |= CHALLENGER_VERIFIED;
+                } else if (msg.sender != address(dispute.challengerAddr)) {
+                    dispute.state |= SOLVER_VERIFIED;
+                }
+
+                if (dispute.state & SOLVER_VERIFIED != 0) {
+                    enforcer.result(dispute.executionId, true, dispute.challengerAddr);
+                } else {
+                    enforcer.result(dispute.executionId, false, dispute.challengerAddr);
+                }
+            } else {
+                return;
+            }
+        } else {
+            if (executionState.isFirstStep) {
+                // in the case of FirstStep, check here.
+                require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
+                require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
+                callerKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
+
+                if (executionState.callDepth != 0) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                        return;
+                    }
+                } else {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                        return;
+                    }
+                }
+                
+                hashes.isValid = checkMembership(
+                    merkleProof.callerKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.callerSiblings
+                );
+                
+                // return if chcek failed.
+                if (!hashes.isValid) {
                     return;
                 }
             }
-
+            // check if beforeStateRoot and afterStateRoot is same. Except for call.value != 0
+            // or SSTORE, they must be same. in the case of CALL, it is checked in advance.
+            // but we check SSTORE case here.
+            if (!executionState.isStorageDataChanged) {
+               require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
+            }
+            
             EVM memory evm;
 
             if (executionState.callDepth != 0) {
@@ -474,8 +496,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     proofs.codeProof,
                     proofs.codeByteLength
                 );
-            }
-            
+            }            
 
             if ((dispute.state & END_OF_EXECUTION) != 0) {
                 hashes.opcode = evm.code.getOpcodeAt(executionState.pc);
@@ -557,7 +578,12 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         Proofs memory proofs,
         Hashes memory hashes
     ) internal pure returns (bytes32) {
-        bytes32 stackHash = executionState.stackHash(proofs.stackHash);
+        bytes32 stackHash;
+        if (executionState.callStart || executionState.callEnd) {
+            stackHash = proofs.stackHash;
+        } else {
+            stackHash = executionState.stackHash(proofs.stackHash);
+        }
         bytes32 accountHash = executionState.accountHash(
             proofs.beforeCallerAccount, proofs.beforeCalleeAccount
         );
