@@ -48,7 +48,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 stackHash;
         bytes32 memHash;
         bytes32 dataHash;
-        bytes32 tStorageHash;
         uint256 codeByteLength;
         bytes32[] codeFragments;
         bytes32[] codeProof;
@@ -139,7 +138,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
         bytes32 initialStateHash = MerkelizerStorage.initialStateHash(
-            dataHash, storageRoot, stateRoot, accountHash /*customEnvironmentHash*/
+            dataHash, storageRoot, stateRoot, accountHash
         );
 
         disputeId = keccak256(
