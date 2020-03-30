@@ -3,6 +3,8 @@
 const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
+const utils = require('ethereumjs-util');
+const BN = utils.BN;
 const debug = require('debug')('dispute-test');
 const web3 = require('web3');
 const _ = require('lodash');
@@ -31,8 +33,8 @@ module.exports = (callback) => {
           address: 'bBF289D846208c16EDc8474705C748aff07732dB',
           code: code,
           tStorage: tStorage,
-          nonce: 0,
-          balance: 10,
+          nonce: new BN(0x1, 16),
+          balance: new BN(0xa, 16),
           storageRoot: OP.ZERO_HASH,
           codeHash: OP.ZERO_HASH
         },
@@ -41,8 +43,8 @@ module.exports = (callback) => {
           address: '0dcd2f752394c41875e259e00bb44fd505297caf',
           code: calleeCode,
           tStorage: calleeTstorage,
-          nonce: 0,
-          balance: 10,
+          nonce: new BN(0x1, 16),
+          balance: new BN(0xa, 16),
           storageRoot: OP.ZERO_HASH,
           codeHash: OP.ZERO_HASH
         }
@@ -52,9 +54,9 @@ module.exports = (callback) => {
     let copy;
     let calleeCopy;
     let merkle;
-    const runtime = new HydratedRuntime();
-
+    
     beforeEach(async () => {
+      const runtime = new HydratedRuntime();
       steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, pc: 0 });
       copy = _.cloneDeep(steps);
       // opcode CALL step

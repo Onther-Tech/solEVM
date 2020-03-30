@@ -5,6 +5,7 @@ const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
 const utils = require('ethereumjs-util');
+const BN = utils.BN;
 const web3 = require('web3');
 
 const code = '6080604052600436106100295760003560e01c806323188b771461002e5780637a8b01141461007f575b600080fd5b34801561003a57600080fd5b5061007d6004803603602081101561005157600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506100c1565b005b6100ab6004803603602081101561009557600080fd5b8101908080359060200190929190505050610104565b6040518082815260200191505060405180910390f35b806000806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050565b600060018081905550600060405180807f736574412875696e743235362900000000000000000000000000000000000000815250600d01905060405180910390209050604051818152836004820152602081602483600a600054617530f1600081141561017057600080fd5b815193506024820160405250505091905056fea265627a7a72315820d8cb695b045af7e9e731dfba4fd6dbb1008deb7e88af9587df21de4d69885c3364736f6c63430005100032';
@@ -23,8 +24,8 @@ const accounts = [
       address: OP.DEFAULT_CONTRACT_ADDRESS,
       code: code,
       tStorage: tStorage,
-      nonce: 0,
-      balance: 100,
+      nonce: new BN(0x1, 16),
+      balance: new BN(0x64, 16),
       storageRoot: OP.ZERO_HASH,
       codeHash: OP.ZERO_HASH
     },
@@ -33,8 +34,8 @@ const accounts = [
       address: '9876e235a87F520c827317a8987C9E1FDe804485',
       code: calleeCode,
       tStorage: calleeTstorage,
-      nonce: 0,
-      balance: 100,
+      nonce: new BN(0x1, 16),
+      balance: new BN(0x64, 16),
       storageRoot: OP.ZERO_HASH,
       codeHash: OP.ZERO_HASH
     }
@@ -47,14 +48,16 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    
+    console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].callerAccount.rlpVal.toString('hex'));
+    // console.log(steps[0].calleeAccount.rlpVal.toString('hex'));
     for (let i = 0; i < steps.length; i++){
-      console.log(web3.utils.soliditySha3(steps[i].callerAccount.addr.toString('hex')));
-      console.log(web3.utils.soliditySha3(steps[i].calleeAccount.addr.toString('hex')));
+      // console.log(web3.utils.soliditySha3(steps[i].callerAccount.addr.toString('hex')));
+      // console.log(web3.utils.soliditySha3(steps[i].calleeAccount.addr.toString('hex')));
       if (steps[i].opCodeName === 'CALL') {
-        console.log('CALL')
-        // console.log(steps[i-1].callerAccount.rlpVal.toString('hex'));
-        // console.log(steps[i-1].calleeAccount.rlpVal.toString('hex'));
+        // console.log('CALL')
+        // console.log(steps[i].callerAccount.rlpVal.toString('hex'));
+        // console.log(steps[i].calleeAccount.rlpVal.toString('hex'));
         
         const calleeSteps = steps[i].calleeSteps;
         const len = calleeSteps.length;

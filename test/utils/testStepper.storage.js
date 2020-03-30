@@ -62,7 +62,7 @@ const accounts = [
     address: OP.DEFAULT_CONTRACT_ADDRESS,
     code: code,
     tStorage: tStorage,
-    nonce: 0,
+    nonce: 1,
     balance: 10,
     storageRoot: OP.ZERO_HASH,
     codeHash: OP.ZERO_HASH
@@ -79,13 +79,9 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, pc: 0, tStorage });
     copy = _.cloneDeep(steps);
-       
+    console.log(steps[0].stateRoot.toString('hex'));
     for (let i = 0; i < steps.length; i++) {
-     
-        
-          console.log(steps[i].storageProof, i)
-        
-          
+             
      
     }
     

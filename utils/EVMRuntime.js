@@ -135,8 +135,8 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         const bufCode = HexToBuf(obj.code);
         const codeHash = utils.keccak256(bufCode);
         
-        account.nonce = new BN(obj.nonce, 16);
-        account.balance = new BN(obj.balance, 16);
+        account.nonce = obj.nonce;
+        account.balance = obj.balance;
         account.codeHash = codeHash;
         account.storageRoot = _.cloneDeep(storageTrie.root);
         self.accounts.push(account);
@@ -152,21 +152,6 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         rawVal.push(account.storageRoot);
         
         const rlpVal = utils.rlp.encode(rawVal);
-        // console.log('rlpVal', rlpVal.toString('hex'));
-        
-        // const elem = {};
-        // elem.nonce = new BN(obj.nonce, 16);
-        // elem.balance = new BN(obj.balance, 16);
-        
-        // const rawElem = [];
-        // rawElem.push(elem.nonce.toString(16));
-        // rawElem.push(elem.balance.toString(16));
-        // rawElem.push(account.codeHash);
-        // rawElem.push(account.storageRoot);
-
-        // const rlpElem = utils.rlp.encode(rawElem);
-        // console.log('rlpElem', rlpElem.toString('hex'));
-        // console.log('elem.balance', elem.balance.toString(16));
         stateTrie.putData(hashedkey, rlpVal);
       }
 
