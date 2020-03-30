@@ -58,7 +58,6 @@ contract IVerifierStorage {
         // TODO: should be the bytes32 root hash later on
         bytes32 codeHash,
         bytes32 dataHash,
-        bytes32 tStorageHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
         bytes32 accountHash,

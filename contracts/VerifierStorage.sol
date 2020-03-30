@@ -5,9 +5,9 @@ import "./interfaces/IVerifierStorage.sol";
 import "./HydratedRuntimeStorage.sol";
 import "./MerkelizerStorage.slb";
 import "./SMTVerifier.sol";
-import "./Helper.sol";
-import './RLPEncode.sol';
-import './SafeMath.sol';
+import './lib/RLPEncode.sol';
+import './lib/RLPDecode.sol';
+import './lib/SafeMath.sol';
 
 contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
     using SafeMath for uint;
@@ -16,8 +16,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     using MerkelizerStorage for MerkelizerStorage.AccountProof;
     using MerkelizerStorage for MerkelizerStorage.Account;
 
-    using RLPReader for RLPReader.RLPItem;
-    using RLPReader for bytes;
+    using RLPDecode for RLPDecode.RLPItem;
+    using RLPDecode for bytes;
     using RLPEncode for *;
 
     uint public val;
@@ -133,14 +133,13 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         // TODO: should be the bytes32 root hash later on
         bytes32 codeHash,
         bytes32 dataHash,
-        bytes32 tStorageHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
         bytes32 accountHash,
         address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
         bytes32 initialStateHash = MerkelizerStorage.initialStateHash(
-            dataHash, tStorageHash, storageRoot, stateRoot, accountHash /*customEnvironmentHash*/
+            dataHash, storageRoot, stateRoot, accountHash /*customEnvironmentHash*/
         );
 
         disputeId = keccak256(
@@ -211,7 +210,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     function decodeAccount(
         MerkelizerStorage.AccountProof memory accountProof
     ) internal pure returns (MerkelizerStorage.Account memory a) {
-        RLPReader.RLPItem[] memory fields = accountProof.rlpVal.toRlpItem().toList();
+        RLPDecode.RLPItem[] memory fields = accountProof.rlpVal.toRlpItem().toList();
         require(fields.length == 4, 'it shoud be length 4');
         a = MerkelizerStorage.Account(
             accountProof.addr,
@@ -374,7 +373,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         // TODO: verify all inputs, check access pattern(s) for memory, calldata, stack
         hashes.dataHash = executionState.data.length != 0 ? MerkelizerStorage.dataHash(executionState.data) : proofs.dataHash;
         hashes.memHash = executionState.mem.length != 0 ? MerkelizerStorage.memHash(executionState.mem) : proofs.memHash;
-        hashes.tStorageHash = executionState.tStorage.length != 0 ? MerkelizerStorage.storageHash(executionState.tStorage) : proofs.tStorageHash;
         inputHash = getInputHash(
             executionState,
             proofs,
@@ -593,7 +591,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             stackHash,
             hashes.memHash,
             hashes.dataHash,
-            hashes.tStorageHash,
             proofs.beforeStorageRoot,
             proofs.beforeStateRoot,
             accountHash
@@ -620,7 +617,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             _hydratedState.stackHash,
             _hydratedState.memHash,
             _dataHash,
-            _hydratedState.tStorageHash,
             _storageRoot,
             _stateRoot,
             _accountHash

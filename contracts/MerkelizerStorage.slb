@@ -83,7 +83,6 @@ library MerkelizerStorage {
         bytes32 _stackHash,
         bytes32 _memHash,
         bytes32 _dataHash,
-        bytes32 _tStorageHash,
         bytes32 _storageRoot,
         bytes32 _stateRoot,
         bytes32 _accountHash
@@ -96,16 +95,11 @@ library MerkelizerStorage {
             _dataHash = dataHash(self.data);
         }
 
-        if (_tStorageHash == 0) {
-            _tStorageHash = storageHash(self.tStorage);
-        }
-
         return keccak256(
             abi.encodePacked(
                 _stackHash,
                 _memHash,
                 _dataHash,
-                _tStorageHash,
                 _storageRoot,
                 _stateRoot,
                 _accountHash
@@ -147,7 +141,6 @@ library MerkelizerStorage {
 
     function initialStateHash(
         bytes32 dataHash,
-        bytes32 tStorageHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
         bytes32 accountHash
@@ -156,7 +149,7 @@ library MerkelizerStorage {
         ExecutionState memory e;
         e.gasRemaining = DEFAULT_GAS;
         // e.customEnvironmentHash = customEnvironmentHash;
-        bytes32 _intermediateHash = intermediateHash(e, 0, 0, dataHash, tStorageHash, storageRoot, stateRoot, accountHash);
+        bytes32 _intermediateHash = intermediateHash(e, 0, 0, dataHash, storageRoot, stateRoot, accountHash);
         bytes32 _envHash = envHash(e);
 
         return stateHash(e, _intermediateHash, _envHash);

@@ -57,11 +57,6 @@ contract HydratedRuntimeStorage is EVMRuntimeStorage {
         if (mem.length > 0) {
             hydratedState.memHash = keccak256(abi.encodePacked(mem));
         }
-
-        bytes32[] memory tStorage = evm.tStorage.toArrayForHash();
-        if (tStorage.length > 0) {
-            hydratedState.tStorageHash = keccak256(abi.encodePacked(tStorage));
-        }
     }
 
     function handleLOG(EVM memory state) internal {

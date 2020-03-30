@@ -4,7 +4,7 @@
 */
 pragma solidity ^0.5.0;
 
-library RLPReader {
+library RLPDecode {
     uint8 constant STRING_SHORT_START = 0x80;
     uint8 constant STRING_LONG_START  = 0xb8;
     uint8 constant LIST_SHORT_START   = 0xc0;

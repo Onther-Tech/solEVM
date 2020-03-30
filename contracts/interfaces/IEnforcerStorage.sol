@@ -25,7 +25,6 @@ contract IEnforcerStorage {
         // Except that codeHash could also be the contract address (addr + right-padded with zeros to 32 bytes)
         bytes32 codeHash;
         bytes32 dataHash;
-        bytes32 tStorageHash;
         bytes32 storageRoot;
         bytes32 stateRoot;
         bytes32 accountHash;
@@ -83,7 +82,6 @@ contract IEnforcerStorage {
                 // _parameters.customEnvironmentHash,
                 _parameters.codeHash,
                 _parameters.dataHash,
-                _parameters.tStorageHash,
                 _parameters.storageRoot,
                 _parameters.stateRoot,
                 _parameters.accountHash
