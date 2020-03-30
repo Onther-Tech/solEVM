@@ -7,9 +7,11 @@ import "./MerkelizerStorage.slb";
 import "./SMTVerifier.sol";
 import "./Helper.sol";
 import './RLPEncode.sol';
-
+import './SafeMath.sol';
 
 contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifier {
+    using SafeMath for uint;
+
     using MerkelizerStorage for MerkelizerStorage.ExecutionState;
     using MerkelizerStorage for MerkelizerStorage.AccountProof;
     using MerkelizerStorage for MerkelizerStorage.Account;
@@ -292,8 +294,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 proofs.beforeCalleeAccount
             );
 
-            callerAccount.balance -= val;
-            calleeAccount.balance += val;
+            callerAccount.balance = callerAccount.balance.sub(val);
+            calleeAccount.balance = calleeAccount.balance.add(val);
 
             callerRlpVal = encodeAccount(callerAccount);
             calleeRlpVal = encodeAccount(calleeAccount);
@@ -429,7 +431,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 merkleProof.afterRoot,
                 merkleProof.callerSiblings
             );
-             if (hashes.isValid) {
+            if (hashes.isValid) {
                 if (msg.sender == address(dispute.challengerAddr)) {
                     dispute.state |= CHALLENGER_VERIFIED;
                 } else if (msg.sender != address(dispute.challengerAddr)) {

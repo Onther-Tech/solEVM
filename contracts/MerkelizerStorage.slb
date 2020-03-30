@@ -68,7 +68,9 @@ library MerkelizerStorage {
         return keccak256(abi.encodePacked(_tStorage));
     }
 
-    function accountHash(ExecutionState memory self, AccountProof memory caller, AccountProof memory callee) internal pure returns (bytes32) {
+    function accountHash(
+        ExecutionState memory self, AccountProof memory caller, AccountProof memory callee
+    ) internal pure returns (bytes32) {
         bytes32 callerHash = keccak256(abi.encodePacked(caller.addr, caller.rlpVal));
         bytes32 calleeHash = keccak256(abi.encodePacked(callee.addr, callee.rlpVal));
         return keccak256(abi.encodePacked(
