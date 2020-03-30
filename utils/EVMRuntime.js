@@ -218,8 +218,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         let addr = Buffer.isBuffer(obj.address)
           ? obj.address : Buffer.from((obj.address || '').replace('0x', ''), 'hex');
         let account = new VM.deps.Account();
+        account.nonce = obj.nonce | 0;
         account.balance = obj.balance | 0;
-       
+        // console.log(account.balance);
         // resolves immediately
         self.stateManager.putAccount(addr, account, () => {});
 

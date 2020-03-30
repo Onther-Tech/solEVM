@@ -24,6 +24,7 @@ module.exports = class ProofHelper {
 
     // console.log('proofHelper prevOutput', prevOutput);
     // console.log('proofHelper execState', execState);
+    // console.log('proofHelper computationPath', isFirstStep);
     let merkleProof = {
         callerKey: Buffer.alloc(32),
         calleeKey: Buffer.alloc(32),
@@ -51,6 +52,7 @@ module.exports = class ProofHelper {
         callerSiblings: beforeStateProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
+      // console.log('beforeStateProof', beforeStateProof)
     } else if (isStorageDataChanged) {
       merkleProof = {
         callerKey: storageProof.hashedKey,
@@ -127,7 +129,6 @@ module.exports = class ProofHelper {
         : execState.compactStackHash || Merkelizer.stackHash([]),
       memHash: isMemoryRequired ? ZERO_HASH : Merkelizer.memHash(prevOutput.mem),
       dataHash: isCallDataRequired ? ZERO_HASH : Merkelizer.dataHash(prevOutput.data),
-      tStorageHash: isStorageDataRequired ? ZERO_HASH : Merkelizer.storageHash(prevOutput.tStorage),
       codeByteLength: 0,
       codeFragments: [],
       codeProof: [],
@@ -142,6 +143,7 @@ module.exports = class ProofHelper {
       calleeCodeHash: ZERO_HASH,
     };
     
+    // console.log(proofs)
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
       // console.log('ProofHelper', 'test1')
       const code = computationPath.code;
@@ -231,7 +233,7 @@ module.exports = class ProofHelper {
       proofs,
       executionInput: {
         data: isCallDataRequired ? prevOutput.data : '0x',
-        stack: execState.compactStack,
+        stack: (isCALLValue) ? prevOutput.stack.reverse().slice(0,7).reverse() : execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
         tStorage: isStorageDataRequired ? prevOutput.tStorage : [],
         logHash: prevOutput.logHash,
