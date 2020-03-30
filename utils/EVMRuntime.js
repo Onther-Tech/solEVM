@@ -220,7 +220,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         let account = new VM.deps.Account();
         account.nonce = obj.nonce | 0;
         account.balance = obj.balance | 0;
-        // console.log(account.balance);
+       
         // resolves immediately
         self.stateManager.putAccount(addr, account, () => {});
 
