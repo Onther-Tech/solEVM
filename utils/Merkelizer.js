@@ -19,20 +19,17 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         compactStack: [],
         stack: [],
         mem: [],
-        tStorage: tStorage || [],
         returnData: '0x',
         pc: 0,
         errno: 0,
         gasRemaining: DEFAULT_GAS,
         stackSize: 0,
         memSize: 0,
-        tStorageSize: 0,
         isStorageReset: false,
         // customEnvironmentHash: customEnvironmentHash,
         stackHash: this.stackHash([]),
         memHash: this.memHash([]),
         dataHash: this.dataHash(callData),
-        tStorageHash: this.storageHash(tStorage) || this.storageHash([]),
         logHash: ZERO_HASH,
         accountHash: this.accountHash(callerAccount, calleeAccount),
         stateRoot: stateRoot,
@@ -136,13 +133,11 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
-        'bytes32',
       ],
       [
         execution.stackHash,
         execution.memHash,
         execution.dataHash,
-        execution.tStorageHash,
         execution.storageRoot,
         execution.stateRoot,
         execution.accountHash
@@ -244,16 +239,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem);
       }
 
-      // convenience
-      let tStorageChanged = false;
-      if (!tStorageChanged) {
-        tStorageChanged = prevLeaf.right.executionState.tStorage !== exec.tStorage;
-      }
-
-      if (!tStorageHash || tStorageChanged) {
-        tStorageHash = this.constructor.storageHash(exec.tStorage) || ZERO_HASH;
-      }
-      
       accountHash = this.constructor.accountHash(exec.callerAccount, exec.calleeAccount);
       
        // convenience
@@ -261,7 +246,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
        exec.data = callData;
        exec.dataHash = callDataHash;
        exec.memHash = memHash;
-       exec.tStorageHash = tStorageHash;
        exec.accountHash = accountHash;
       //  console.log('merkle', exec.intermediateStorageRoot)
        
@@ -282,7 +266,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
               hash: hash,
               stackHash,
               memHash,
-              tStorageHash,
               logHash,
               executionState: executions[i],
             },
