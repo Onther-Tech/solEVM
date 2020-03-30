@@ -150,8 +150,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       // get call value from the stack
       const prevStack = runState.prevStack;
       const callValueStack = prevStack[prevStack.length-3];
-      const callValue = parseInt(callValueStack);
-      
+      const callValue = new BN(callValueStack.replace('0x', ''), 16);
+     
       const stateTrie = this.stateTrie;
       
       // get caller account at CALLEnd
@@ -177,11 +177,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       obj.siblings = callerSiblings;
       runState.stateProof = obj;
 
-      if (callValue !== 0 ) {
+      if (!callValue.isZero()) {
         isCALLValue = true;
-               
-        caller.balance -= callValue;
-        callee.balance += callValue;
+        
+        caller.balance.isub(callValue);
+        callee.balance.iadd(callValue);
         
         // caller put data
         let rawVal = [];
@@ -331,12 +331,15 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         const hashedKey = storageTrie.hash(key);
                 
         let copyArr = _.cloneDeep(runState.tStorage);
+        // console.log('arr', copyArr)
         let beforeVal;
         for (let i = 0; i < runState.tStorage.length; i++){
           if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
-            isStorageReset = true;
-            beforeVal = copyArr[i+1];
-            copyArr[i+1] = newStorageData[1];
+            if ( parseInt(copyArr[i+1]) !== 0){
+              isStorageReset = true;
+              beforeVal = _.cloneDeep(copyArr[i+1]);
+              copyArr[i+1] = _.cloneDeep(newStorageData[1]);
+            }
           }
         }
         let obj = {};
@@ -352,6 +355,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           obj.beforeLeaf = EMPTY_VALUE;
           obj.afterLeaf = storageTrie.hash(val);
           obj.siblings = Buffer.concat(siblings);
+          // console.log('new!');
         } else {
           storageTrie.putData(hashedKey, val);
           const siblings = storageTrie.getProof(hashedKey);
@@ -360,17 +364,13 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           obj.storageRoot = _.cloneDeep(storageTrie.root);
           obj.hashedKey = hashedKey;
           
-          if (parseInt('0x' + beforeVal.toString('hex')) === 0) {
-              obj.beforeLeaf = EMPTY_VALUE;
-          } else {
-            obj.beforeLeaf = storageTrie.hash(beforeVal);
-          }
-          
+          obj.beforeLeaf = storageTrie.hash(beforeVal);
+                    
           obj.afterLeaf = storageTrie.hash(val);
           obj.siblings = Buffer.concat(siblings);
         }
 
-        runState.tStorage = copyArr;
+        runState.tStorage = _.cloneDeep(copyArr);
         isStorageDataRequired = true;
         isStorageDataChanged = true;
         runState.storageRoot = _.cloneDeep(storageTrie.root);
@@ -431,7 +431,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       
       isStorageDataRequired = true;
       let newStorageData = await this.getStorageValue(runState, step.compactStack);
-      
+      // console.log(newStorageData)
       for (let i = 0; i < runState.tStorage.length - 1; i++){
         if ( i % 2 == 0 && runState.tStorage[i] === newStorageData[0] ){
           isStorageLoaded = true;
@@ -440,6 +440,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
       if (!isStorageLoaded) {
         runState.tStorage = runState.tStorage.concat(newStorageData);
+        // console.log(runState.tStorage)
       } 
     } 
     
