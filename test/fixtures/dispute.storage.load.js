@@ -3,6 +3,8 @@
 const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
+const utils = require('ethereumjs-util');
+const BN = utils.BN;
 const debug = require('debug')('dispute-test');
 const _ = require('lodash');
 const SMT = require('../../utils/smt/SparseMerkleTrie').SMT;
@@ -70,8 +72,8 @@ module.exports = (callback) => {
         address: OP.DEFAULT_CONTRACT_ADDRESS,
         code: code,
         tStorage: tStorage,
-        nonce: 1,
-        balance: 10,
+        nonce: new BN(0x1, 16),
+        balance: new BN(0xa, 16),
         storageRoot: OP.ZERO_HASH,
         codeHash: OP.ZERO_HASH
       }
@@ -101,284 +103,284 @@ module.exports = (callback) => {
       smt.putData(hashedK2,v2);
     });
 
-    // it('solver manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
+    it('solver manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
+      const wrongExecution = copy;
       
-    //   // set wrong val
-    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      // set wrong val
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
       
-    //   // get hashedKey
-    //   let key = wrongExecution[5].compactStack[1];
-    //   key = HexToBuf(key);
-    //   const hashedKey = smt.hash(key);
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
 
-    //   // get wrong val
-    //   let val = wrongExecution[5].compactStack[0];
-    //   val = HexToBuf(val);
+      // get wrong val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put wrong val
-    //   smt.putData(hashedKey, val);
+      // put wrong val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
 
-    //   wrongExecution[5].storageRoot = rootHash;
-    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
+    it('challenger manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
+      const wrongExecution = copy;
      
-    //  // set wrong val
-    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+     // set wrong val
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
       
-    //   // get hashedKey
-    //   let key = wrongExecution[5].compactStack[1];
-    //   key = HexToBuf(key);
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
 
-    //   const hashedKey = smt.hash(key);
+      const hashedKey = smt.hash(key);
       
-    //   // get wrong val
-    //   let val = wrongExecution[5].compactStack[0];
-    //   val = HexToBuf(val);
+      // get wrong val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put wrong val
-    //   smt.putData(hashedKey, val);
+      // put wrong val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
       
-    //   wrongExecution[5].storageRoot = rootHash;
-    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);   
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);   
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver manipulate stateRoot #2 - add wrong value at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
+    it('solver manipulate stateRoot #2 - add wrong value at SSTORE 5', async () => {
+      const wrongExecution = copy;
       
-    //   // get hashedKey
-    //   let key = wrongExecution[5].compactStack[1];
-    //   key = HexToBuf(key);
-    //   const hashedKey = smt.hash(key);
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
 
-    //   // get correct val
-    //   let val = wrongExecution[5].compactStack[0];
-    //   val = HexToBuf(val);
+      // get correct val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put correct val
-    //   smt.putData(hashedKey, val);
+      // put correct val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong hashedKey
-    //   const wrongKey = Buffer.from('564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737', 'hex');
-    //   const wrongHashedKey = smt.hash(wrongKey);
+      // get wrong hashedKey
+      const wrongKey = Buffer.from('564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737', 'hex');
+      const wrongHashedKey = smt.hash(wrongKey);
 
-    //   // put val with wrong key
-    //   smt.putData(wrongHashedKey, val);
+      // put val with wrong key
+      smt.putData(wrongHashedKey, val);
       
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
 
-    //   wrongExecution[5].storageRoot = rootHash;
-    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger manipulate stateRoot #2 - add wrong value at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
+    it('challenger manipulate stateRoot #2 - add wrong value at SSTORE 5', async () => {
+      const wrongExecution = copy;
      
-    //   // get hashedKey
-    //   let key = wrongExecution[5].compactStack[1];
-    //   key = HexToBuf(key);
-    //   const hashedKey = smt.hash(key);
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
 
-    //   // get correct val
-    //   let val = wrongExecution[5].compactStack[0];
-    //   val = HexToBuf(val);
+      // get correct val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put correct val
-    //   smt.putData(hashedKey, val);
+      // put correct val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong hashedKey
-    //   const wrongKey = Buffer.from('564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737', 'hex');
-    //   const wrongHashedKey = smt.hash(wrongKey);
+      // get wrong hashedKey
+      const wrongKey = Buffer.from('564c0cfef95996d0bf09a9de28de1e31994eb090e8e7737', 'hex');
+      const wrongHashedKey = smt.hash(wrongKey);
 
-    //   // put val with wrong key
-    //   smt.putData(wrongHashedKey, val);
+      // put val with wrong key
+      smt.putData(wrongHashedKey, val);
       
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
       
-    //   wrongExecution[5].storageRoot = rootHash;
-    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);   
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);   
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
-    //   const wrongExecution = copy;
+    it('solver manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
+      const wrongExecution = copy;
       
-    //   // smt simulation
-    //   wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      // smt simulation
+      wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
       
-    //   // get hashedKey
-    //   let key = wrongExecution[21].compactStack[1];
-    //   key = HexToBuf(key);
-    //   const hashedKey = smt.hash(key);
+      // get hashedKey
+      let key = wrongExecution[21].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
 
-    //   // get wrong val
-    //   let val = wrongExecution[21].compactStack[0];
-    //   val = HexToBuf(val);
+      // get wrong val
+      let val = wrongExecution[21].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put wrong val
-    //   smt.putData(hashedKey, val);
+      // put wrong val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
 
-    //   wrongExecution[21].storageRoot = rootHash;
-    //   wrongExecution[21].storageProof.afterLeaf = smt.hash(val);
+      wrongExecution[21].storageRoot = rootHash;
+      wrongExecution[21].storageProof.afterLeaf = smt.hash(val);
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
-    //   const wrongExecution = copy;
+    it('challenger manipulate stateRoot at SSTORE 21 in case of reset storage', async () => {
+      const wrongExecution = copy;
      
-    //   // set wrong val
-    //    wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      // set wrong val
+       wrongExecution[21].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
        
-    //    // get hashedKey
-    //    let key = wrongExecution[21].compactStack[1];
-    //    key = HexToBuf(key);
+       // get hashedKey
+       let key = wrongExecution[21].compactStack[1];
+       key = HexToBuf(key);
  
-    //    const hashedKey = smt.hash(key);
+       const hashedKey = smt.hash(key);
        
-    //    // get wrong val
-    //    let val = wrongExecution[21].compactStack[0];
-    //    val = HexToBuf(val);
+       // get wrong val
+       let val = wrongExecution[21].compactStack[0];
+       val = HexToBuf(val);
       
-    //    // put wrong val
-    //    smt.putData(hashedKey, val);
+       // put wrong val
+       smt.putData(hashedKey, val);
  
-    //    // get wrong rootHash
-    //    const rootHash = smt.root;
+       // get wrong rootHash
+       const rootHash = smt.root;
        
-    //    wrongExecution[21].storageRoot = rootHash;
-    //    wrongExecution[21].storageProof.afterLeaf = smt.hash(val);   
-    //    const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //    await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+       wrongExecution[21].storageRoot = rootHash;
+       wrongExecution[21].storageProof.afterLeaf = smt.hash(val);   
+       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong stateProof at first step', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[0].stateRoot = OP.ZERO_HASH;
-    //   wrongExecution[0].stateProof.stateRoot = OP.ZERO_HASH;
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an wrong stateProof at first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].stateRoot = OP.ZERO_HASH;
+      wrongExecution[0].stateProof.stateRoot = OP.ZERO_HASH;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong stateProof at first step', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[0].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[0].stateProof.stateRoot = Buffer.alloc(32);
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an wrong stateProof at first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[0].stateProof.stateRoot = Buffer.alloc(32);
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an output error at the first step', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an output error at the first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an output error at the first step', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an output error at the first step', async () => {
+      const wrongExecution = copy;
+      wrongExecution[0].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong callerKey at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.hashedKey = Buffer.alloc(32);
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an wrong callerKey at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.hashedKey = Buffer.alloc(32);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong callerKey at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.hashedKey = Buffer.alloc(32);
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an wrong callerKey at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.hashedKey = Buffer.alloc(32);
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong callerAfterLeaf at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.afterLeaf = Buffer.alloc(32);
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an wrong callerAfterLeaf at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.afterLeaf = Buffer.alloc(32);
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong callerAfterLeaf at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.afterLeaf = Buffer.alloc(32);
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an wrong callerAfterLeaf at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.afterLeaf = Buffer.alloc(32);
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong compactStack (storage key) at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].storageRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.hashedKey = Buffer.from('0000000000000000000000000000000000000000000000000000000000000001', 'hex');
-    //   wrongExecution[5].compactStack[1] = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an wrong compactStack (storage key) at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].storageRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.hashedKey = Buffer.from('0000000000000000000000000000000000000000000000000000000000000001', 'hex');
+      wrongExecution[5].compactStack[1] = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong compactStack (storage key) at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].storageRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.hashedKey = Buffer.from('0000000000000000000000000000000000000000000000000000000000000001', 'hex');
-    //   wrongExecution[5].compactStack[1] = '0x0000000000000000000000000000000000000000000000000000000000000001';     
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an wrong compactStack (storage key) at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].storageRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.hashedKey = Buffer.from('0000000000000000000000000000000000000000000000000000000000000001', 'hex');
+      wrongExecution[5].compactStack[1] = '0x0000000000000000000000000000000000000000000000000000000000000001';     
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
-    // it('solver has an wrong compactStack (storage val) at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
-    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an wrong compactStack (storage val) at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an wrong compactStack (storage val) at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].stateRoot = Buffer.alloc(32);
-    //   wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
-    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';      
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an wrong compactStack (storage val) at SSTORE 5', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].stateRoot = Buffer.alloc(32);
+      wrongExecution[5].storageProof.afterLeaf = Buffer.from('0000000000000000000000000000000000000000000000000000000000000fff', 'hex');
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';      
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
     it('solver has an wrong intermediateStateRoot at SSTORE 8', async () => {
       const wrongExecution = copy;
-      wrongExecution[8].stateRoot = Buffer.alloc(32);
+      wrongExecution[8].storageRoot = Buffer.alloc(32);
       wrongExecution[8].storageProof.storageRoot = Buffer.alloc(32);
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
@@ -386,27 +388,27 @@ module.exports = (callback) => {
 
     it('challenger has an wrong intermediateStateRoot at SSTORE 8', async () => {
       const wrongExecution = copy;
-      wrongExecution[8].stateRoot = Buffer.alloc(32);
+      wrongExecution[8].storageRoot = Buffer.alloc(32);
       wrongExecution[8].storageProof.storageRoot = Buffer.alloc(32);
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    // it('solver has an output error at SSTORE', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+    it('solver has an output error at SSTORE', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger has an output error at SSTORE', async () => {
-    //   const wrongExecution = copy;
-    //   wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
-    //   wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
+    it('challenger has an output error at SSTORE', async () => {
+      const wrongExecution = copy;
+      wrongExecution[5].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongExecution[5].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
 
   });
 };

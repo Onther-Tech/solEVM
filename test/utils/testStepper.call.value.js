@@ -48,22 +48,20 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].stateRoot.toString('hex'));
     // console.log(steps[0].callerAccount.rlpVal.toString('hex'));
     // console.log(steps[0].calleeAccount.rlpVal.toString('hex'));
     for (let i = 0; i < steps.length; i++){
-      // console.log(web3.utils.soliditySha3(steps[i].callerAccount.addr.toString('hex')));
-      // console.log(web3.utils.soliditySha3(steps[i].calleeAccount.addr.toString('hex')));
+      // console.log(steps[i].stateRoot.toString('hex'));
+      
       if (steps[i].opCodeName === 'CALL') {
         // console.log('CALL')
-        // console.log(steps[i].callerAccount.rlpVal.toString('hex'));
-        // console.log(steps[i].calleeAccount.rlpVal.toString('hex'));
-        
+        console.log(steps[i-1].pc);
         const calleeSteps = steps[i].calleeSteps;
         const len = calleeSteps.length;
               
       for (let i = 0; i < len; i++){
-         
+        // console.log('callDepth 1', calleeSteps[i].stateRoot.toString('hex'));
       }
    } 
   }

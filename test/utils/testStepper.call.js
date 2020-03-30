@@ -55,18 +55,13 @@ const runtime = new HydratedRuntime();
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     console.log(steps[0].stateRoot.toString('hex'))
     for (let i = 0; i < steps.length; i++){
-     
+      // console.log(steps[i].stateRoot.toString('hex'))
         if (steps[i].opCodeName === 'CALL') {
-          console.log('calldepth 0', steps[i].compactStack)
+          // console.log('CALL!')
           const calleeSteps = steps[i].calleeSteps;
           const len = calleeSteps.length;
           for (let i = 0; i < len; i++){
-            if (calleeSteps[i].opCodeName === 'SSTORE') {
-              //  console.log('calldepth SSTORE', i)
-            }
-            if (calleeSteps[i].opCodeName === 'SLOAD') {
-              //  console.log('calldepth SLOAD', calleeSteps[i].tStorage)
-            }
+              //  console.log('calldepth 1', calleeSteps[i].stateRoot.toString('hex'))
            
            
           }
