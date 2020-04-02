@@ -30,7 +30,7 @@ module.exports = (callback) => {
     
     const accounts = [
         {
-          address: OP.DEFAULT_CONTRACT_ADDRESS,
+          address: web3.utils.toChecksumAddress(OP.DEFAULT_CONTRACT_ADDRESS),
           code: code,
           tStorage: tStorage,
           nonce: new BN(0x1, 16),
@@ -40,7 +40,7 @@ module.exports = (callback) => {
         },
         // callee
         {
-          address: '9876e235a87f520c827317a8987c9e1fde804485',
+          address: web3.utils.toChecksumAddress('9876e235a87f520c827317a8987c9e1fde804485'),
           code: calleeCode,
           tStorage: calleeTstorage,
           nonce: new BN(0x1, 16),

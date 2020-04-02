@@ -60,11 +60,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       // get caller account but if there is callee account, get callee account too. 
       // if there isn't callee account, initialize with zero. 
       runState.callerAccount = {};
-      runState.callerAccount.addr = '0x' + this.accounts[runState.depth].address;
+      runState.callerAccount.addr = this.accounts[runState.depth].address;
       runState.callerAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth].rlpVal);
       runState.calleeAccount = {};
       if (this.accounts[runState.depth + 1]) {
-        runState.calleeAccount.addr = '0x' + this.accounts[runState.depth + 1].address;
+        runState.calleeAccount.addr = this.accounts[runState.depth + 1].address;
         runState.calleeAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth + 1].rlpVal);
       } else {
         runState.calleeAccount.addr = '0x' + '0'.padStart(40,0);
@@ -85,10 +85,10 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       // get caller account and callee account.
       runState.callerAccount = {};
-      runState.callerAccount.addr = '0x' + this.accounts[runState.depth-1].address;
+      runState.callerAccount.addr = this.accounts[runState.depth-1].address;
       runState.callerAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth-1].rlpVal);
       runState.calleeAccount = {};
-      runState.calleeAccount.addr = '0x' + this.accounts[runState.depth].address;
+      runState.calleeAccount.addr = this.accounts[runState.depth].address;
       runState.calleeAccount.rlpVal = _.cloneDeep(this.accounts[runState.depth].rlpVal);
           
       const callValue = new BN(runState.callValue, 16);
@@ -135,7 +135,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
         // update caller account
         let obj = {};
-        obj.addr = '0x' + caller.address;
+        obj.addr = caller.address;
         obj.rlpVal = rlpVal;
         runState.callerAccount = obj;
         
@@ -153,7 +153,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
        
         // update callee account
         obj = {};
-        obj.addr = '0x' + callee.address;
+        obj.addr = callee.address;
         obj.rlpVal = rlpVal;
         runState.calleeAccount = obj;
                  
@@ -330,13 +330,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     // get storage trie for an account
     let storageTrie;
     for (let i = 0; i < this.accounts.length; i++){
-      let checksumAddress;
-      if (utils.isValidChecksumAddress(this.accounts[i].address)) {
-        checksumAddress = this.accounts[i].address;
-      } else {
-        checksumAddress = utils.toChecksumAddress(this.accounts[i].address);
-      }
-      if (address === checksumAddress) {
+      if (address === this.accounts[i].address) {
         storageTrie = this.accounts[i].storageTrie;
       }
     }
@@ -393,7 +387,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     
       // calaulate stateRoot and proof 
       const account = this.accounts[runState.depth];
-      const addr = '0x' + this.accounts[runState.depth].address;
+      const addr = this.accounts[runState.depth].address;
       account.storageRoot = _.cloneDeep(storageTrie.root);
       const bufAddress = HexToBuf(account.address);
       const accHashedKey = stateTrie.hash(bufAddress);

@@ -21,7 +21,7 @@ const calleeTstorage = [];
  
 const accounts = [
     {
-      address: OP.DEFAULT_CONTRACT_ADDRESS,
+      address: web3.utils.toChecksumAddress(OP.DEFAULT_CONTRACT_ADDRESS),
       code: code,
       tStorage: tStorage,
       nonce: new BN(0x1, 16),
@@ -31,7 +31,7 @@ const accounts = [
     },
     // callee
     {
-      address: '9876e235a87F520c827317a8987C9E1FDe804485',
+      address: web3.utils.toChecksumAddress('9876e235a87F520c827317a8987C9E1FDe804485'),
       code: calleeCode,
       tStorage: calleeTstorage,
       nonce: new BN(0x1, 16),

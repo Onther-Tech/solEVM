@@ -26,7 +26,7 @@ const calleeTstorage = ['0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994e
 
 const accounts = [
     {
-      address: 'bBF289D846208c16EDc8474705C748aff07732dB',
+      address: web3.utils.toChecksumAddress('bBF289D846208c16EDc8474705C748aff07732dB'),
       code: code,
       tStorage: tStorage,
       nonce: new BN(0x1, 16),
@@ -36,7 +36,7 @@ const accounts = [
     },
     // callee
     {
-        address: '0dcd2f752394c41875e259e00bb44fd505297caf',
+        address: web3.utils.toChecksumAddress('0dcd2f752394c41875e259e00bb44fd505297caf'),
         code: calleeCode,
         tStorage: calleeTstorage,
         nonce: new BN(0x1, 16),
