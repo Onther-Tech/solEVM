@@ -3,8 +3,6 @@
 const Merkelizer = require('./Merkelizer');
 const { ZERO_HASH } = require('./constants');
 const FragmentTree = require('./FragmentTree');
-const utils = require('ethereumjs-util');
-const web3 = require('web3');
 const SMT = require('./smt/SparseMerkleTrie').SMT;
 const smt = new SMT();
 module.exports = class ProofHelper {
@@ -16,15 +14,16 @@ module.exports = class ProofHelper {
     const callEnd = computationPath.callEnd;
     const isStorageDataRequired = execState.isStorageDataRequired;
     const isStorageDataChanged = execState.isStorageDataChanged;
-    const beforeStateProof = prevOutput.stateProof;
-    const afterStateProof = execState.stateProof;
     const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
-
-    // console.log('proofHelper prevOutput', prevOutput);
-    // console.log('proofHelper execState', execState);
-    // console.log('proofHelper computationPath', isFirstStep);
+    const callerProof = execState.callerAccount;
+    const callerKey = smt.hash(callerProof.addr);
+    const callerLeaf = smt.hash(callerProof.rlpVal);
+    const calleeProof = execState.calleeAccount;
+    const calleeKey = smt.hash(calleeProof.addr);
+    const calleeLeaf = smt.hash(calleeProof.rlpVal);
+       
     let merkleProof = {
         callerKey: Buffer.alloc(32),
         calleeKey: Buffer.alloc(32),
@@ -40,16 +39,16 @@ module.exports = class ProofHelper {
     };
     if (isFirstStep) {
       merkleProof = {
-        callerKey: beforeStateProof.hashedKey,
+        callerKey: (computationPath.callDepth === 0) ? callerKey : calleeKey,
         calleeKey: Buffer.alloc(32),
-        callerBeforeLeaf: beforeStateProof.leaf,
+        callerBeforeLeaf: (computationPath.callDepth === 0) ? callerLeaf : calleeLeaf,
         callerAfterLeaf: Buffer.alloc(32),
         calleeBeforeLeaf: Buffer.alloc(32),
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: beforeStateProof.stateRoot,
+        beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
         afterRoot: Buffer.alloc(32),
-        callerSiblings: beforeStateProof.siblings,
+        callerSiblings: (computationPath.callDepth === 0) ? callerProof.siblings : calleeProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
       // console.log('beforeStateProof', beforeStateProof)
@@ -83,31 +82,31 @@ module.exports = class ProofHelper {
       }
     } else if (callStart) {
       merkleProof = {
-        callerKey: beforeStateProof.hashedKey,
-        calleeKey: afterStateProof.hashedKey,
-        callerBeforeLeaf: beforeStateProof.leaf,
+        callerKey: callerKey,
+        calleeKey: calleeKey,
+        callerBeforeLeaf: callerLeaf,
         callerAfterLeaf: Buffer.alloc(32),
-        calleeBeforeLeaf: afterStateProof.leaf,
+        calleeBeforeLeaf: calleeLeaf,
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: beforeStateProof.stateRoot,
+        beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
-        afterRoot: afterStateProof.stateRoot,
-        callerSiblings: beforeStateProof.siblings,
-        calleeSiblings: afterStateProof.siblings,
+        afterRoot: execState.stateRoot,
+        callerSiblings: callerProof.siblings,
+        calleeSiblings: calleeProof.siblings,
       }
     } else if (callEnd) {
       merkleProof = {
-        callerKey: afterStateProof.hashedKey,
-        calleeKey: beforeStateProof.hashedKey,
-        callerBeforeLeaf: afterStateProof.leaf,
+        callerKey: callerKey,
+        calleeKey: calleeKey,
+        callerBeforeLeaf: callerLeaf,
         callerAfterLeaf: Buffer.alloc(32),
-        calleeBeforeLeaf: beforeStateProof.leaf,
+        calleeBeforeLeaf: calleeLeaf,
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: beforeStateProof.stateRoot,
+        beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
-        afterRoot: afterStateProof.stateRoot,
-        callerSiblings: afterStateProof.siblings,
-        calleeSiblings: beforeStateProof.siblings,
+        afterRoot: execState.stateRoot,
+        callerSiblings: callerProof.siblings,
+        calleeSiblings: calleeProof.siblings,
       }
     }
     // console.log('Proof Helper', merkleProof);
@@ -142,6 +141,8 @@ module.exports = class ProofHelper {
       beforeCalleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
+
+    
     
     // console.log(proofs)
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
@@ -228,7 +229,7 @@ module.exports = class ProofHelper {
         proofs.codeByteLength = leaf.byteLength;
       }
     }
-    // console.log('ProofHelper', prevOutput)
+      
     return {
       proofs,
       executionInput: {

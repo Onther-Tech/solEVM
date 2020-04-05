@@ -164,13 +164,11 @@ module.exports = class EVMRuntime extends VM.MetaVM {
        
         let elem = {};
         const siblings = stateTrie.getProof(hashedKey);
-        elem.hashedKey = hashedKey;
-        elem.leaf = stateTrie.hash(rlpVal);
+        elem.addr = account.address;
+        elem.rlpVal = rlpVal;
         elem.stateRoot = _.cloneDeep(stateTrie.root);
         elem.siblings = Buffer.concat(siblings);
         account.stateProof = elem;
-        account.stateRoot = _.cloneDeep(stateTrie.root);
-        account.rlpVal = rlpVal;
       }
       self.stateRoot = _.cloneDeep(stateTrie.root);
       // console.log('initHexaryTrie', stateTrie.root);

@@ -54,7 +54,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     };
     
     res.hash = this.stateHash(res.executionState);
-    // console.log('initialStateHash', res.executionState.accountHash.toString('hex'))
+    console.log('initialStateHash', res.executionState.accountHash.toString('hex'))
     return res;
   }
 
@@ -212,7 +212,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const calleeAccount = executions[0].calleeAccount;
     const callValueProof = executions[0].callValueProof;
     const isCALLValue = executions[0].isCALLValue;
-   
+ 
     if (!this.tree) {
       this.tree = [[]];
     }
@@ -246,7 +246,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       if (!memHash || memoryChanged) {
         memHash = this.constructor.memHash(exec.mem);
       }
-
+     
       accountHash = this.constructor.accountHash(exec.callerAccount, exec.calleeAccount);
       
        // convenience
