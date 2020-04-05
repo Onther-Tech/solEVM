@@ -5,6 +5,7 @@ const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
 const _ = require('lodash');
+const web3 = require('web3');
 
 let code = [
   OP.PUSH1, '03',
@@ -59,7 +60,7 @@ const tStorage = ['0xaf63dba574b8df870564c0cfef95996d0bf09a9de28de1e31994eb090e8
 
 const accounts = [
   {
-    address: OP.DEFAULT_CONTRACT_ADDRESS,
+    address: web3.utils.toChecksumAddress(OP.DEFAULT_CONTRACT_ADDRESS),
     code: code,
     tStorage: tStorage,
     nonce: 1,
@@ -81,8 +82,9 @@ const runtime = new HydratedRuntime();
     copy = _.cloneDeep(steps);
     console.log(steps[0].stateRoot.toString('hex'));
     for (let i = 0; i < steps.length; i++) {
-             
-     
+      if (steps[i].opCodeName === 'SSTORE') {
+        console.log(i)
+      }
     }
     
     merkle = await new Merkelizer().run(steps, code, data, tStorage);
