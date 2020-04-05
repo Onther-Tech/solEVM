@@ -362,7 +362,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
       gasLimit: Buffer.from(NumToHex(gasLimit || OP.BLOCK_GAS_LIMIT), 'hex'),
       caller: DEFAULT_CALLER,
       origin: DEFAULT_CALLER,
-      address: DEFAULT_CONTRACT_ADDRESS,
+      address: Buffer.from(HexToBuf(accounts[0].address)),
       pc: pc | 0,
       mem,
       stack,

@@ -247,7 +247,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeCode;
     let calleeCallData;
     
-    if (runState.opName === 'CALL') {
+    if (runState.opName === 'CALL' || runState.opName === 'DELEGATECALL') {
       isCALLExecuted = true;
       calleeSteps = runState.calleeSteps;
       calleeCode = runState.calleeCode.toString('hex');
@@ -334,7 +334,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         storageTrie = this.accounts[i].storageTrie;
       }
     }
-     
+    //  console.log(address)
+    //  console.log(this.accounts[0].address)
     if( opcodeName === 'SSTORE' ){
       let newStorageData = await this.getStorageValue(runState, step.compactStack);
       
