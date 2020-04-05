@@ -449,17 +449,15 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
                 require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
                 callerKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
-
-                if (executionState.callDepth != 0) {
-                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
-                        return;
-                    }
-                } else {
+                if (executionState.callDepth == 0) {
                     if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
                         return;
                     }
+                } else {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                        return;
+                    }
                 }
-                
                 hashes.isValid = checkMembership(
                     merkleProof.callerKey,
                     merkleProof.callerBeforeLeaf,
