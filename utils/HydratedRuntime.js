@@ -65,6 +65,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       } else {
         runState.calleeAccount.addr = '0x' + '0'.padStart(40,0);
         runState.calleeAccount.rlpVal = OP.ZERO_HASH;
+        runState.calleeAccount.stateRoot = '0x' + '0'.padStart(64,0);
+        runState.calleeAccount.siblings = '0x';
       }
       
     } else {
@@ -466,9 +468,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
     
       if (address === caller.address) {
+        // delegatecall
         one = caller;
         theOther = callee;
       } else {
+        // call
         one = callee;
         theOther = caller;
       }
@@ -518,6 +522,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       } else {
         obj2.addr = '0x' + '0'.padStart(40,0);
         obj2.rlpVal = OP.ZERO_HASH;
+        obj2.stateRoot = '0x' + '0'.padStart(64,0);
+        obj2.siblings = '0x';
       }
                        
       runState.stateRoot = _.cloneDeep(stateTrie.root);

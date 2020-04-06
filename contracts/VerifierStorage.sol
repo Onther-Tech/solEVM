@@ -79,9 +79,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 callerAfterLeaf;
         bytes32 calleeAfterLeaf;
         bool isValid;
-        bool isVerifyNeeded;
+        bool isStorageValid;
         uint8 opcode;
         uint stackSize;
+        bytes32 beforeLeaf;
+        bytes32 afterLeaf;
     }
 
     /**
@@ -420,7 +422,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
                 return;
             }
-            hashes.isValid = verifySSTORE (
+            hashes.isStorageValid = verifySSTORE (
                 merkleProof.callerKey,
                 merkleProof.callerBeforeLeaf,
                 merkleProof.callerAfterLeaf,
@@ -428,6 +430,43 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 merkleProof.afterRoot,
                 merkleProof.callerSiblings
             );
+            if (hashes.isStorageValid) {
+                hashes.callerHash = keccak256(abi.encodePacked(
+                    proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
+                ));
+
+                hashes.calleeHash = keccak256(abi.encodePacked(
+                    proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
+                ));
+
+                hashes.accountHash = keccak256(abi.encodePacked(
+                    hashes.callerHash, hashes.calleeHash
+                ));
+
+                if (proofs.beforeAccountHash != hashes.accountHash) {
+                    return;
+                }
+                callerKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
+                hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCallerAccount.rlpVal));
+
+                MerkelizerStorage.Account memory callerAccount = decodeAccount(
+                    proofs.beforeCallerAccount
+                );
+                callerAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
+                callerRlpVal = encodeAccount(callerAccount);
+                hashes.afterLeaf = keccak256(abi.encodePacked(callerRlpVal));
+               
+                hashes.isValid = verifySSTORE (
+                    callerKey,
+                    hashes.beforeLeaf,
+                    hashes.afterLeaf,
+                    proofs.beforeStateRoot,
+                    proofs.afterStateRoot,
+                    proofs.beforeCallerAccount.siblings
+                );
+            } else {
+                hashes.isValid = false;
+            }
             if (hashes.isValid) {
                 if (msg.sender == address(dispute.challengerAddr)) {
                     dispute.state |= CHALLENGER_VERIFIED;

@@ -16,6 +16,8 @@ library MerkelizerStorage {
     struct AccountProof {
         address addr;
         bytes rlpVal;
+        bytes32 stateRoot;
+        bytes siblings;
     }
 
     struct ExecutionState {

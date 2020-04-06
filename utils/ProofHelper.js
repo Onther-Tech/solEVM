@@ -16,7 +16,7 @@ module.exports = class ProofHelper {
     const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
-    
+
     const callerProof = execState.callerAccount;
     const callerKey = web3.utils.soliditySha3(callerProof.addr);
     const callerLeaf = web3.utils.soliditySha3(callerProof.rlpVal);
@@ -45,7 +45,7 @@ module.exports = class ProofHelper {
         callerAfterLeaf: Buffer.alloc(32),
         calleeBeforeLeaf: Buffer.alloc(32),
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: prevOutput.stateRoot,
+        beforeRoot: (computationPath.callDepth === 0) ? callerProof.stateRoot : calleeProof.stateRoot,
         intermediateRoot: Buffer.alloc(32),
         afterRoot: Buffer.alloc(32),
         callerSiblings: (computationPath.callDepth === 0) ? callerProof.siblings : calleeProof.siblings,
@@ -141,10 +141,7 @@ module.exports = class ProofHelper {
       beforeCalleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
-
     
-    
-    // console.log(proofs)
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
       // console.log('ProofHelper', 'test1')
       const code = computationPath.code;
