@@ -3,8 +3,7 @@
 const Merkelizer = require('./Merkelizer');
 const { ZERO_HASH } = require('./constants');
 const FragmentTree = require('./FragmentTree');
-const SMT = require('./smt/SparseMerkleTrie').SMT;
-const smt = new SMT();
+const web3 = require('web3');
 module.exports = class ProofHelper {
   static constructProof (computationPath, { merkle, codeFragmentTree } = {}) {
     const prevOutput = computationPath.left.executionState;
@@ -17,12 +16,13 @@ module.exports = class ProofHelper {
     const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
+    
     const callerProof = execState.callerAccount;
-    const callerKey = smt.hash(callerProof.addr);
-    const callerLeaf = smt.hash(callerProof.rlpVal);
+    const callerKey = web3.utils.soliditySha3(callerProof.addr);
+    const callerLeaf = web3.utils.soliditySha3(callerProof.rlpVal);
     const calleeProof = execState.calleeAccount;
-    const calleeKey = smt.hash(calleeProof.addr);
-    const calleeLeaf = smt.hash(calleeProof.rlpVal);
+    const calleeKey = web3.utils.soliditySha3(calleeProof.addr);
+    const calleeLeaf = web3.utils.soliditySha3(calleeProof.rlpVal);
        
     let merkleProof = {
         callerKey: Buffer.alloc(32),

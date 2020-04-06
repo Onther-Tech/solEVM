@@ -282,7 +282,7 @@ module.exports = (callback) => {
     it('solver has an wrong stateProof at first step', async () => {
       const wrongExecution = copy;
       wrongExecution[0].stateRoot = OP.ZERO_HASH;
-      wrongExecution[0].stateProof.stateRoot = OP.ZERO_HASH;
+      wrongExecution[0].callerAccount.rlpVal = OP.ZERO_HASH;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
@@ -290,7 +290,7 @@ module.exports = (callback) => {
     it('challenger has an wrong stateProof at first step', async () => {
       const wrongExecution = copy;
       wrongExecution[0].stateRoot = Buffer.alloc(32);
-      wrongExecution[0].stateProof.stateRoot = Buffer.alloc(32);
+      wrongExecution[0].callerAccount.rlpVal = Buffer.alloc(32);
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
