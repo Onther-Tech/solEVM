@@ -97,7 +97,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       // console.log('HydratedRuntime', runState.callerAccount);
       const callValue = new BN(runState.callValue, 16);
-     console.log(callValue, runState.depth);
+    //  console.log(callValue, runState.depth);
       const callValueProof = {};
      
       if (!callValue.isZero()) {
@@ -262,7 +262,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeCode;
     let calleeCallData;
     
-    if (runState.opName === 'CALL' || runState.opName === 'DELEGATECALL') {
+    if (runState.opName === 'CALL' || runState.opName === 'DELEGATECALL' || runState.opName === 'STATICCALL') {
       isCALLExecuted = true;
       calleeSteps = runState.calleeSteps;
       calleeCode = runState.calleeCode.toString('hex');

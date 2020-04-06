@@ -54,7 +54,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     };
     
     res.hash = this.stateHash(res.executionState);
-    console.log('initialStateHash', res.executionState.accountHash.toString('hex'))
+    // console.log('initialStateHash', res.executionState.accountHash.toString('hex'))
     return res;
   }
 
