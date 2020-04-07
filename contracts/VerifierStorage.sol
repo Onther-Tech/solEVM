@@ -29,6 +29,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     bytes32 public calleeAfterLeaf;
     bytes32 public inputHash;
     bytes32 public callerKey;
+    bytes32 public hashedKey;
+    address public toAddress;
 
     struct MerkleProof {
         bytes32 callerKey;
@@ -84,6 +86,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         uint stackSize;
         bytes32 beforeLeaf;
         bytes32 afterLeaf;
+        bytes siblings;
     }
 
     /**
@@ -281,12 +284,14 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 return (hashes.isValid);
             }
 
-            if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+            toAddress = address(uint160(uint256(executionState.stack[5])));
+
+            if (merkleProof.calleeKey != keccak256(abi.encodePacked(toAddress))) {
                 return (hashes.isValid);
             }
 
             val = uint(executionState.stack[4]);
-            
+                       
             MerkelizerStorage.Account memory callerAccount = decodeAccount(
                 proofs.beforeCallerAccount
             );
@@ -446,23 +451,35 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 if (proofs.beforeAccountHash != hashes.accountHash) {
                     return;
                 }
-                callerKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
-                hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCallerAccount.rlpVal));
+                if (executionState.runtimeAddress == proofs.beforeCallerAccount.addr) {
+                    hashedKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
+                    hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCallerAccount.rlpVal));
+                    MerkelizerStorage.Account memory callerAccount = decodeAccount(
+                        proofs.beforeCallerAccount
+                    );
+                    callerAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
+                    callerRlpVal = encodeAccount(callerAccount);
+                    hashes.afterLeaf = keccak256(abi.encodePacked(callerRlpVal));
+                    hashes.siblings = proofs.beforeCallerAccount.siblings;
+                } else if (executionState.runtimeAddress == proofs.beforeCalleeAccount.addr) {
+                    hashedKey = keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr));
+                    hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCalleeAccount.rlpVal));
 
-                MerkelizerStorage.Account memory callerAccount = decodeAccount(
-                    proofs.beforeCallerAccount
-                );
-                callerAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
-                callerRlpVal = encodeAccount(callerAccount);
-                hashes.afterLeaf = keccak256(abi.encodePacked(callerRlpVal));
-               
+                    MerkelizerStorage.Account memory calleeAccount = decodeAccount(
+                        proofs.beforeCalleeAccount
+                    );
+                    calleeAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
+                    calleeRlpVal = encodeAccount(calleeAccount);
+                    hashes.afterLeaf = keccak256(abi.encodePacked(calleeRlpVal));
+                    hashes.siblings = proofs.beforeCalleeAccount.siblings;
+                }
                 hashes.isValid = verifySSTORE (
-                    callerKey,
+                    hashedKey,
                     hashes.beforeLeaf,
                     hashes.afterLeaf,
                     proofs.beforeStateRoot,
                     proofs.afterStateRoot,
-                    proofs.beforeCallerAccount.siblings
+                    hashes.siblings
                 );
             } else {
                 hashes.isValid = false;

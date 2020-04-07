@@ -41,6 +41,7 @@ library MerkelizerStorage {
         bool callValue;
         AccountProof afterCallerAccount;
         AccountProof afterCalleeAccount;
+        address runtimeAddress;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {
