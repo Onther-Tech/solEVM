@@ -296,6 +296,7 @@ module.exports = class ExecutionPoker {
     this.log('calleeRlpVal!', await this.verifier.calleeRlpVal());
     this.log('callerAfterLeaf!', await this.verifier.callerAfterLeaf());
     this.log('calleeAfterLeaf!', await this.verifier.calleeAfterLeaf());
+    this.log('toAddress!', await this.verifier.toAddress());
 
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 

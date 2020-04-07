@@ -13,9 +13,9 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   static initialStateHash (
     isCALLValue, 
     callValueProof, 
+    beforeCalleeAccount,
     callerAccount, 
     calleeAccount, 
-    stateProof, 
     stateRoot, 
     storageRoot, 
     code, 
@@ -42,14 +42,15 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         logHash: ZERO_HASH,
         accountHash: this.accountHash(callerAccount, calleeAccount),
         stateRoot: stateRoot,
-        stateProof: stateProof,
         storageRoot: storageRoot,
         isStorageDataRequired: false,
         isStorageDataChanged: false,
         isCALLValue: isCALLValue,
+        beforeCalleeAccount: beforeCalleeAccount,
         callerAccount: callerAccount,
         calleeAccount: calleeAccount,
-        callValueProof: callValueProof
+        callValueProof: callValueProof,
+        runtimeAddress: '0x' + '0'.padStart(40,0)
       },
     };
     
@@ -205,20 +206,20 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       throw new Error('You need to pass at least one execution step');
     }
         
-    const stateProof = executions[0].stateProof;
     const stateRoot = executions[0].stateRoot;
     const storageRoot = executions[0].storageRoot;
     const callerAccount = executions[0].callerAccount;
     const calleeAccount = executions[0].calleeAccount;
     const callValueProof = executions[0].callValueProof;
     const isCALLValue = executions[0].isCALLValue;
- 
+    const beforeCalleeAccount = executions[0].beforeCalleeAccount;
+    
     if (!this.tree) {
       this.tree = [[]];
     }
    
     const initialState = this.constructor.initialStateHash(
-      isCALLValue, callValueProof, callerAccount, calleeAccount, stateProof, stateRoot, storageRoot, code, callData, tStorage/*customEnvironmentHash*/
+      isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage/*customEnvironmentHash*/
     );
 
     const leaves = this.tree[0];

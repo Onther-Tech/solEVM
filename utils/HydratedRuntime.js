@@ -71,24 +71,61 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       
     } else {
       // update stateProof at CALLStart(runState.depth > 0).
+      const beforeRuntimeAddress = this.runtimeAddress;
+      const currentRuntimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
+
+      // console.log('address', address);
+      // console.log('this.runtimeAddress', this.runtimeAddress);
+      let caller;
+      let callee;
+    
+      if (currentRuntimeAddress === beforeRuntimeAddress) {
+        // delegateCall
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (currentRuntimeAddress === this.accounts[i].address) {
+            caller = _.cloneDeep(this.accounts[i]);
+            callee = _.cloneDeep(this.accounts[runState.depth]);
+          }
+        }
+      } else {
+        // call
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (beforeRuntimeAddress === this.accounts[i].address) {
+            caller = _.cloneDeep(this.accounts[i]);
+            callee = _.cloneDeep(this.accounts[runState.depth]);
+          }
+        }
+      }
+         
       const callerObj = {};
-      callerObj.addr =  _.cloneDeep(this.accounts[runState.depth-1].address);
-      callerObj.rlpVal = _.cloneDeep(this.accounts[runState.depth-1].stateProof.rlpVal);
+      callerObj.addr =  caller.address;
+      callerObj.rlpVal = caller.stateProof.rlpVal;
       callerObj.stateRoot = _.cloneDeep(this.stateTrie.root);
       callerObj.siblings = Buffer.concat(
         this.stateTrie.getProof(this.stateTrie.hash(callerObj.addr))
       );
-      this.accounts[runState.depth-1].stateProof = callerObj;
+
+      for (let i = 0; i < this.accounts.length; i++) {
+        if (callerObj.addr === this.accounts[i].address) {
+          this.accounts[i].stateProof = callerObj;
+        }
+      }
+
+      // this.accounts[runState.depth-1].stateProof = callerObj;
 
       const calleeObj = {};
-      calleeObj.addr =  _.cloneDeep(this.accounts[runState.depth].address);
-      calleeObj.rlpVal = _.cloneDeep(this.accounts[runState.depth].stateProof.rlpVal);
+      calleeObj.addr =  callee.address;
+      calleeObj.rlpVal = callee.stateProof.rlpVal;
       calleeObj.stateRoot = _.cloneDeep(this.stateTrie.root);
       calleeObj.siblings = Buffer.concat(
         this.stateTrie.getProof(this.stateTrie.hash(calleeObj.addr))
       );
-
-      this.accounts[runState.depth].stateProof = calleeObj;
+      for (let i = 0; i < this.accounts.length; i++) {
+        if (calleeObj.addr === this.accounts[i].address) {
+          this.accounts[i].stateProof = calleeObj;
+        }
+      }
+      // this.accounts[runState.depth].stateProof = calleeObj;
 
       runState.callerAccount = callerObj
       runState.calleeAccount = calleeObj;
@@ -97,19 +134,24 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       // console.log('HydratedRuntime', runState.callerAccount);
       const callValue = new BN(runState.callValue, 16);
-    //  console.log(callValue, runState.depth);
       const callValueProof = {};
      
       if (!callValue.isZero()) {
         runState.isCALLValue = true;
         const stateTrie = this.stateTrie;
-      
-        // get caller account
-        const caller = this.accounts[runState.depth-1];
-            
-        // get callee account 
-        const callee = this.accounts[runState.depth];
-        
+
+        let caller;
+        let callee;
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (this.accounts[i].address === runState.callerAccount.addr) {
+            caller = this.accounts[i];
+          } else if (this.accounts[i].address === runState.calleeAccount.addr) {
+            callee = this.accounts[i];
+          }
+        }
+
+        runState.beforeCalleeAccount =  _.cloneDeep(callee.stateProof);
+       
         const beforeRoot = _.cloneDeep(stateTrie.root);
         const callerKey = stateTrie.hash(HexToBuf(caller.address));
         const callerBeforeLeaf = stateTrie.hash(runState.callerAccount.rlpVal);
@@ -159,7 +201,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           stateTrie.getProof(stateTrie.hash(callerObj.addr))
         );
         runState.callerAccount = callerObj;
-        this.accounts[runState.depth-1].stateProof = callerObj;
+        // this.accounts[runState.depth-1].stateProof = callerObj;
 
         // update callee account
         const calleeObj = {};
@@ -170,7 +212,16 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           stateTrie.getProof(stateTrie.hash(calleeObj.addr))
         );
         runState.calleeAccount = calleeObj;
-        this.accounts[runState.depth].stateProof = calleeObj;
+        // this.accounts[runState.depth].stateProof = calleeObj;
+
+         // update account
+         for (let i = 0; i < this.accounts.length; i++) {
+          if (runState.callerAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = callerObj;
+          } else if (runState.calleeAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = calleeObj;
+          }
+        }
                       
         callValueProof.callerKey = callerKey;
         callValueProof.calleeKey = calleeKey;
@@ -188,6 +239,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         runState.stateRoot = _.cloneDeep(stateTrie.root);
       }
     }
+    // reserve runtimeAddress for distinguishing CALL and DELEGATECALL
+    this.runtimeAddress = _.cloneDeep(utils.toChecksumAddress(runState.address.toString('hex')));
     return runState;
   }
 
@@ -257,6 +310,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       }
     );
 
+    const runtimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
+
     let isCALLExecuted = false;
     let calleeSteps;
     let calleeCode;
@@ -283,8 +338,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           callee = this.accounts[i];
         }
       }
-      const address = utils.toChecksumAddress(runState.address.toString('hex'));
-      if (address === caller.address) {
+    
+      if (runtimeAddress === caller.address) {
         one = caller;
         theOther = callee;
       } else {
@@ -329,16 +384,31 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       );
 
       runState.stateRoot = _.cloneDeep(stateTrie.root);
+
       if (runState.depth !== 0) {
         runState.callerAccount = obj2;
         runState.calleeAccount = obj1;
-        this.accounts[runState.depth-1].stateProof = obj2;
-        this.accounts[runState.depth].stateProof = obj1;
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (runState.callerAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj2;
+          } else if (runState.calleeAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj1;
+          }
+        }
+        // this.accounts[runState.depth-1].stateProof = obj2;
+        // this.accounts[runState.depth].stateProof = obj1;
       } else {
         runState.callerAccount = obj1;
         runState.calleeAccount = obj2;
-        this.accounts[runState.depth].stateProof = obj1;
-        this.accounts[runState.depth+1].stateProof = obj2;
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (runState.callerAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj1;
+          } else if (runState.calleeAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj2;
+          }
+        }
+        // this.accounts[runState.depth].stateProof = obj1;
+        // this.accounts[runState.depth+1].stateProof = obj2;
       }
     } 
     
@@ -371,7 +441,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       storageRoot: runState.storageRoot,
       stateRoot: runState.stateRoot,
       callerAccount: runState.callerAccount,
-      calleeAccount: runState.calleeAccount
+      calleeAccount: runState.calleeAccount,
+      runtimeAddress: runtimeAddress,
+      beforeCalleeAccount: runState.beforeCalleeAccount || {}
     };
     
     this.calculateMemProof(runState, step);
@@ -390,7 +462,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let isStorageReset = false;
 
     // support checkSumAddress
-    const address = utils.toChecksumAddress(runState.address.toString('hex'));
+    const runtimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
     
     // get state trie for an account
     const stateTrie = this.stateTrie;
@@ -398,7 +470,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     // get storage trie for an account
     let storageTrie;
     for (let i = 0; i < this.accounts.length; i++){
-      if (address === this.accounts[i].address) {
+      if (runtimeAddress === this.accounts[i].address) {
         storageTrie = this.accounts[i].storageTrie;
       }
     }
@@ -467,7 +539,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         }
       }
     
-      if (address === caller.address) {
+      if (runtimeAddress === caller.address) {
         // delegatecall
         one = caller;
         theOther = callee;
@@ -529,29 +601,31 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       runState.stateRoot = _.cloneDeep(stateTrie.root);
           
       // update account at SSTORE
-      if (address === runState.callerAccount.addr) {
+      if (runtimeAddress === runState.callerAccount.addr) {
         runState.callerAccount = obj1;
         runState.calleeAccount = obj2;
-      
-        if (runState.depth !== 0) {
-          // update account
-          this.accounts[runState.depth-1].stateProof = obj1;
-          this.accounts[runState.depth].stateProof = obj2;
-        } else {
-          // update account
-          this.accounts[runState.depth].stateProof = obj1;
-          if (this.accounts[runState.depth+1]) {
-            this.accounts[runState.depth+1].stateProof = obj2;
+        // update account
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (runState.callerAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj1;
+          } else if (runState.calleeAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj2;
           }
         }
-       
-      } else if (address === runState.calleeAccount.addr) {
+      } else if (runtimeAddress === runState.calleeAccount.addr) {
         runState.callerAccount = obj2;
         runState.calleeAccount = obj1;
         
         // update account
-        this.accounts[runState.depth-1].stateProof = obj2;
-        this.accounts[runState.depth].stateProof = obj1;
+        for (let i = 0; i < this.accounts.length; i++) {
+          if (runState.callerAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj2;
+          } else if (runState.calleeAccount.addr === this.accounts[i].address) {
+            this.accounts[i].stateProof = obj1;
+          }
+        }
+        // this.accounts[runState.depth-1].stateProof = obj2;
+        // this.accounts[runState.depth].stateProof = obj1;
       }
     } 
   

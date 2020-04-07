@@ -16,11 +16,12 @@ module.exports = class ProofHelper {
     const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
-
-    const callerProof = execState.callerAccount;
+    
+    const callerProof = prevOutput.callerAccount;
     const callerKey = web3.utils.soliditySha3(callerProof.addr);
     const callerLeaf = web3.utils.soliditySha3(callerProof.rlpVal);
-    const calleeProof = execState.calleeAccount;
+ 
+    const calleeProof = prevOutput.calleeAccount;
     const calleeKey = web3.utils.soliditySha3(calleeProof.addr);
     const calleeLeaf = web3.utils.soliditySha3(calleeProof.rlpVal);
        
@@ -122,7 +123,9 @@ module.exports = class ProofHelper {
 
     const beforeAccountHash = prevOutput.accountHash;
     const afterAccountHash = execState.accountHash;
-    
+
+    const beforeCalleeAccount = execState.beforeCalleeAccount;
+    // console.log(beforeCalleeAccount);
     const proofs = {
       stackHash: (callStart || callEnd) ? prevOutput.stackHash || Merkelizer.stackHash([]) 
         : execState.compactStackHash || Merkelizer.stackHash([]),
@@ -138,7 +141,7 @@ module.exports = class ProofHelper {
       beforeAccountHash : beforeAccountHash,
       afterAccountHash : afterAccountHash,
       beforeCallerAccount: prevOutput.callerAccount,
-      beforeCalleeAccount: prevOutput.calleeAccount,
+      beforeCalleeAccount: (isCALLValue) ? beforeCalleeAccount : prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
     
@@ -241,6 +244,7 @@ module.exports = class ProofHelper {
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
+        runtimeAddress: execState.runtimeAddress,
         isStorageReset: execState.isStorageReset ? true : false,
         isStorageDataChanged: isStorageDataChanged,
         isFirstStep: isFirstStep,
