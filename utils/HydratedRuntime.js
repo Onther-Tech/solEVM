@@ -51,7 +51,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.storageRoot = this.accounts[runState.depth].storageRoot;
     
     runState.isCALLValue = false;
-    
+    runState.isCALL = false;
+    runState.isDELEGATECALL = false;
+            
     if (runState.depth === 0) {
       // get stateRoot at FirstStep
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
@@ -74,13 +76,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       const beforeRuntimeAddress = this.runtimeAddress;
       const currentRuntimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
 
-      // console.log('address', address);
-      // console.log('this.runtimeAddress', this.runtimeAddress);
       let caller;
       let callee;
-    
       if (currentRuntimeAddress === beforeRuntimeAddress) {
         // delegateCall
+        runState.isDELEGATECALL = true;
         for (let i = 0; i < this.accounts.length; i++) {
           if (currentRuntimeAddress === this.accounts[i].address) {
             caller = _.cloneDeep(this.accounts[i]);
@@ -89,6 +89,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         }
       } else {
         // call
+        runState.isCALL = true;
         for (let i = 0; i < this.accounts.length; i++) {
           if (beforeRuntimeAddress === this.accounts[i].address) {
             caller = _.cloneDeep(this.accounts[i]);
@@ -129,7 +130,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       runState.callerAccount = callerObj
       runState.calleeAccount = calleeObj;
-    
+
+     
+      runState.beforeCallerAccount = _.cloneDeep(this.beforeCallerAccount);
+      runState.beforeCalleeAccount = _.cloneDeep(this.beforeCalleeAccount);
+            
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
 
       // console.log('HydratedRuntime', runState.callerAccount);
@@ -144,14 +149,12 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         let callee;
         for (let i = 0; i < this.accounts.length; i++) {
           if (this.accounts[i].address === runState.callerAccount.addr) {
-            caller = this.accounts[i];
+            caller = _.cloneDeep(this.accounts[i]);
           } else if (this.accounts[i].address === runState.calleeAccount.addr) {
-            callee = this.accounts[i];
+            callee = _.cloneDeep(this.accounts[i]);
           }
         }
-
-        runState.beforeCalleeAccount =  _.cloneDeep(callee.stateProof);
-       
+        runState.beforeCalleeAccount = _.cloneDeep(callee.stateProof);
         const beforeRoot = _.cloneDeep(stateTrie.root);
         const callerKey = stateTrie.hash(HexToBuf(caller.address));
         const callerBeforeLeaf = stateTrie.hash(runState.callerAccount.rlpVal);
@@ -170,7 +173,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         callerVal.push(caller.codeHash);
         callerVal.push(callerStorageRoot);
        
-        let callerRlpVal = utils.rlp.encode(callerVal);
+        const callerRlpVal = utils.rlp.encode(callerVal);
+      
         // caller putData
         stateTrie.putData(callerKey, callerRlpVal);
         const intermediateRoot = _.cloneDeep(stateTrie.root);
@@ -187,11 +191,12 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         calleeVal.push(callee.storageRoot);
         
         const calleeRlpVal = utils.rlp.encode(calleeVal);
+       
         // callee putData
         stateTrie.putData(calleeKey, calleeRlpVal);
         const afterRoot = _.cloneDeep(stateTrie.root);
         const calleeAfterLeaf = stateTrie.hash(calleeRlpVal);
-       
+        
         // update caller account
         const callerObj = {};
         callerObj.addr = caller.address;
@@ -241,6 +246,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     }
     // reserve runtimeAddress for distinguishing CALL and DELEGATECALL
     this.runtimeAddress = _.cloneDeep(utils.toChecksumAddress(runState.address.toString('hex')));
+    this.beforeCallerAccount =  _.cloneDeep(runState.callerAccount);
+    this.beforeCalleeAccount = _.cloneDeep(runState.calleeAccount);
+    // console.log(this.callerContract);
     return runState;
   }
 
@@ -333,9 +341,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
      
       for (let i = 0; i < this.accounts.length; i++) {
         if (this.accounts[i].address === runState.callerAccount.addr) {
-          caller = this.accounts[i];
+          caller = _.cloneDeep(this.accounts[i]);
         } else if (this.accounts[i].address === runState.calleeAccount.addr) {
-          callee = this.accounts[i];
+          callee = _.cloneDeep(this.accounts[i]);
         }
       }
     
@@ -385,9 +393,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
       runState.stateRoot = _.cloneDeep(stateTrie.root);
 
-      if (runState.depth !== 0) {
-        runState.callerAccount = obj2;
-        runState.calleeAccount = obj1;
+      if (runState.isCALL) {
+        runState.callerAccount = obj2; 
+        runState.calleeAccount = obj1; 
         for (let i = 0; i < this.accounts.length; i++) {
           if (runState.callerAccount.addr === this.accounts[i].address) {
             this.accounts[i].stateProof = obj2;
@@ -397,7 +405,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         }
         // this.accounts[runState.depth-1].stateProof = obj2;
         // this.accounts[runState.depth].stateProof = obj1;
-      } else {
+      } else if (runState.isDELEGATECALL || runState.depth === 0) {
         runState.callerAccount = obj1;
         runState.calleeAccount = obj2;
         for (let i = 0; i < this.accounts.length; i++) {
@@ -435,6 +443,8 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       isCALLExecuted: isCALLExecuted,
       calleeSteps: calleeSteps,
       callDepth: runState.depth,
+      isCALL: runState.isCALL,
+      isDELEGATECALL: runState.isDELEGATECALL,
       isCALLValue: runState.isCALLValue,
       callValueProof: runState.callValueProof || {},
       storageProof: {},
@@ -442,7 +452,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       stateRoot: runState.stateRoot,
       callerAccount: runState.callerAccount,
       calleeAccount: runState.calleeAccount,
-      runtimeAddress: runtimeAddress,
+      beforeCallerAccount: runState.beforeCallerAccount || {},
       beforeCalleeAccount: runState.beforeCalleeAccount || {}
     };
     

@@ -4,6 +4,11 @@ const Merkelizer = require('./Merkelizer');
 const { ZERO_HASH } = require('./constants');
 const FragmentTree = require('./FragmentTree');
 const web3 = require('web3');
+
+function isEmptyObject(param) {
+  return Object.keys(param).length === 0;
+}
+
 module.exports = class ProofHelper {
   static constructProof (computationPath, { merkle, codeFragmentTree } = {}) {
     const prevOutput = computationPath.left.executionState;
@@ -17,11 +22,11 @@ module.exports = class ProofHelper {
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
     
-    const callerProof = prevOutput.callerAccount;
+    const callerProof = execState.callerAccount;
     const callerKey = web3.utils.soliditySha3(callerProof.addr);
     const callerLeaf = web3.utils.soliditySha3(callerProof.rlpVal);
  
-    const calleeProof = prevOutput.calleeAccount;
+    const calleeProof = execState.calleeAccount;
     const calleeKey = web3.utils.soliditySha3(calleeProof.addr);
     const calleeLeaf = web3.utils.soliditySha3(calleeProof.rlpVal);
        
@@ -123,9 +128,7 @@ module.exports = class ProofHelper {
 
     const beforeAccountHash = prevOutput.accountHash;
     const afterAccountHash = execState.accountHash;
-
-    const beforeCalleeAccount = execState.beforeCalleeAccount;
-    // console.log(beforeCalleeAccount);
+   
     const proofs = {
       stackHash: (callStart || callEnd) ? prevOutput.stackHash || Merkelizer.stackHash([]) 
         : execState.compactStackHash || Merkelizer.stackHash([]),
@@ -141,10 +144,11 @@ module.exports = class ProofHelper {
       beforeAccountHash : beforeAccountHash,
       afterAccountHash : afterAccountHash,
       beforeCallerAccount: prevOutput.callerAccount,
-      beforeCalleeAccount: (isCALLValue) ? beforeCalleeAccount : prevOutput.calleeAccount,
+      beforeCalleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
+
     };
-    
+  
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
       // console.log('ProofHelper', 'test1')
       const code = computationPath.code;
@@ -229,22 +233,41 @@ module.exports = class ProofHelper {
         proofs.codeByteLength = leaf.byteLength;
       }
     }
-      
+    // console.log(execState.beforeCallerAccount)
+    let beforeCallerAccount = {};
+    if (isEmptyObject(execState.beforeCallerAccount)) {
+      beforeCallerAccount.addr = '0x' + '0'.padStart(40,0);
+      beforeCallerAccount.rlpVal = '0x';
+      beforeCallerAccount.stateRoot = '0x' + '0'.padStart(64,0);
+      beforeCallerAccount.siblings = '0x';
+    } else {
+      beforeCallerAccount = execState.beforeCallerAccount;
+    }
+    let beforeCalleeAccount = {};
+    if (isEmptyObject(execState.beforeCalleeAccount)) {
+      beforeCalleeAccount.addr = '0x' + '0'.padStart(40,0);
+      beforeCalleeAccount.rlpVal = '0x';
+      beforeCalleeAccount.stateRoot = '0x' + '0'.padStart(64,0);
+      beforeCalleeAccount.siblings = '0x';
+    } else {
+      beforeCalleeAccount = execState.beforeCalleeAccount;
+    }
+   
     return {
       proofs,
       executionInput: {
         data: isCallDataRequired ? prevOutput.data : '0x',
-        stack: (isCALLValue) ? prevOutput.stack.reverse().slice(0,7).reverse() : execState.compactStack,
+        stack: (isCALLValue || callStart) ? prevOutput.stack.reverse().slice(0,7).reverse() : execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
         tStorage: isStorageDataRequired ? prevOutput.tStorage : [],
         logHash: prevOutput.logHash,
-        // customEnvironmentHash: prevOutput.customEnvironmentHash,
         returnData: prevOutput.returnData,
         pc: prevOutput.pc,
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
-        runtimeAddress: execState.runtimeAddress,
+        isCALL: prevOutput.isCALL,
+        isDELEGATECALL: prevOutput.isDELEGATECALL,
         isStorageReset: execState.isStorageReset ? true : false,
         isStorageDataChanged: isStorageDataChanged,
         isFirstStep: isFirstStep,
@@ -252,8 +275,10 @@ module.exports = class ProofHelper {
         callStart: callStart,
         callEnd: callEnd,
         callValue: isCALLValue,
+        beforeCallerAccount: beforeCallerAccount,
+        beforeCalleeAccount: beforeCalleeAccount,
         afterCallerAccount: execState.callerAccount,
-        afterCalleeAccount: execState.calleeAccount
+        afterCalleeAccount: execState.calleeAccount,
       },
       merkleProof,
     };
