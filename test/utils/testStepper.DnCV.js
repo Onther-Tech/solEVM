@@ -58,16 +58,16 @@ const runtime = new HydratedRuntime();
     // console.log(utils.rlp.decode(steps[0].callerAccount.rlpVal));
     // console.log(utils.rlp.decode(steps[0].calleeAccount.rlpVal));
     for (let i = 0; i < steps.length - 1; i++){
-        console.log(steps[i].beforeCalleeAccount);
+        // console.log(steps[i].beforeCalleeAccount);
         if (steps[i].opCodeName === 'DELEGATECALL') {
             let calleeSteps1 = steps[i].calleeSteps;
-            console.log('1', i);
+            // console.log('1', i);
             for (let j = 0; j < calleeSteps1.length; j++ ) {
                 if (calleeSteps1[j].opCodeName === 'CALL') {
                     let calleeSteps2 = calleeSteps1[j].calleeSteps;
-                    console.log('2', j);
+                    // console.log('2', j);
                     for (let k = 0; k < calleeSteps2.length; k++) {
-                        console.log(calleeSteps2[k].beforeCalleeAccount);
+                        // console.log(calleeSteps2[k].beforeCalleeAccount);
                     }
                 }
             }

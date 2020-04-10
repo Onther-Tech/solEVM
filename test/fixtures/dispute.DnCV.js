@@ -34,7 +34,7 @@ module.exports = (callback) => {
         // caller
         {
           address: '0xA5A5193Fb9A523157430740FbA64Cbb5c3d9228C',
-          nonce: new BN(0x0, 16),
+          nonce: new BN(0x1, 16),
           balance: new BN(0x1000, 16),
           code: code,
           tStorage: tStorage
@@ -42,7 +42,7 @@ module.exports = (callback) => {
         // callee1
         {
             address: '0x61002EA22196c8dF447cC71B5e6c2a190e67CC14',
-            nonce: new BN(0x0, 16),
+            nonce: new BN(0x1, 16),
             balance: new BN(0x1000, 16),
             code: calleeCode1,
             tStorage: calleeTstorage1
@@ -50,7 +50,7 @@ module.exports = (callback) => {
           // callee2
         {
             address: '0xaE8C6a1D94CE2DE718cA1d1E5746673aB7092c23',
-            nonce: new BN(0x0, 16),
+            nonce: new BN(0x1, 16),
             balance: new BN(0x1000, 16),
             code: calleeCode2,
             tStorage: calleeTstorage2
@@ -89,7 +89,7 @@ module.exports = (callback) => {
       smt = new SMT();
      
       caller = accounts[0];
-      callee = accounts[1];
+      callee = accounts[2];
 
       callerKey = smt.hash('0x' + caller.address);
       calleeKey = smt.hash('0x' + callee.address);
@@ -115,41 +115,41 @@ module.exports = (callback) => {
       // console.log(smt.root);
     });
 
-    // it('solver manipulate stateRoot #1 - replace with wrong value at CALLEnd', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
+    it('solver manipulate stateRoot #1 - replace with wrong value at CALLStart', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
      
-    //   const wrongVal = 900;
+      const wrongVal = 900;
      
-    //   // set wrong rlpVal
-    //   callerVal[1] -= wrongVal;
-    //   calleeVal[1] += wrongVal;
-    //   // console.log('callerVal', callerVal)
-    //   // console.log('calleeVal', calleeVal)
+      // set wrong rlpVal
+      callerVal[1] -= wrongVal;
+      calleeVal[1] += wrongVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
 
-    //   const callerRlpVal = utils.rlp.encode(callerVal);
-    //   const calleeRlpVal = utils.rlp.encode(calleeVal);
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
 
-    //   // put wrong val
-    //   smt.putData(callerKey, callerRlpVal);
-    //   smt.putData(calleeKey, calleeRlpVal);
+      // put wrong val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
-    //   // console.log('rootHash', rootHash);
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
 
-    //   // set wrong stateRoot
-    //   wrongCalleeStep2[0].stateRoot = rootHash;
-    //   wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
-    //   wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[264].calleeSteps = wrongCalleeStep1;
+      // set wrong stateRoot
+      wrongCalleeStep2[0].stateRoot = rootHash;
+      wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
+      wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
+      wrongExecution[264].calleeSteps = wrongCalleeStep1;
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    it('challenger manipulate stateRoot #1 - replace with wrong value at CALLEnd', async () => {
+    it('challenger manipulate stateRoot #1 - replace with wrong value at CALLStart', async () => {
       const wrongExecution = copy;
       const wrongCalleeStep1 = calleeCopy1;
       const wrongCalleeStep2 = calleeCopy2;
@@ -183,86 +183,84 @@ module.exports = (callback) => {
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
-    // it('solver manipulate stateRoot #2 - add wrong value at CALLEnd', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
+    it('solver manipulate stateRoot #2 - add wrong value at CALLStart', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
 
-    //   // set correct val - 1000
-    //   const correctVal = 1000;
+      // set correct val - 1000
+      const correctVal = 1000;
 
-    //   // get correct rlpVal
-    //   callerVal[1] -= correctVal;
-    //   calleeVal[1] += correctVal;
-    //   // console.log('callerVal', callerVal)
-    //   // console.log('calleeVal', calleeVal)
+      // get correct rlpVal
+      callerVal[1] -= correctVal;
+      calleeVal[1] += correctVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
       
-    //   const callerRlpVal = utils.rlp.encode(callerVal);
-    //   const calleeRlpVal = utils.rlp.encode(calleeVal);
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
 
-    //   // put correct val
-    //   smt.putData(callerKey, callerRlpVal);
-    //   smt.putData(calleeKey, calleeRlpVal);
+      // put correct val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
 
-    //   // put wrong val
-    //   const wrongKey = utils.keccak256('0');
-    //   const wrongRlpVal = callerRlpVal;
-    //   smt.putData(wrongKey, wrongRlpVal);
+      // put wrong val
+      const wrongKey = utils.keccak256('0');
+      const wrongRlpVal = callerRlpVal;
+      smt.putData(wrongKey, wrongRlpVal);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
-    //   // console.log('rootHash', rootHash);
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
 
-    //   // set wrong stateRoot
-    //   wrongCalleeStep2[0].stateRoot = rootHash;
-    //   wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
-    //   wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[264].calleeSteps = wrongCalleeStep1;
+      // set wrong stateRoot
+      wrongCalleeStep2[0].stateRoot = rootHash;
+      wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
+      wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
+      wrongExecution[264].calleeSteps = wrongCalleeStep1;
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
-    // it('challenger manipulate stateRoot #2 - add wrong value at CALLEnd', async () => {
-    //   const wrongExecution = copy;
-    //   const wrongCalleeStep1 = calleeCopy1;
-    //   const wrongCalleeStep2 = calleeCopy2;
+    it('challenger manipulate stateRoot #2 - add wrong value at CALLStart', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
 
-    //   // set correct val - 1000
-    //   const correctVal = 1000;
+      // set correct val - 1000
+      const correctVal = 1000;
 
-    //   // get correct rlpVal
-    //   callerVal[1] -= correctVal;
-    //   calleeVal[1] += correctVal;
-    //   // console.log('callerVal', callerVal)
-    //   // console.log('calleeVal', calleeVal)
+      // get correct rlpVal
+      callerVal[1] -= correctVal;
+      calleeVal[1] += correctVal;
+      // console.log('callerVal', callerVal)
+      // console.log('calleeVal', calleeVal)
       
-    //   const callerRlpVal = utils.rlp.encode(callerVal);
-    //   const calleeRlpVal = utils.rlp.encode(calleeVal);
+      const callerRlpVal = utils.rlp.encode(callerVal);
+      const calleeRlpVal = utils.rlp.encode(calleeVal);
 
-    //   // put correct val
-    //   smt.putData(callerKey, callerRlpVal);
-    //   smt.putData(calleeKey, calleeRlpVal);
+      // put correct val
+      smt.putData(callerKey, callerRlpVal);
+      smt.putData(calleeKey, calleeRlpVal);
 
-    //   // put wrong val
-    //   const wrongKey = utils.keccak256('0');
-    //   const wrongRlpVal = callerRlpVal;
-    //   smt.putData(wrongKey, wrongRlpVal);
+      // put wrong val
+      const wrongKey = utils.keccak256('0');
+      const wrongRlpVal = callerRlpVal;
+      smt.putData(wrongKey, wrongRlpVal);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
-    //   // console.log('rootHash', rootHash);
+      // get wrong rootHash
+      const rootHash = smt.root;
+      // console.log('rootHash', rootHash);
 
-    //   // set wrong stateRoot
-    //   wrongCalleeStep2[0].stateRoot = rootHash;
-    //   wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
-    //   wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
-    //   wrongExecution[264].calleeSteps = wrongCalleeStep1;
+      // set wrong stateRoot
+      wrongCalleeStep2[0].stateRoot = rootHash;
+      wrongCalleeStep2[0].callValueProof.afterRoot = rootHash;
+      wrongCalleeStep1[86].calleeSteps = wrongCalleeStep2;
+      wrongExecution[264].calleeSteps = wrongCalleeStep1;
 
-    //   const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
-    // });
-
-    
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
   });
 };
