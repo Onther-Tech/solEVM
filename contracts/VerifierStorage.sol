@@ -264,6 +264,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
             require(merkleProof.afterRoot == proofs.afterStateRoot, 'they must be same state root ');
             
+            // accountProof check
             hashes.callerHash = keccak256(abi.encodePacked(
                 proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
             ));
@@ -276,15 +277,25 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 hashes.callerHash, hashes.calleeHash
             ));
 
-            if (proofs.beforeAccountHash != hashes.accountHash) {
+            if (hashes.accountHash != proofs.beforeAccountHash) {
                 return (hashes.isValid);
             }
 
-            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                return (hashes.isValid);
+            if (executionState.isDELEGATECALL) {
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                    return (hashes.isValid);
+                }
+            } else if (executionState.isCALL) {
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                    return (hashes.isValid);
+                }
             }
 
             toAddress = address(uint160(uint256(executionState.stack[5])));
+
+             if (executionState.beforeCalleeAccount.addr != toAddress) {
+                return (hashes.isValid);
+            }
 
             if (merkleProof.calleeKey != keccak256(abi.encodePacked(toAddress))) {
                 return (hashes.isValid);
@@ -296,11 +307,14 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 proofs.beforeCallerAccount
             );
             MerkelizerStorage.Account memory calleeAccount = decodeAccount(
-                proofs.beforeCalleeAccount
+                executionState.beforeCalleeAccount
             );
 
             callerAccount.balance = callerAccount.balance.sub(val);
             calleeAccount.balance = calleeAccount.balance.add(val);
+
+            callerBalance = callerAccount.balance;
+            calleeBalance = calleeAccount.balance;
 
             callerRlpVal = encodeAccount(callerAccount);
             calleeRlpVal = encodeAccount(calleeAccount);
@@ -312,9 +326,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 merkleProof.calleeAfterLeaf != calleeAfterLeaf) {
                 return (hashes.isValid);
             }
-
-            require(merkleProof.callerAfterLeaf == callerAfterLeaf &&
-                merkleProof.calleeAfterLeaf == calleeAfterLeaf, 'they must be same state root');
 
             hashes.isValid = verifyCALLVALUE (
                 merkleProof.callerKey,
@@ -335,13 +346,59 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
             require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
             
-            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                return (hashes.isValid);
-            }
-            if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
-                return (hashes.isValid);
-            }
+            // accountProof check
+            hashes.callerHash = keccak256(abi.encodePacked(
+                proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
+            ));
 
+            hashes.calleeHash = keccak256(abi.encodePacked(
+                proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
+            ));
+
+            hashes.accountHash = keccak256(abi.encodePacked(
+                hashes.callerHash, hashes.calleeHash
+            ));
+
+            if (hashes.accountHash != proofs.beforeAccountHash) {
+                return (hashes.isValid);
+            }
+            toAddress = address(uint160(uint256(executionState.stack[5])));
+
+            if (executionState.callStart) {
+                if (executionState.callDepth == 0) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                } else if (executionState.isDELEGATECALL) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                } else if (executionState.isCALL) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                }
+                if (merkleProof.calleeKey != keccak256(abi.encodePacked(toAddress))) {
+                    return (hashes.isValid);
+                }
+            } else if (executionState.callEnd) {
+                if (executionState.callDepth == 0) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                    if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                } else {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.beforeCallerAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                    if (merkleProof.calleeKey != keccak256(abi.encodePacked(executionState.beforeCalleeAccount.addr))) {
+                        return (hashes.isValid);
+                    }
+                }
+            }
+                      
             hashes.isValid = verifyCALL (
                 merkleProof.callerKey,
                 merkleProof.calleeKey,
@@ -436,6 +493,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 merkleProof.callerSiblings
             );
             if (hashes.isStorageValid) {
+                // account proof check
                 hashes.callerHash = keccak256(abi.encodePacked(
                     proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
                 ));
@@ -451,25 +509,32 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 if (proofs.beforeAccountHash != hashes.accountHash) {
                     return;
                 }
-                if (executionState.runtimeAddress == proofs.beforeCallerAccount.addr) {
+
+                if (executionState.callDepth == 0 || executionState.isDELEGATECALL) {
                     hashedKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
                     hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCallerAccount.rlpVal));
+                   
                     MerkelizerStorage.Account memory callerAccount = decodeAccount(
                         proofs.beforeCallerAccount
                     );
+                    
                     callerAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
                     callerRlpVal = encodeAccount(callerAccount);
+                    
                     hashes.afterLeaf = keccak256(abi.encodePacked(callerRlpVal));
                     hashes.siblings = proofs.beforeCallerAccount.siblings;
-                } else if (executionState.runtimeAddress == proofs.beforeCalleeAccount.addr) {
+
+                } else if (executionState.isCALL) {
                     hashedKey = keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr));
                     hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.beforeCalleeAccount.rlpVal));
 
                     MerkelizerStorage.Account memory calleeAccount = decodeAccount(
                         proofs.beforeCalleeAccount
                     );
+                   
                     calleeAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
                     calleeRlpVal = encodeAccount(calleeAccount);
+                    
                     hashes.afterLeaf = keccak256(abi.encodePacked(calleeRlpVal));
                     hashes.siblings = proofs.beforeCalleeAccount.siblings;
                 }
@@ -500,20 +565,31 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 return;
             }
         } else {
-            if (executionState.isFirstStep) {
+            if (executionState.callDepth == 0 && executionState.isFirstStep) {
                 // in the case of FirstStep, check here.
                 require(proofs.beforeStateRoot == proofs.afterStateRoot, 'they must be same state root ');
                 require(merkleProof.beforeRoot == proofs.beforeStateRoot, 'they must be same state root ');
-                callerKey = keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr));
-                if (executionState.callDepth == 0) {
-                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
-                        return;
-                    }
-                } else {
-                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCalleeAccount.addr))) {
-                        return;
-                    }
+                
+                // account proof check
+                hashes.callerHash = keccak256(abi.encodePacked(
+                    proofs.beforeCallerAccount.addr, proofs.beforeCallerAccount.rlpVal
+                ));
+
+                hashes.calleeHash = keccak256(abi.encodePacked(
+                    proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
+                ));
+
+                hashes.accountHash = keccak256(abi.encodePacked(
+                    hashes.callerHash, hashes.calleeHash
+                ));
+
+                if (proofs.beforeAccountHash != hashes.accountHash) {
+                    return;
                 }
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
+                    return;
+                }
+                
                 hashes.isValid = checkMembership(
                     merkleProof.callerKey,
                     merkleProof.callerBeforeLeaf,

@@ -25,7 +25,6 @@ library MerkelizerStorage {
         bytes32[] stack;
         bytes32[] mem;
         bytes32[] tStorage;
-        // bytes32 customEnvironmentHash;
         bytes returnData;
         uint pc;
         uint gasRemaining;
@@ -33,15 +32,18 @@ library MerkelizerStorage {
         uint memSize;
         bool isStorageReset;
         bytes32 logHash;
+        bool isCALL;
+        bool isDELEGATECALL;
         bool isStorageDataChanged;
         bool isFirstStep;
         uint callDepth;
         bool callStart;
         bool callEnd;
         bool callValue;
+        AccountProof beforeCallerAccount;
+        AccountProof beforeCalleeAccount;
         AccountProof afterCallerAccount;
         AccountProof afterCalleeAccount;
-        address runtimeAddress;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {
