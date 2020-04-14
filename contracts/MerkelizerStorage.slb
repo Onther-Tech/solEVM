@@ -40,7 +40,6 @@ library MerkelizerStorage {
         bool callStart;
         bool callEnd;
         bool callValue;
-        AccountProof beforeCallerAccount;
         AccountProof beforeCalleeAccount;
         AccountProof afterCallerAccount;
         AccountProof afterCalleeAccount;
@@ -78,6 +77,7 @@ library MerkelizerStorage {
     ) internal pure returns (bytes32) {
         bytes32 callerHash = keccak256(abi.encodePacked(caller.addr, caller.rlpVal));
         bytes32 calleeHash = keccak256(abi.encodePacked(callee.addr, callee.rlpVal));
+        // TODO: add EVM parameter about like context (ie. gasRemaining, pc, calldepth etc.)
         return keccak256(abi.encodePacked(
             callerHash, calleeHash
         ));

@@ -31,6 +31,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     bytes32 public callerKey;
     bytes32 public hashedKey;
     address public toAddress;
+    bytes32 public accountHash;
 
     struct MerkleProof {
         bytes32 callerKey;
@@ -57,8 +58,12 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 afterStateRoot;
         bytes32 beforeStorageRoot;
         bytes32 afterStorageRoot;
+        bytes32 previousAccountHash;
+        bytes32 currentAccountHash;
         bytes32 beforeAccountHash;
         bytes32 afterAccountHash;
+        MerkelizerStorage.AccountProof previousCallerAccount;
+        MerkelizerStorage.AccountProof previousCalleeAccount;
         MerkelizerStorage.AccountProof beforeCallerAccount;
         MerkelizerStorage.AccountProof beforeCalleeAccount;
         bytes32 calleeCodeHash;
@@ -72,6 +77,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 resultHash;
         bytes32 callerHash;
         bytes32 calleeHash;
+        bytes32 previousAccountHash;
+        bytes32 currentAccountHash;
         bytes32 accountHash;
         uint value;
         bytes callerRlpVal;
@@ -273,11 +280,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
             ));
 
-            hashes.accountHash = keccak256(abi.encodePacked(
+            hashes.currentAccountHash = keccak256(abi.encodePacked(
                 hashes.callerHash, hashes.calleeHash
             ));
 
-            if (hashes.accountHash != proofs.beforeAccountHash) {
+            if (hashes.currentAccountHash != proofs.currentAccountHash) {
                 return (hashes.isValid);
             }
 
@@ -355,8 +362,27 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
             ));
 
-            hashes.accountHash = keccak256(abi.encodePacked(
+            hashes.currentAccountHash = keccak256(abi.encodePacked(
                 hashes.callerHash, hashes.calleeHash
+            ));
+            if (executionState.callDepth == 0 && executionState.callStart) {
+                hashes.previousAccountHash = bytes32(uint(0));
+            } else {
+                hashes.callerHash = keccak256(abi.encodePacked(
+                    proofs.previousCallerAccount.addr, proofs.previousCallerAccount.rlpVal
+                ));
+
+                hashes.calleeHash = keccak256(abi.encodePacked(
+                    proofs.previousCalleeAccount.addr, proofs.previousCalleeAccount.rlpVal
+                ));
+
+                hashes.previousAccountHash = keccak256(abi.encodePacked(
+                    hashes.callerHash, hashes.calleeHash
+                ));
+            }
+           
+            hashes.accountHash = keccak256(abi.encodePacked(
+                hashes.previousAccountHash, hashes.currentAccountHash
             ));
 
             if (hashes.accountHash != proofs.beforeAccountHash) {
@@ -390,10 +416,10 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                         return (hashes.isValid);
                     }
                 } else {
-                    if (merkleProof.callerKey != keccak256(abi.encodePacked(executionState.beforeCallerAccount.addr))) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.previousCallerAccount.addr))) {
                         return (hashes.isValid);
                     }
-                    if (merkleProof.calleeKey != keccak256(abi.encodePacked(executionState.beforeCalleeAccount.addr))) {
+                    if (merkleProof.calleeKey != keccak256(abi.encodePacked(proofs.previousCalleeAccount.addr))) {
                         return (hashes.isValid);
                     }
                 }
@@ -502,11 +528,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
                 ));
 
-                hashes.accountHash = keccak256(abi.encodePacked(
+                hashes.currentAccountHash = keccak256(abi.encodePacked(
                     hashes.callerHash, hashes.calleeHash
                 ));
-
-                if (proofs.beforeAccountHash != hashes.accountHash) {
+                
+                if (proofs.currentAccountHash != hashes.currentAccountHash) {
                     return;
                 }
 
@@ -579,11 +605,16 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     proofs.beforeCalleeAccount.addr, proofs.beforeCalleeAccount.rlpVal
                 ));
 
-                hashes.accountHash = keccak256(abi.encodePacked(
+                hashes.currentAccountHash = keccak256(abi.encodePacked(
                     hashes.callerHash, hashes.calleeHash
                 ));
-
-                if (proofs.beforeAccountHash != hashes.accountHash) {
+               
+                hashes.previousAccountHash = bytes32(uint(0));
+                accountHash = keccak256(abi.encodePacked(
+                    hashes.previousAccountHash, hashes.currentAccountHash
+                ));
+                
+                if (proofs.beforeAccountHash != accountHash) {
                     return;
                 }
                 if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.beforeCallerAccount.addr))) {
@@ -680,7 +711,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 executionState.memSize = evm.mem.size;
             }
            
-            hashes.resultHash = getStateHash(executionState, hydratedState, hashes.dataHash, proofs.afterStorageRoot, proofs.afterStateRoot);
+            hashes.resultHash = getStateHash(executionState, hydratedState, proofs, hashes.dataHash);
 
             if (hashes.resultHash != dispute.solver.right && hashes.resultHash != dispute.challenger.right) {
                 return;
@@ -708,14 +739,30 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         Hashes memory hashes
     ) internal pure returns (bytes32) {
         bytes32 stackHash;
+        bytes32 previousAccountHash;
         if (executionState.callStart || executionState.callEnd) {
             stackHash = proofs.stackHash;
         } else {
             stackHash = executionState.stackHash(proofs.stackHash);
         }
-        bytes32 accountHash = executionState.accountHash(
+
+        if (executionState.callDepth == 0 && executionState.callEnd) {
+            previousAccountHash = executionState.accountHash(
+                proofs.previousCallerAccount, proofs.previousCalleeAccount
+            );
+        } else if (executionState.callDepth == 0) {
+            previousAccountHash = bytes32(uint(0));
+        } else {
+            previousAccountHash = executionState.accountHash(
+                proofs.previousCallerAccount, proofs.previousCalleeAccount
+            );
+        }
+        bytes32 currentAccountHash = executionState.accountHash(
             proofs.beforeCallerAccount, proofs.beforeCalleeAccount
         );
+        bytes32 accountHash = keccak256(abi.encodePacked(
+            previousAccountHash, currentAccountHash
+        ));
         bytes32 intermediateHash = executionState.intermediateHash(
             stackHash,
             hashes.memHash,
@@ -734,21 +781,30 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     function getStateHash(
         MerkelizerStorage.ExecutionState memory _executionState,
         HydratedState memory _hydratedState,
-        bytes32 _dataHash,
-        bytes32 _storageRoot,
-        bytes32 _stateRoot
+        Proofs memory proofs,
+        bytes32 _dataHash
     ) internal pure returns (bytes32) {
-        // gotcha!
-        bytes32 _accountHash = _executionState.accountHash(
+        Hashes memory hashes;
+        if (_executionState.callDepth == 0) {
+            hashes.previousAccountHash = bytes32(uint(0));
+        } else {
+           hashes.previousAccountHash = _executionState.accountHash(
+                proofs.previousCallerAccount, proofs.previousCalleeAccount
+           );
+        }
+        hashes.currentAccountHash = _executionState.accountHash(
             _executionState.afterCallerAccount, _executionState.afterCalleeAccount
         );
+        hashes.accountHash = keccak256(abi.encodePacked(
+            hashes.previousAccountHash, hashes.currentAccountHash
+        ));
         bytes32 intermediateHash = _executionState.intermediateHash(
             _hydratedState.stackHash,
             _hydratedState.memHash,
             _dataHash,
-            _storageRoot,
-            _stateRoot,
-            _accountHash
+            proofs.afterStorageRoot,
+            proofs.afterStateRoot,
+            hashes.accountHash
         );
         bytes32 envHash = _executionState.envHash();
         return _executionState.stateHash(
