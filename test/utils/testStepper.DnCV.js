@@ -24,7 +24,7 @@ const accounts = [
     // caller
     {
       address: '0xA5A5193Fb9A523157430740FbA64Cbb5c3d9228C',
-      nonce: new BN(0x0, 16),
+      nonce: new BN(0x1, 16),
       balance: new BN(0x1000, 16),
       code: code,
       tStorage: tStorage
@@ -32,7 +32,7 @@ const accounts = [
     // callee1
     {
         address: '0x61002EA22196c8dF447cC71B5e6c2a190e67CC14',
-        nonce: new BN(0x0, 16),
+        nonce: new BN(0x1, 16),
         balance: new BN(0x1000, 16),
         code: calleeCode1,
         tStorage: calleeTstorage1
@@ -40,7 +40,7 @@ const accounts = [
       // callee2
     {
         address: '0xaE8C6a1D94CE2DE718cA1d1E5746673aB7092c23',
-        nonce: new BN(0x0, 16),
+        nonce: new BN(0x1, 16),
         balance: new BN(0x1000, 16),
         code: calleeCode2,
         tStorage: calleeTstorage2
