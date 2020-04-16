@@ -353,8 +353,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
     await this.initSMTTrie(accounts);
     
+    // init addressHashes
     this.addressHashes = [];
-    
+
     // TODO: Support EVMParameters
     const runState = await this.initRunState({
       code: Buffer.from(code, 'hex'),
