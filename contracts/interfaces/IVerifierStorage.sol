@@ -60,6 +60,7 @@ contract IVerifierStorage {
         bytes32 dataHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
+        bytes32 addressHash,
         bytes32 accountHash,
         address challenger
     ) public returns (bytes32 disputeId);
