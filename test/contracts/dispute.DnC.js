@@ -23,7 +23,8 @@ const EVMParameters = {
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   storageRoot: '0xa7ff9e28ffd3def443d324547688c2c4eb98edf7da757d6bfa22bff55b9ce24a',
   stateRoot: '0x98241bb214a3bc0078d9beb4eb99c56a60d05fa573e0f435fb2a958e49764893',
-  accountHash: '0x20f93c8e1c946fd2831bc4567c4555eccb263053b226170dec7c01f0a5eb2106'
+  addressHash: '0x40b585d77509d09da9b48318e45eee18dcad6b1e50ce52490acb07877fc29216',
+  accountHash: '0xded024e395ca32dd29f3953c7c8acc775f98a339f80c6450e9cbe2dea685b1e9'
 };
 
 class MyExecutionPoker extends ExecutionPoker {

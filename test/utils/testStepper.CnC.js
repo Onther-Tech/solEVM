@@ -47,26 +47,34 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    // console.log(steps[0].beforeCallerAccount);
-    // console.log(steps[0].callerAccount);
-    // console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].stateRoot);
+   
     for (let i = 0; i < steps.length - 1; i++){
-        // console.log(steps[i].stateRoot.toString('hex'));
+        console.log(steps[i].compactAddressHash);
         if (steps[i].opCodeName === 'CALL') {
             let calleeSteps1 = steps[i].calleeSteps;
-            console.log('1', i);
+            // console.log('CALL1!', i);
+            // console.log(steps[0].runtimeAccount);
            
             for (let j = 0; j < calleeSteps1.length; j++ ) {
-                //  console.log(calleeSteps1[0].beforeCalleeAccount);
+                console.log(calleeSteps1[j].compactAddressHash);
                 if (calleeSteps1[j].opCodeName === 'CALL') {
                     let calleeSteps2 = calleeSteps1[j].calleeSteps;
-                    console.log('2', j);
-                   
+                    // console.log('CALL2!', j);
+                    // console.log(calleeSteps1[0].runtimeAccount);
+                  
                     // console.log(calleeSteps1[j-1]);
                     for (let k = 0; k < calleeSteps2.length; k++) {
+                        console.log(calleeSteps2[k].compactAddressHash);
                         if (calleeSteps2[k].opCodeName === 'SSTORE') {
-                            console.log('3', k);
+                            // console.log('SSTORE', k);
+                            // console.log(calleeSteps2[0].runtimeAccount);
+                         
                         }
+                        if (k === calleeSteps2.length-1) {
+                            // console.log('end');
+                        }
+                       
                     }
                 }
             }
