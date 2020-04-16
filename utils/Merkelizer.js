@@ -14,15 +14,14 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
   /// @notice If the first (left-most) hash is not the same as this,
   /// then the solution from that player is invalid.
   static initialStateHash (
-    initPreviousAccountHash,
-    initCurrentAccountHash,
+    compactAddressHash,
+    runtimeAddress,
+    runtimeAccount,
     isCALL,
     isDELEGATECALL,
     isCALLValue, 
     callValueProof, 
     beforeCalleeAccount,
-    previousCallerAccount,
-    previousCalleeAccount,
     callerAccount, 
     calleeAccount, 
     stateRoot, 
@@ -49,17 +48,17 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         memHash: this.memHash([]),
         dataHash: this.dataHash(callData),
         logHash: ZERO_HASH,
-        previousAccountHash: initPreviousAccountHash,
-        currentAccountHash: initCurrentAccountHash,
-        accountHash: this.accountHash(initPreviousAccountHash, initCurrentAccountHash),
+        compactAddressHash: compactAddressHash,
+        runtimeAddress: runtimeAddress,
+        runtimeAccount: runtimeAccount,
+        addressHash: this.addressHash(runtimeAddress, compactAddressHash),
+        accountHash: this.accountHash(runtimeAccount),
         stateRoot: stateRoot,
         storageRoot: storageRoot,
         isStorageDataRequired: false,
         isStorageDataChanged: false,
         isCALLValue: isCALLValue,
         beforeCalleeAccount: beforeCalleeAccount,
-        previousCallerAccount: previousCallerAccount,
-        previousCalleeAccount: previousCalleeAccount,
         callerAccount: callerAccount,
         calleeAccount: calleeAccount,
         callValueProof: callValueProof,
@@ -69,9 +68,36 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     };
     
     res.hash = this.stateHash(res.executionState);
-    // console.log('initialStateHash', res.executionState.accountHash.toString('hex'));
+    // console.log('initialStateHash', res.executionState.accountHash);
     // console.log('initialStateHash', res.hash)
     return res;
+  }
+
+  static addressHash (currentAddr, sibling) {
+    let res;
+    if (!sibling) {
+        res = ethers.utils.solidityKeccak256(
+            ['address'],
+            [currentAddr]
+        );
+    } else {
+        const hash = ethers.utils.solidityKeccak256(
+            ['address'],
+            [currentAddr]
+        );
+        res = ethers.utils.solidityKeccak256(
+            ['bytes32', 'bytes32'],
+            [hash, sibling]
+        );
+    }
+    return res;
+  }
+
+  static accountHash (runtimeAccount) {
+      return ethers.utils.solidityKeccak256(
+        ['address', 'bytes'],
+        [runtimeAccount.addr, runtimeAccount.rlpVal]
+      );
   }
 
   static stackHashes (stack, sibling) {
@@ -102,33 +128,6 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
 
     hashes.push(`0x${hash.digest().toString('hex')}`);
     return hashes;
-  }
-
-  static accountHash (beforeHash, afterHash) {
-    return ethers.utils.solidityKeccak256(
-      ['bytes32', 'bytes32'],
-      [beforeHash, afterHash]
-    );
-  }
-
-  static accountHashes (caller, callee) {
-    // in case of that it doesn't have before caller and before callee (ie. runState.depth = 0)
-    if (isEmptyObject(caller) || isEmptyObject(callee)) {
-      return ZERO_HASH;
-    } else {
-      const callerHash = ethers.utils.solidityKeccak256(
-        ['address', 'bytes'],
-        [caller.addr, caller.rlpVal]
-      );
-      const calleeHash = ethers.utils.solidityKeccak256(
-          ['address', 'bytes'],
-          [callee.addr, callee.rlpVal]
-      );
-      return ethers.utils.solidityKeccak256(
-        ['bytes32', 'bytes32'],
-        [callerHash, calleeHash]
-      );
-    }
   }
 
   static stackHash (stack, sibling) {
@@ -170,6 +169,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         'bytes32',
         'bytes32',
         'bytes32',
+        'bytes32',
       ],
       [
         execution.stackHash,
@@ -177,7 +177,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         execution.dataHash,
         execution.storageRoot,
         execution.stateRoot,
-        execution.accountHash
+        execution.addressHash,
+        execution.accountHash,
       ]
     );
 
@@ -241,18 +242,16 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const isCALL = executions[0].isCALL;
     const isDELEGATECALL = executions[0].isDELEGATECALL;
     const beforeCalleeAccount = executions[0].beforeCalleeAccount;
-    const previousCallerAccount = executions[0].previousCallerAccount;
-    const previousCalleeAccount = executions[0].previousCalleeAccount;
-   
-    const initPreviousAccountHash = this.constructor.accountHashes(previousCallerAccount, previousCalleeAccount);
-    const initCurrentAccountHash = this.constructor.accountHashes(callerAccount, calleeAccount);
-    
+    const runtimeAccount = executions[0].runtimeAccount;
+    const runtimeAddress = executions[0].runtimeAddress;
+    const compactAddressHash = executions[0].compactAddressHash;
+      
     if (!this.tree) {
       this.tree = [[]];
     }
    
     const initialState = this.constructor.initialStateHash(
-      initPreviousAccountHash, initCurrentAccountHash, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, previousCallerAccount, previousCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
+      compactAddressHash, runtimeAddress, runtimeAccount, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
     );
 
     const leaves = this.tree[0];
@@ -261,8 +260,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     let prevLeaf = { right: initialState };
     let len = executions.length;
     let memHash;
-    let previousAccountHash;
-    let currentAccountHash;
+    let addressHash;
     let accountHash;
     let afterCallTemp;
 
@@ -283,17 +281,15 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem);
       }
 
-      previousAccountHash = this.constructor.accountHashes(exec.previousCallerAccount, exec.previousCalleeAccount);
-      currentAccountHash = this.constructor.accountHashes(exec.callerAccount, exec.calleeAccount);
-      accountHash =  this.constructor.accountHash(previousAccountHash, currentAccountHash);
+      addressHash = this.constructor.addressHash(exec.runtimeAddress, exec.compactAddressHash);
+      accountHash =  this.constructor.accountHash(exec.runtimeAccount);
 
        // convenience
        exec.memSize = exec.mem.length;
        exec.data = callData;
        exec.dataHash = callDataHash;
        exec.memHash = memHash;
-       exec.previousAccountHash = previousAccountHash;
-       exec.currentAccountHash = currentAccountHash;
+       exec.addressHash = addressHash;
        exec.accountHash = accountHash;
            
       // TODO: the runtime should ultimately support and supply that

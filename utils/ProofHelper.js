@@ -22,14 +22,10 @@ module.exports = class ProofHelper {
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
     
-    const callerProof = execState.callerAccount;
-    const callerKey = web3.utils.soliditySha3(callerProof.addr);
-    const callerLeaf = web3.utils.soliditySha3(callerProof.rlpVal);
+    const runtimeProof = execState.runtimeAccount;
+    const runtimeKey = web3.utils.soliditySha3(runtimeProof.addr);
+    const runtimeLeaf = web3.utils.soliditySha3(runtimeProof.rlpVal);
  
-    const calleeProof = execState.calleeAccount;
-    const calleeKey = web3.utils.soliditySha3(calleeProof.addr);
-    const calleeLeaf = web3.utils.soliditySha3(calleeProof.rlpVal);
-       
     let merkleProof = {
         callerKey: Buffer.alloc(32),
         calleeKey: Buffer.alloc(32),
@@ -45,16 +41,16 @@ module.exports = class ProofHelper {
     };
     if (isFirstStep) {
       merkleProof = {
-        callerKey: (computationPath.callDepth === 0) ? callerKey : calleeKey,
+        callerKey: runtimeKey,
         calleeKey: Buffer.alloc(32),
-        callerBeforeLeaf: (computationPath.callDepth === 0) ? callerLeaf : calleeLeaf,
+        callerBeforeLeaf: runtimeLeaf,
         callerAfterLeaf: Buffer.alloc(32),
         calleeBeforeLeaf: Buffer.alloc(32),
         calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: (computationPath.callDepth === 0) ? callerProof.stateRoot : calleeProof.stateRoot,
+        beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
         afterRoot: Buffer.alloc(32),
-        callerSiblings: (computationPath.callDepth === 0) ? callerProof.siblings : calleeProof.siblings,
+        callerSiblings: runtimeProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
       // console.log('beforeStateProof', beforeStateProof)
@@ -86,35 +82,22 @@ module.exports = class ProofHelper {
         callerSiblings: callValueProof.callerSiblings,
         calleeSiblings: callValueProof.calleeSiblings,
       }
-    } else if (callStart) {
+    } else if (callStart || callEnd) {
       merkleProof = {
-        callerKey: callerKey,
-        calleeKey: calleeKey,
-        callerBeforeLeaf: callerLeaf,
+        callerKey: runtimeKey,
+        calleeKey: Buffer.alloc(32),
+        callerBeforeLeaf: runtimeLeaf,
         callerAfterLeaf: Buffer.alloc(32),
-        calleeBeforeLeaf: calleeLeaf,
+        calleeBeforeLeaf: Buffer.alloc(32),
         calleeAfterLeaf: Buffer.alloc(32),
         beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
-        afterRoot: execState.stateRoot,
-        callerSiblings: callerProof.siblings,
-        calleeSiblings: calleeProof.siblings,
+        afterRoot: Buffer.alloc(32),
+        callerSiblings: runtimeProof.siblings,
+        calleeSiblings: Buffer.alloc(32),
       }
-    } else if (callEnd) {
-      merkleProof = {
-        callerKey: callerKey,
-        calleeKey: calleeKey,
-        callerBeforeLeaf: callerLeaf,
-        callerAfterLeaf: Buffer.alloc(32),
-        calleeBeforeLeaf: calleeLeaf,
-        calleeAfterLeaf: Buffer.alloc(32),
-        beforeRoot: prevOutput.stateRoot,
-        intermediateRoot: Buffer.alloc(32),
-        afterRoot: execState.stateRoot,
-        callerSiblings: callerProof.siblings,
-        calleeSiblings: calleeProof.siblings,
-      }
-    }
+    } 
+    
     // console.log('Proof Helper', merkleProof);
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
@@ -126,31 +109,6 @@ module.exports = class ProofHelper {
       isCallDataRequired = true;
     }
 
-    const previousAccountHash = prevOutput.previousAccountHash;
-    const currentAccountHash = prevOutput.currentAccountHash;
-
-    const beforeAccountHash = prevOutput.accountHash;
-    const afterAccountHash = execState.accountHash;
-   
-    let previousCallerAccount = {};
-    if (isEmptyObject(prevOutput.previousCallerAccount)) {
-      previousCallerAccount.addr = '0x' + '0'.padStart(40,0);
-      previousCallerAccount.rlpVal = '0x';
-      previousCallerAccount.stateRoot = '0x' + '0'.padStart(64,0);
-      previousCallerAccount.siblings = '0x';
-    } else {
-      previousCallerAccount = prevOutput.previousCallerAccount;
-    }
-    let previousCalleeAccount = {};
-    if (isEmptyObject(prevOutput.previousCalleeAccount)) {
-      previousCalleeAccount.addr = '0x' + '0'.padStart(40,0);
-      previousCalleeAccount.rlpVal = '0x';
-      previousCalleeAccount.stateRoot = '0x' + '0'.padStart(64,0);
-      previousCalleeAccount.siblings = '0x';
-    } else {
-      previousCalleeAccount = prevOutput.previousCalleeAccount;
-    }
-    
     const proofs = {
       stackHash: (callStart || callEnd) ? prevOutput.stackHash || Merkelizer.stackHash([]) 
         : execState.compactStackHash || Merkelizer.stackHash([]),
@@ -163,14 +121,13 @@ module.exports = class ProofHelper {
       afterStateRoot : execState.stateRoot,
       beforeStorageRoot : prevOutput.storageRoot,
       afterStorageRoot : execState.storageRoot,
-      previousAccountHash: previousAccountHash,
-      currentAccountHash: currentAccountHash,
-      beforeAccountHash : beforeAccountHash,
-      afterAccountHash : afterAccountHash,
-      previousCallerAccount: previousCallerAccount,
-      previousCalleeAccount: previousCalleeAccount,
-      beforeCallerAccount: prevOutput.callerAccount,
-      beforeCalleeAccount: prevOutput.calleeAccount,
+      runtimeAddress : prevOutput.runtimeAddress,
+      compactAddressHash: prevOutput.compactAddressHash,
+      addressHash: prevOutput.addressHash,
+      accountHash : prevOutput.accountHash,
+      runtimeAccount : prevOutput.runtimeAccount,
+      callerAccount: prevOutput.callerAccount,
+      calleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
    
@@ -259,16 +216,6 @@ module.exports = class ProofHelper {
       }
     }
    
-    // console.log(execState.beforeCallerAccount)
-    // let beforeCallerAccount = {};
-    // if (isEmptyObject(execState.beforeCallerAccount)) {
-    //   beforeCallerAccount.addr = '0x' + '0'.padStart(40,0);
-    //   beforeCallerAccount.rlpVal = '0x';
-    //   beforeCallerAccount.stateRoot = '0x' + '0'.padStart(64,0);
-    //   beforeCallerAccount.siblings = '0x';
-    // } else {
-    //   beforeCallerAccount = execState.beforeCallerAccount;
-    // }
     let beforeCalleeAccount = {};
     if (isEmptyObject(execState.beforeCalleeAccount)) {
       beforeCalleeAccount.addr = '0x' + '0'.padStart(40,0);
@@ -292,8 +239,8 @@ module.exports = class ProofHelper {
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
-        isCALL: prevOutput.isCALL,
-        isDELEGATECALL: prevOutput.isDELEGATECALL,
+        isCALL: execState.isCALL,
+        isDELEGATECALL: execState.isDELEGATECALL,
         isStorageReset: execState.isStorageReset ? true : false,
         isStorageDataChanged: isStorageDataChanged,
         isFirstStep: isFirstStep,
@@ -302,8 +249,12 @@ module.exports = class ProofHelper {
         callEnd: callEnd,
         callValue: isCALLValue,
         beforeCalleeAccount: beforeCalleeAccount,
-        afterCallerAccount: execState.callerAccount,
-        afterCalleeAccount: execState.calleeAccount,
+        callerAccount: execState.callerAccount,
+        calleeAccount: execState.calleeAccount,
+        compactAddressHash: execState.compactAddressHash,
+        runtimeAddress: execState.runtimeAddress,
+        runtimeAccount: execState.runtimeAccount,
+        accountHash : execState.accountHash,
       },
       merkleProof,
     };

@@ -37,7 +37,8 @@ module.exports = class ExecutionPoker {
           dataHash: parameters[7],
           storageRoot: parameters[8],
           stateRoot: parameters[9],
-          accountHash: parameters[10]
+          addressHash: parameters[10],
+          accountHash: parameters[11]
         };
         this.taskParams[taskHash] = params;
         this.taskCallData[params.dataHash] = callData;
