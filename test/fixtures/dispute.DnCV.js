@@ -7,6 +7,7 @@ const debug = require('debug')('dispute-test');
 const web3 = require('web3');
 const _ = require('lodash');
 const SMT = require('../../utils/smt/SparseMerkleTrie').SMT;
+const FragmentTree = require('../../utils/FragmentTree');
 const utils = require('ethereumjs-util');
 const BN = utils.BN;
 function HexToBuf (val) {
@@ -96,10 +97,12 @@ module.exports = (callback) => {
       
       caller.storageRoot = '0xa7ff9e28ffd3def443d324547688c2c4eb98edf7da757d6bfa22bff55b9ce24a';
       callee.storageRoot = '0xa7ff9e28ffd3def443d324547688c2c4eb98edf7da757d6bfa22bff55b9ce24a';
-
-      caller.codeHash = utils.keccak256(HexToBuf(caller.code));
-      callee.codeHash = utils.keccak256(HexToBuf(callee.code));
-
+      
+      const callerFragmentTree = new FragmentTree().run(caller.code);
+      caller.codeHash = callerFragmentTree.root.hash;
+      const calleeFragmentTree = new FragmentTree().run(callee.code);
+      callee.codeHash = calleeFragmentTree.root.hash;
+     
       callerVal = [
         caller.nonce, caller.balance, caller.codeHash, caller.storageRoot
       ];

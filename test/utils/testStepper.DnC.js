@@ -48,16 +48,20 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     // console.log(steps[0].storageRoot.toString('hex'));
-    console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].stateRoot.toString('hex'));
     for (let i = 0; i < steps.length - 1; i++){
         // console.log(steps[i].stateRoot.toString('hex'));
         if (steps[i].opCodeName === 'DELEGATECALL') {
             let calleeSteps1 = steps[i].calleeSteps;
             console.log('1', i);
+            console.log(calleeSteps1[0].runtimeAccount);
+            console.log(calleeSteps1[0].bytecodeAccount);
             for (let j = 0; j < calleeSteps1.length; j++ ) {
                 if (calleeSteps1[j].opCodeName === 'CALL') {
                     let calleeSteps2 = calleeSteps1[j].calleeSteps;
                     console.log('2', j);
+                    console.log(calleeSteps2[0].runtimeAccount.addr);
+                    console.log(calleeSteps2[0].bytecodeAccount.addr);
                     for (let k = 0; k < calleeSteps2.length; k++) {
                         if (calleeSteps2[k].opCodeName === 'SSTORE') {
                             console.log('3', k);

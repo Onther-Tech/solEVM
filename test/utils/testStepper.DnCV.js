@@ -55,23 +55,26 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    console.log(steps[0].stateRoot);
+    // console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].addressHash);
     // console.log(utils.rlp.decode(steps[0].calleeAccount.rlpVal));
     for (let i = 0; i < steps.length - 1; i++){
-       
+        console.log(steps[i].stateRoot.toString('hex'));
         if (steps[i].opCodeName === 'DELEGATECALL') {
             let calleeSteps1 = steps[i].calleeSteps;
             // console.log('1', i);
-            console.log(steps[0].compactAddressHash);
+            // console.log(calleeSteps1[0].runtimeAccount);
+            // console.log(calleeSteps1[0].bytecodeAccount);
           
             for (let j = 0; j < calleeSteps1.length; j++ ) {
+                console.log(calleeSteps1[j].stateRoot.toString('hex'));
                 if (calleeSteps1[j].opCodeName === 'CALL') {
                     let calleeSteps2 = calleeSteps1[j].calleeSteps;
                     // console.log('2', j);
-                    console.log(calleeSteps1[0].compactAddressHash);
-                    console.log(calleeSteps2[0].compactAddressHash);
-                    for (let k = 0; k < calleeSteps2.length; k++) {
-                    
+                    // console.log(calleeSteps2[0].runtimeAccount);
+                    // console.log(calleeSteps2[0].bytecodeAccount);
+                    for (let k = 0; k < calleeSteps2.length; k++ ) {
+                        console.log(calleeSteps2[k].stateRoot.toString('hex'));
                     }
                 }
             }

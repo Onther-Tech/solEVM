@@ -61,6 +61,26 @@ module.exports = (callback) => {
       merkle = new Merkelizer().run(steps, code, data, tStorage);
     });
 
+     it('solver has an wrong stateProof at CALLStart depth 1', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy1;
+      
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[291].calleeSteps = wrongCalleeStep;
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an wrong stateProof at CALLStart depth 1', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep = calleeCopy1;
+      
+      wrongCalleeStep[0].stateRoot = Buffer.alloc(32);
+      wrongExecution[291].calleeSteps = wrongCalleeStep;
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
     it('solver has an wrong stateProof at FirstStep', async () => {
       const wrongExecution = copy;
      
