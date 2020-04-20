@@ -47,6 +47,7 @@ library MerkelizerStorage {
         bytes32 storageRoot;
         bytes32 stateRoot;
         AccountProof runtimeAccount;
+        AccountProof bytecodeAccount;
         AccountProof beforeCalleeAccount;
         AccountProof callerAccount;
         AccountProof calleeAccount;
@@ -80,16 +81,31 @@ library MerkelizerStorage {
     }
 
     function addressHash(
-        address addr,
+        address storageAddr,
+        address bytecodeAddr,
         bytes32 sibling
     ) internal pure returns (bytes32) {
-        bytes32 addrHash = keccak256(abi.encodePacked(addr));
+        bytes32 addrHash = keccak256(abi.encodePacked(storageAddr, bytecodeAddr));
         return keccak256(abi.encodePacked(
            addrHash, sibling
         ));
     }
 
-    function accountHash(
+     function accountHash(
+        address storageAddr,
+        bytes memory storageRlpVal,
+        address bytecodeAddr,
+        bytes memory bytecodeRlpVal
+    ) internal pure returns (bytes32) {
+        // TODO: add EVM parameter about like context (ie. gasRemaining, pc, calldepth etc.)
+        bytes32 storageAccountHash = accountHashes(storageAddr, storageRlpVal);
+        bytes32 byteAccountHash = accountHashes(bytecodeAddr, bytecodeRlpVal);
+        return keccak256(abi.encodePacked(
+           storageAccountHash, byteAccountHash
+        ));
+    }
+
+    function accountHashes(
         address addr,
         bytes memory rlpVal
     ) internal pure returns (bytes32) {
