@@ -25,6 +25,10 @@ module.exports = class ProofHelper {
     const runtimeProof = execState.runtimeAccount;
     const runtimeKey = web3.utils.soliditySha3(runtimeProof.addr);
     const runtimeLeaf = web3.utils.soliditySha3(runtimeProof.rlpVal);
+
+    const bytecodeProof = execState.bytecodeAccount;
+    const bytecodeKey = web3.utils.soliditySha3(bytecodeProof.addr);
+    const bytecodeLeaf = web3.utils.soliditySha3(bytecodeProof.rlpVal);
  
     let merkleProof = {
         callerKey: Buffer.alloc(32),
@@ -85,16 +89,16 @@ module.exports = class ProofHelper {
     } else if (callStart || callEnd) {
       merkleProof = {
         callerKey: runtimeKey,
-        calleeKey: Buffer.alloc(32),
+        calleeKey: bytecodeKey,
         callerBeforeLeaf: runtimeLeaf,
         callerAfterLeaf: Buffer.alloc(32),
-        calleeBeforeLeaf: Buffer.alloc(32),
+        calleeBeforeLeaf: bytecodeLeaf,
         calleeAfterLeaf: Buffer.alloc(32),
         beforeRoot: prevOutput.stateRoot,
         intermediateRoot: Buffer.alloc(32),
         afterRoot: Buffer.alloc(32),
         callerSiblings: runtimeProof.siblings,
-        calleeSiblings: Buffer.alloc(32),
+        calleeSiblings: bytecodeProof.siblings,
       }
     } 
     
@@ -124,6 +128,7 @@ module.exports = class ProofHelper {
       addressHash: prevOutput.addressHash,
       accountHash : prevOutput.accountHash,
       runtimeAccount : prevOutput.runtimeAccount,
+      bytecodeAccount : prevOutput.bytecodeAccount,
       callerAccount: prevOutput.callerAccount,
       calleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
@@ -253,6 +258,7 @@ module.exports = class ProofHelper {
         addressHash: execState.addressHash,
         runtimeAddress: execState.runtimeAddress,
         runtimeAccount: execState.runtimeAccount,
+        bytecodeAccount: execState.bytecodeAccount,
         accountHash : execState.accountHash,
         storageRoot : execState.storageRoot,
         stateRoot : execState.stateRoot,

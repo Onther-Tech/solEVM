@@ -7,7 +7,7 @@ const _ = require('lodash');
 
 const OP = require('./constants');
 const OPCODES = require('./Opcodes');
-
+const FragmentTree = require('./FragmentTree');
 const SMT = require('./smt/SparseMerkleTrie').SMT;
 
 const PRECOMPILED = {
@@ -132,8 +132,8 @@ module.exports = class EVMRuntime extends VM.MetaVM {
           }
         }
 
-        const bufCode = HexToBuf(obj.code);
-        const codeHash = utils.keccak256(bufCode);
+        const fragmentTree = new FragmentTree().run(obj.code);
+        const codeHash = fragmentTree.root.hash;
         
         account.nonce = obj.nonce;
         account.balance = obj.balance;

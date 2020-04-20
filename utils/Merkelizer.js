@@ -17,6 +17,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     compactAddressHash,
     runtimeAddress,
     runtimeAccount,
+    bytecodeAddress,
+    bytecodeAccount,
     isCALL,
     isDELEGATECALL,
     isCALLValue, 
@@ -51,8 +53,10 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         compactAddressHash: compactAddressHash,
         runtimeAddress: runtimeAddress,
         runtimeAccount: runtimeAccount,
-        addressHash: this.addressHash(runtimeAddress, compactAddressHash),
-        accountHash: this.accountHash(runtimeAccount),
+        bytecodeAddress: bytecodeAddress,
+        bytecodeAccount: bytecodeAccount,
+        addressHash: this.addressHash(runtimeAddress, bytecodeAddress, compactAddressHash),
+        accountHash: this.accountHash(runtimeAccount, bytecodeAccount),
         stateRoot: stateRoot,
         storageRoot: storageRoot,
         isStorageDataRequired: false,
@@ -73,17 +77,17 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     return res;
   }
 
-  static addressHash (currentAddr, sibling) {
+  static addressHash (storageAddr, bytecodeAddr, sibling) {
     let res;
     if (!sibling) {
         res = ethers.utils.solidityKeccak256(
-            ['address'],
-            [currentAddr]
+            ['address', 'address'],
+            [storageAddr, bytecodeAddr]
         );
     } else {
         const hash = ethers.utils.solidityKeccak256(
-            ['address'],
-            [currentAddr]
+            ['address', 'address'],
+            [storageAddr, bytecodeAddr]
         );
         res = ethers.utils.solidityKeccak256(
             ['bytes32', 'bytes32'],
@@ -93,10 +97,20 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     return res;
   }
 
-  static accountHash (runtimeAccount) {
-      return ethers.utils.solidityKeccak256(
+  static accountHash (runtimeAccount, bytecodeAccount) {
+      const runtimeAccountHash = ethers.utils.solidityKeccak256(
         ['address', 'bytes'],
         [runtimeAccount.addr, runtimeAccount.rlpVal]
+      );
+
+      const bytecodeAccountHash = ethers.utils.solidityKeccak256(
+        ['address', 'bytes'],
+        [bytecodeAccount.addr, bytecodeAccount.rlpVal]
+      );
+
+      return ethers.utils.solidityKeccak256(
+        ['bytes32', 'bytes32'],
+        [runtimeAccountHash, bytecodeAccountHash]
       );
   }
 
@@ -242,16 +256,18 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const isCALL = executions[0].isCALL;
     const isDELEGATECALL = executions[0].isDELEGATECALL;
     const beforeCalleeAccount = executions[0].beforeCalleeAccount;
-    const runtimeAccount = executions[0].runtimeAccount;
     const runtimeAddress = executions[0].runtimeAddress;
+    const runtimeAccount = executions[0].runtimeAccount;
+    const bytecodeAddress = executions[0].bytecodeAccount.addr;
+    const bytecodeAccount = executions[0].bytecodeAccount;
     const compactAddressHash = executions[0].compactAddressHash;
-      
+
     if (!this.tree) {
       this.tree = [[]];
     }
    
     const initialState = this.constructor.initialStateHash(
-      compactAddressHash, runtimeAddress, runtimeAccount, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
+      compactAddressHash, runtimeAddress, runtimeAccount, bytecodeAddress, bytecodeAccount, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
     );
 
     const leaves = this.tree[0];
@@ -281,8 +297,10 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         memHash = this.constructor.memHash(exec.mem);
       }
 
-      addressHash = this.constructor.addressHash(exec.runtimeAddress, exec.compactAddressHash);
-      accountHash =  this.constructor.accountHash(exec.runtimeAccount);
+      addressHash = this.constructor.addressHash(
+        exec.runtimeAddress, exec.bytecodeAccount.addr, exec.compactAddressHash
+      );
+      accountHash =  this.constructor.accountHash(exec.runtimeAccount, exec.bytecodeAccount);
 
        // convenience
        exec.memSize = exec.mem.length;
