@@ -40,13 +40,12 @@ library MerkelizerStorage {
         bool callStart;
         bool callEnd;
         bool callValue;
-        bytes32 compactAddressHash;
-        bytes32 addressHash;
+        bytes32 previousRuntimeStackHash;
+        bytes32 runtimeStackHash;
         bytes32 accountHash;
-        address runtimeAddress;
         bytes32 storageRoot;
         bytes32 stateRoot;
-        AccountProof runtimeAccount;
+        AccountProof storageAccount;
         AccountProof bytecodeAccount;
         AccountProof beforeCalleeAccount;
         AccountProof callerAccount;
@@ -80,7 +79,7 @@ library MerkelizerStorage {
         return keccak256(abi.encodePacked(_tStorage));
     }
 
-    function addressHash(
+    function runtimeStackHash(
         address storageAddr,
         address bytecodeAddr,
         bytes32 sibling
@@ -182,13 +181,13 @@ library MerkelizerStorage {
         bytes32 dataHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
-        bytes32 addressHash,
+        bytes32 runtimeStackHash,
         bytes32 accountHash
     ) internal pure returns (bytes32) {
         ExecutionState memory e;
         e.gasRemaining = DEFAULT_GAS;
         // e.customEnvironmentHash = customEnvironmentHash;
-        bytes32 _intermediateHash = intermediateHash(e, 0, 0, dataHash, storageRoot, stateRoot, addressHash, accountHash);
+        bytes32 _intermediateHash = intermediateHash(e, 0, 0, dataHash, storageRoot, stateRoot, runtimeStackHash, accountHash);
         bytes32 _envHash = envHash(e);
 
         return stateHash(e, _intermediateHash, _envHash);

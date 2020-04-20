@@ -59,11 +59,10 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32[] codeProof;
         bytes32 stateRoot;
         bytes32 storageRoot;
-        address runtimeAddress;
-        bytes32 compactAddressHash;
-        bytes32 addressHash;
+        bytes32 previousRuntimeStackHash;
+        bytes32 runtimeStackHash;
         bytes32 accountHash;
-        MerkelizerStorage.AccountProof runtimeAccount;
+        MerkelizerStorage.AccountProof storageAccount;
         MerkelizerStorage.AccountProof bytecodeAccount;
         MerkelizerStorage.AccountProof callerAccount;
         MerkelizerStorage.AccountProof calleeAccount;
@@ -79,7 +78,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 resultHash;
         bytes32 callerHash;
         bytes32 calleeHash;
-        bytes32 addressHash;
+        bytes32 runtimeStackHash;
         bytes32 accountHash;
         uint value;
         bytes callerRlpVal;
@@ -147,12 +146,12 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 dataHash,
         bytes32 storageRoot,
         bytes32 stateRoot,
-        bytes32 addressHash,
+        bytes32 runtimeStackHash,
         bytes32 accountHash,
         address challenger
     ) public onlyEnforcer() returns (bytes32 disputeId) {
         bytes32 initialStateHash = MerkelizerStorage.initialStateHash(
-            dataHash, storageRoot, stateRoot, addressHash, accountHash
+            dataHash, storageRoot, stateRoot, runtimeStackHash, accountHash
         );
 
         disputeId = keccak256(
@@ -274,14 +273,14 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             require(merkleProof.afterRoot == executionState.stateRoot, 'they must be same state root ');
 
             // check callerKey of merkle proof
-            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.runtimeAddress))) {
+            if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.storageAccount.addr))) {
                 return (hashes.isValid);
             }
             // get toAddress from the stack of before step
             toAddress = address(uint160(uint256(executionState.stack[5])));
              
             if (executionState.beforeCalleeAccount.addr != toAddress
-                || executionState.runtimeAddress != toAddress) {
+                || executionState.storageAccount.addr != toAddress) {
                 return (hashes.isValid);
             }
             // check calleeKey of merkle proof with toAddress
@@ -291,7 +290,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             // get call value from the stack of before step
             val = uint(executionState.stack[4]);
 
-            callerBeforeLeaf = keccak256(abi.encodePacked(proofs.runtimeAccount.rlpVal));
+            callerBeforeLeaf = keccak256(abi.encodePacked(proofs.storageAccount.rlpVal));
             calleeBeforeLeaf = keccak256(abi.encodePacked(executionState.beforeCalleeAccount.rlpVal));
 
             // check beforeLeaf of merkle proof
@@ -300,7 +299,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 return (hashes.isValid);
             }
             MerkelizerStorage.Account memory callerAccount = decodeAccount(
-                proofs.runtimeAccount
+                proofs.storageAccount
             );
             MerkelizerStorage.Account memory calleeAccount = decodeAccount(
                 executionState.beforeCalleeAccount
@@ -323,19 +322,19 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 merkleProof.calleeAfterLeaf != calleeAfterLeaf) {
                 return (hashes.isValid);
             }
-            // check addressHash of after step
-            hashes.addressHash = MerkelizerStorage.addressHash(
-                executionState.runtimeAddress,
+            // check runtimeStackHash of after step
+            hashes.runtimeStackHash = MerkelizerStorage.runtimeStackHash(
+                executionState.storageAccount.addr,
                 executionState.bytecodeAccount.addr,
-                proofs.addressHash
+                proofs.runtimeStackHash
             );
-            if (hashes.addressHash != executionState.addressHash) {
+            if (hashes.runtimeStackHash != executionState.runtimeStackHash) {
                 return (hashes.isValid);
             }
             // check accountHash of after step
             hashes.accountHash = MerkelizerStorage.accountHash(
-                executionState.runtimeAccount.addr,
-                executionState.runtimeAccount.rlpVal,
+                executionState.storageAccount.addr,
+                executionState.storageAccount.rlpVal,
                 executionState.bytecodeAccount.addr,
                 executionState.bytecodeAccount.rlpVal
             );
@@ -365,18 +364,18 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             toAddress = address(uint160(uint256(executionState.stack[5])));
 
             if (executionState.callStart) {
-                // check addressHash of after step
-                hashes.addressHash = MerkelizerStorage.addressHash(
-                    executionState.runtimeAddress,
+                // check runtimeStackHash of after step
+                hashes.runtimeStackHash = MerkelizerStorage.runtimeStackHash(
+                    executionState.storageAccount.addr,
                     executionState.bytecodeAccount.addr,
-                    proofs.addressHash
+                    proofs.runtimeStackHash
                 );
-                if (hashes.addressHash != executionState.addressHash) {
+                if (hashes.runtimeStackHash != executionState.runtimeStackHash) {
                     return (hashes.isValid);
                 }
                 // check callerKey of merkle proof
                 if (executionState.isDELEGATECALL) {
-                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.runtimeAddress))) {
+                    if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.storageAccount.addr))) {
                         return (hashes.isValid);
                     }
                 } else if (executionState.isCALL) {
@@ -385,18 +384,18 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     }
                 }
             } else if (executionState.callEnd) {
-                // check addressHash of after step
-                hashes.addressHash = MerkelizerStorage.addressHash(
-                    executionState.runtimeAddress,
+                // check runtimeStackHash of after step
+                hashes.runtimeStackHash = MerkelizerStorage.runtimeStackHash(
+                    executionState.storageAccount.addr,
                     executionState.bytecodeAccount.addr,
-                    executionState.compactAddressHash
+                    executionState.previousRuntimeStackHash
                 );
-                if (hashes.addressHash != proofs.compactAddressHash) {
+                if (hashes.runtimeStackHash != proofs.previousRuntimeStackHash) {
                     return (hashes.isValid);
                 }
                 // check callerKey of merkle proof
                 if (merkleProof.callerKey != keccak256(abi.encodePacked(
-                        executionState.runtimeAddress
+                        executionState.storageAccount.addr
                     ))) {
                     return (hashes.isValid);
                 }
@@ -410,7 +409,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
 
             // check callerBeforeLeaf of merkle proof
             hashes.callerBeforeLeaf = keccak256(abi.encodePacked(
-                executionState.runtimeAccount.rlpVal
+                executionState.storageAccount.rlpVal
             ));
             if (hashes.callerBeforeLeaf != merkleProof.callerBeforeLeaf) {
                 return (hashes.isValid);
@@ -517,18 +516,18 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             );
             if (hashes.isStorageValid) {
                 // account proof check
-                hashedKey = keccak256(abi.encodePacked(proofs.runtimeAccount.addr));
-                hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.runtimeAccount.rlpVal));
+                hashedKey = keccak256(abi.encodePacked(proofs.storageAccount.addr));
+                hashes.beforeLeaf = keccak256(abi.encodePacked(proofs.storageAccount.rlpVal));
                 
-                MerkelizerStorage.Account memory runtimeAccount = decodeAccount(
-                    proofs.runtimeAccount
+                MerkelizerStorage.Account memory storageAccount = decodeAccount(
+                    proofs.storageAccount
                 );
                 
-                runtimeAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
-                runtimeRlpVal = encodeAccount(runtimeAccount);
+                storageAccount.storageRoot = abi.encodePacked(merkleProof.afterRoot);
+                runtimeRlpVal = encodeAccount(storageAccount);
                 
                 hashes.afterLeaf = keccak256(abi.encodePacked(runtimeRlpVal));
-                hashes.siblings = proofs.runtimeAccount.siblings;
+                hashes.siblings = proofs.storageAccount.siblings;
                  
                 hashes.isValid = verifySSTORE (
                     hashedKey,
@@ -561,11 +560,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 require(proofs.stateRoot == executionState.stateRoot, 'they must be same state root ');
                 require(merkleProof.beforeRoot == proofs.stateRoot, 'they must be same state root ');
                 // check callerKey of merkle proof
-                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.runtimeAddress))) {
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.storageAccount.addr))) {
                     return;
                 }
                 // check callerBeforeLeaf of merkle proof
-                if (merkleProof.callerBeforeLeaf != keccak256(abi.encodePacked(proofs.runtimeAccount.rlpVal))) {
+                if (merkleProof.callerBeforeLeaf != keccak256(abi.encodePacked(proofs.storageAccount.rlpVal))) {
                     return;
                 }
 
@@ -583,7 +582,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             }
 
             require(proofs.stateRoot == executionState.stateRoot, 'they must be same state root ');
-            if (proofs.addressHash != executionState.addressHash) {
+            if (proofs.runtimeStackHash != executionState.runtimeStackHash) {
                 return;
             }
             if (proofs.accountHash != executionState.accountHash) {
@@ -710,7 +709,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         Hashes memory hashes
     ) internal pure returns (bytes32) {
         bytes32 stackHash;
-        bytes32 addressHash;
+        bytes32 runtimeStackHash;
         bytes32 accountHash;
 
         if (executionState.callStart || executionState.callEnd) {
@@ -719,12 +718,12 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             stackHash = executionState.stackHash(proofs.stackHash);
         }
 
-        addressHash = MerkelizerStorage.addressHash(
-            proofs.runtimeAddress, proofs.bytecodeAccount.addr, proofs.compactAddressHash
+        runtimeStackHash = MerkelizerStorage.runtimeStackHash(
+            proofs.storageAccount.addr, proofs.bytecodeAccount.addr, proofs.previousRuntimeStackHash
         );
         accountHash = MerkelizerStorage.accountHash(
-            proofs.runtimeAccount.addr,
-            proofs.runtimeAccount.rlpVal,
+            proofs.storageAccount.addr,
+            proofs.storageAccount.rlpVal,
             proofs.bytecodeAccount.addr,
             proofs.bytecodeAccount.rlpVal
         );
@@ -735,7 +734,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             hashes.dataHash,
             proofs.storageRoot,
             proofs.stateRoot,
-            addressHash,
+            runtimeStackHash,
             accountHash
         );
         bytes32 envHash = executionState.envHash();
@@ -751,14 +750,14 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         Proofs memory proofs,
         bytes32 _dataHash
     ) internal pure returns (bytes32) {
-        bytes32 addressHash = MerkelizerStorage.addressHash(
-            _executionState.runtimeAddress,
+        bytes32 runtimeStackHash = MerkelizerStorage.runtimeStackHash(
+            _executionState.storageAccount.addr,
             _executionState.bytecodeAccount.addr,
-            _executionState.compactAddressHash
+            _executionState.previousRuntimeStackHash
         );
         bytes32 accountHash = MerkelizerStorage.accountHash(
-            _executionState.runtimeAccount.addr,
-            _executionState.runtimeAccount.rlpVal,
+            _executionState.storageAccount.addr,
+            _executionState.storageAccount.rlpVal,
             _executionState.bytecodeAccount.addr,
             _executionState.bytecodeAccount.rlpVal
         );
@@ -768,7 +767,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             _dataHash,
             _executionState.storageRoot,
             _executionState.stateRoot,
-            addressHash,
+            runtimeStackHash,
             accountHash
         );
         bytes32 envHash = _executionState.envHash();

@@ -27,7 +27,7 @@ contract IEnforcerStorage {
         bytes32 dataHash;
         bytes32 storageRoot;
         bytes32 stateRoot;
-        bytes32 addressHash;
+        bytes32 runtimeStackHash;
         bytes32 accountHash;
     }
 
@@ -85,7 +85,7 @@ contract IEnforcerStorage {
                 _parameters.dataHash,
                 _parameters.storageRoot,
                 _parameters.stateRoot,
-                _parameters.addressHash,
+                _parameters.runtimeStackHash,
                 _parameters.accountHash
             )
         );

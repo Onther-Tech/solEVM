@@ -5,7 +5,7 @@ const debug = require('debug')('vgame-test');
 const assert = require('assert');
 
 const { Merkelizer, ExecutionPoker, Constants, FragmentTree } = require('./../../utils');
-const disputeFixtures = require('./../fixtures/dispute.CnD');
+const disputeFixtures = require('./../fixtures/dispute.DnCV.bytecode');
 const { onchainWait, deployContract, deployCode, wallets, provider } = require('./../helpers/utils');
 
 const Verifier = require('./../../build/contracts/VerifierStorage.json');
@@ -22,9 +22,9 @@ const EVMParameters = {
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   storageRoot: '0xa7ff9e28ffd3def443d324547688c2c4eb98edf7da757d6bfa22bff55b9ce24a',
-  stateRoot: '0x76a0c4960d4091c2422ff233fa5f1a58f55e8cd7ff94bcbf40b33ef8ab03ef29',
-  runtimeStackHash: '0x16b61fc146d2ee4fdf758b62c1a15c02b0d8f414dde1134f8f3b9617302b9cf9',
-  accountHash: '0x9cad91167764fc89536a2c979c0c8710183b3090bb27b235b5a67ff46bb1d39c'
+  stateRoot: '0x2ba22690a4fe9b9165b244db79f9c17234ca2f4dea0ddda6a9cc66ad72a55756',
+  runtimeStackHash: '0x9b127a7a83b0a47b48b0678b0cb61c28a8d7639cf8b08802c5a82a8af506dfed',
+  accountHash: '0xce81127a318e2672139c6a52abc53ce9cfdce199185f4be4adce2e7f8a8cec4d'
 };
 
 class MyExecutionPoker extends ExecutionPoker {

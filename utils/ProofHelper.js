@@ -22,7 +22,7 @@ module.exports = class ProofHelper {
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
     
-    const runtimeProof = execState.runtimeAccount;
+    const runtimeProof = execState.storageAccount;
     const runtimeKey = web3.utils.soliditySha3(runtimeProof.addr);
     const runtimeLeaf = web3.utils.soliditySha3(runtimeProof.rlpVal);
 
@@ -123,11 +123,10 @@ module.exports = class ProofHelper {
       codeProof: [],
       stateRoot : prevOutput.stateRoot,
       storageRoot : prevOutput.storageRoot,
-      runtimeAddress : prevOutput.runtimeAddress,
-      compactAddressHash: prevOutput.compactAddressHash,
-      addressHash: prevOutput.addressHash,
+      previousRuntimeStackHash: prevOutput.previousRuntimeStackHash,
+      runtimeStackHash: prevOutput.runtimeStackHash,
       accountHash : prevOutput.accountHash,
-      runtimeAccount : prevOutput.runtimeAccount,
+      storageAccount : prevOutput.storageAccount,
       bytecodeAccount : prevOutput.bytecodeAccount,
       callerAccount: prevOutput.callerAccount,
       calleeAccount: prevOutput.calleeAccount,
@@ -135,7 +134,6 @@ module.exports = class ProofHelper {
     };
    
     if (computationPath.callDepth !== 0 && !callStart && !callEnd) {
-      // console.log('ProofHelper', 'test1')
       const code = computationPath.code;
       const calleeFragmentTree = new FragmentTree().run(code);
       const calleeCodeHash = calleeFragmentTree.root.hash;
@@ -254,10 +252,9 @@ module.exports = class ProofHelper {
         beforeCalleeAccount: beforeCalleeAccount,
         callerAccount: execState.callerAccount,
         calleeAccount: execState.calleeAccount,
-        compactAddressHash: execState.compactAddressHash,
-        addressHash: execState.addressHash,
-        runtimeAddress: execState.runtimeAddress,
-        runtimeAccount: execState.runtimeAccount,
+        previousRuntimeStackHash: execState.previousRuntimeStackHash,
+        runtimeStackHash: execState.runtimeStackHash,
+        storageAccount: execState.storageAccount,
         bytecodeAccount: execState.bytecodeAccount,
         accountHash : execState.accountHash,
         storageRoot : execState.storageRoot,
