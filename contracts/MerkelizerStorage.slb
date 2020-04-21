@@ -48,8 +48,6 @@ library MerkelizerStorage {
         AccountProof storageAccount;
         AccountProof bytecodeAccount;
         AccountProof beforeCalleeAccount;
-        AccountProof callerAccount;
-        AccountProof calleeAccount;
     }
 
     function memHash(bytes32[] memory _mem) internal pure returns (bytes32) {

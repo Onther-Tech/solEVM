@@ -64,8 +64,6 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 accountHash;
         MerkelizerStorage.AccountProof storageAccount;
         MerkelizerStorage.AccountProof bytecodeAccount;
-        MerkelizerStorage.AccountProof callerAccount;
-        MerkelizerStorage.AccountProof calleeAccount;
         bytes32 calleeCodeHash;
     }
 

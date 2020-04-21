@@ -128,8 +128,6 @@ module.exports = class ProofHelper {
       accountHash : prevOutput.accountHash,
       storageAccount : prevOutput.storageAccount,
       bytecodeAccount : prevOutput.bytecodeAccount,
-      callerAccount: prevOutput.callerAccount,
-      calleeAccount: prevOutput.calleeAccount,
       calleeCodeHash: ZERO_HASH,
     };
    
@@ -250,8 +248,6 @@ module.exports = class ProofHelper {
         callEnd: callEnd,
         callValue: isCALLValue,
         beforeCalleeAccount: beforeCalleeAccount,
-        callerAccount: execState.callerAccount,
-        calleeAccount: execState.calleeAccount,
         previousRuntimeStackHash: execState.previousRuntimeStackHash,
         runtimeStackHash: execState.runtimeStackHash,
         storageAccount: execState.storageAccount,
