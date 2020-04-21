@@ -74,7 +74,6 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         runState.calleeAccount.stateRoot = '0x' + '0'.padStart(64,0);
         runState.calleeAccount.siblings = '0x';
       }
-      
     } else {
       const len = this.addressHashes.length;
       this.previousRuntimeStackHash = _.cloneDeep(this.addressHashes[len-1]);
@@ -261,8 +260,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       currentRuntimeAddress, runState.bytecodeAccount.addr, this.previousRuntimeStackHash
     );
     this.addressHashes.push(this.runtimeStackHash);
-
-   
+       
     return runState;
   }
 
@@ -342,13 +340,21 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       let theOther;
      
       for (let i = 0; i < this.accounts.length; i++) {
-        if (this.accounts[i].address === runState.callerAccount.addr) {
-          caller = _.cloneDeep(this.accounts[i]);
-        } else if (this.accounts[i].address === runState.calleeAccount.addr) {
-          callee = _.cloneDeep(this.accounts[i]);
+        if (runState.callerAccount.addr !== runState.calleeAccount.addr) {
+          if (this.accounts[i].address === runState.callerAccount.addr) {
+            caller = _.cloneDeep(this.accounts[i]);
+          } else if (this.accounts[i].address === runState.calleeAccount.addr) {
+            callee = _.cloneDeep(this.accounts[i]);
+          }
+        } else {
+          // in case of self CALL
+          if (this.accounts[i].address === runState.callerAccount.addr) {
+            caller = _.cloneDeep(this.accounts[i]);
+            callee = _.cloneDeep(this.accounts[i]);
+          }
         }
       }
-    
+     
       if (storageAddress === caller.address) {
         one = caller;
         theOther = callee;
@@ -507,7 +513,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     }
   
     if(opcodeName === 'SSTORE') {
-       
+
       let newStorageData = await this.getStorageValue(runState, step.compactStack);
       
       const key = HexToBuf(newStorageData[0]);
@@ -563,10 +569,18 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       let one;
       let theOther;
       for (let i = 0; i < this.accounts.length; i++) {
-        if (this.accounts[i].address === runState.callerAccount.addr) {
-          caller = this.accounts[i];
-        } else if (this.accounts[i].address === runState.calleeAccount.addr) {
-          callee = this.accounts[i];
+        if (runState.callerAccount.addr !== runState.calleeAccount.addr) {
+          if (this.accounts[i].address === runState.callerAccount.addr) {
+            caller = _.cloneDeep(this.accounts[i]);
+          } else if (this.accounts[i].address === runState.calleeAccount.addr) {
+            callee = _.cloneDeep(this.accounts[i]);
+          }
+        } else {
+          // in case of self CALL
+          if (this.accounts[i].address === runState.callerAccount.addr) {
+            caller = _.cloneDeep(this.accounts[i]);
+            callee = _.cloneDeep(this.accounts[i]);
+          }
         }
       }
     
@@ -579,8 +593,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         one = callee;
         theOther = caller;
       }
-   
-      // console.log(account.address)
+         
       one.storageRoot = _.cloneDeep(storageTrie.root);
       const bufAddress = HexToBuf(one.address);
       const oneHashedKey = stateTrie.hash(bufAddress);
