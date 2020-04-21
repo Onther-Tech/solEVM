@@ -103,8 +103,17 @@ module.exports = (callback) => {
       wrongExecution[280].calleeSteps = wrongCalleeStep;
       
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // step 291 + 1 because initialState
-      solverMerkle.tree[0][286].code = wrongCode;
+
+      const wrongFragmentTree = new FragmentTree().run(wrongCode);
+      const wrongCodeHash = wrongFragmentTree.root.hash;
+
+      const correctFragmentTree = new FragmentTree().run(solverMerkle.tree[0][281].code);
+      const correctCodeHash = correctFragmentTree.root.hash;
+      console.log('wrongCodeHash', wrongCodeHash);
+      console.log('correctCodeHash', correctCodeHash)
+      console.log('wrongCodeHash === correctCodeHash', wrongCodeHash === correctCodeHash)
+      
+      solverMerkle.tree[0][281].code = wrongCode;
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
 
@@ -115,8 +124,17 @@ module.exports = (callback) => {
       wrongCalleeStep[0].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
       wrongExecution[280].calleeSteps = wrongCalleeStep;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // step 291 + 1 because initialState
-      challengerMerkle.tree[0][286].code = wrongCode;
+     
+      const wrongFragmentTree = new FragmentTree().run(wrongCode);
+      const wrongCodeHash = wrongFragmentTree.root.hash;
+
+      const correctFragmentTree = new FragmentTree().run(challengerMerkle.tree[0][281].code);
+      const correctCodeHash = correctFragmentTree.root.hash;
+      console.log('wrongCodeHash', wrongCodeHash);
+      console.log('correctCodeHash', correctCodeHash)
+      console.log('wrongCodeHash === correctCodeHash', wrongCodeHash === correctCodeHash)
+
+      challengerMerkle.tree[0][281].code = wrongCode;
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
 
@@ -130,7 +148,16 @@ module.exports = (callback) => {
       wrongCalleeStep1[222].calleeSteps = wrongCalleeStep2;
       wrongExecution[280].calleeSteps = wrongCalleeStep1;
       const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // step 291 + 1 because initialState
+
+      const wrongFragmentTree = new FragmentTree().run(wrongCode);
+      const wrongCodeHash = wrongFragmentTree.root.hash;
+
+      const correctFragmentTree = new FragmentTree().run(solverMerkle.tree[0][504].code);
+      const correctCodeHash = correctFragmentTree.root.hash;
+      console.log('wrongCodeHash', wrongCodeHash);
+      console.log('correctCodeHash', correctCodeHash)
+      console.log('wrongCodeHash === correctCodeHash', wrongCodeHash === correctCodeHash)
+     
       solverMerkle.tree[0][504].code = wrongCode;
       await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
     });
@@ -145,7 +172,16 @@ module.exports = (callback) => {
       wrongCalleeStep1[222].calleeSteps = wrongCalleeStep2;
       wrongExecution[280].calleeSteps = wrongCalleeStep1;
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-      // step 291 + 1 because initialState
+      
+      const wrongFragmentTree = new FragmentTree().run(wrongCode);
+      const wrongCodeHash = wrongFragmentTree.root.hash;
+
+      const correctFragmentTree = new FragmentTree().run(challengerMerkle.tree[0][504].code);
+      const correctCodeHash = correctFragmentTree.root.hash;
+      console.log('wrongCodeHash', wrongCodeHash);
+      console.log('correctCodeHash', correctCodeHash)
+      console.log('wrongCodeHash === correctCodeHash', wrongCodeHash === correctCodeHash)
+
       challengerMerkle.tree[0][504].code = wrongCode;
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });
