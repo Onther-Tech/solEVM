@@ -300,5 +300,91 @@ module.exports = (callback) => {
       const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
       await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
     });    
+
+    it('solver has an output error somewhere in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongCalleeStep2[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger has an output error somewhere in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2[6].compactStack.push('0x0000000000000000000000000000000000000000000000000000000000000001');
+      wrongCalleeStep2[6].stackHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver first step missing in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2.shift();
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger first step missing in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2.shift();
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
+
+    it('solver last step gone in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2.pop();
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
+
+    it('challenger last step gone in depth 2', async () => {
+      const wrongExecution = copy;
+      const wrongCalleeStep1 = calleeCopy1;
+      const wrongCalleeStep2 = calleeCopy2;
+
+      wrongCalleeStep2.pop();
+
+      wrongCalleeStep1[228].calleeSteps = wrongCalleeStep2;
+      wrongExecution[291].calleeSteps = wrongCalleeStep1;
+           
+      const challengerMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, merkle, challengerMerkle, 'solver');
+    });
   });
 };
