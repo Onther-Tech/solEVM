@@ -21,6 +21,7 @@ module.exports = class ProofHelper {
     const storageProof = execState.storageProof;
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
+    const isCREATE = execState.isCREATE;
     
     const runtimeProof = execState.storageAccount;
     const runtimeKey = web3.utils.soliditySha3(runtimeProof.addr);
@@ -85,6 +86,20 @@ module.exports = class ProofHelper {
         afterRoot: callValueProof.afterRoot,
         callerSiblings: callValueProof.callerSiblings,
         calleeSiblings: callValueProof.calleeSiblings,
+      }
+    } else if (isCREATE && callStart) {
+      merkleProof = {
+        callerKey: runtimeKey,
+        calleeKey: Buffer.alloc(32),
+        callerBeforeLeaf: Buffer.alloc(32),
+        callerAfterLeaf: runtimeLeaf,
+        calleeBeforeLeaf: Buffer.alloc(32),
+        calleeAfterLeaf: Buffer.alloc(32),
+        beforeRoot: prevOutput.stateRoot,
+        intermediateRoot: Buffer.alloc(32),
+        afterRoot: execState.stateRoot,
+        callerSiblings: runtimeProof.siblings,
+        calleeSiblings: Buffer.alloc(32),
       }
     } else if (callStart || callEnd) {
       merkleProof = {
@@ -238,6 +253,7 @@ module.exports = class ProofHelper {
         gasRemaining: prevOutput.gasRemaining,
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
+        isCREATE: execState.isCREATE,
         isCALL: execState.isCALL,
         isDELEGATECALL: execState.isDELEGATECALL,
         isStorageReset: execState.isStorageReset ? true : false,

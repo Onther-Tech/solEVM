@@ -19,6 +19,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     storageAccount,
     bytecodeAddress,
     bytecodeAccount,
+    isCREATE,
     isCALL,
     isDELEGATECALL,
     isCALLValue, 
@@ -66,6 +67,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         callerAccount: callerAccount,
         calleeAccount: calleeAccount,
         callValueProof: callValueProof,
+        isCREATE: isCREATE,
         isCALL: isCALL,
         isDELEGATECALL: isDELEGATECALL,
       },
@@ -253,6 +255,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const calleeAccount = executions[0].calleeAccount;
     const callValueProof = executions[0].callValueProof;
     const isCALLValue = executions[0].isCALLValue;
+    const isCREATE = executions[0].isCREATE;
     const isCALL = executions[0].isCALL;
     const isDELEGATECALL = executions[0].isDELEGATECALL;
     const beforeCalleeAccount = executions[0].beforeCalleeAccount;
@@ -267,7 +270,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     }
    
     const initialState = this.constructor.initialStateHash(
-      previousRuntimeStackHash, storageAddress, storageAccount, bytecodeAddress, bytecodeAccount, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
+      previousRuntimeStackHash, storageAddress, storageAccount, bytecodeAddress, bytecodeAccount, isCREATE, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
     );
 
     const leaves = this.tree[0];

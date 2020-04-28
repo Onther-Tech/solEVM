@@ -35,6 +35,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     bytes32 public hashedKey;
     address public toAddress;
     bytes32 public accountHash;
+    address public createdAddress;
 
     struct MerkleProof {
         bytes32 callerKey;
@@ -243,6 +244,17 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         return packArr.encodeList();
     }
 
+    function generateAddressForCREATE (
+        address addr,
+        uint nonce
+    ) internal pure returns (address) {
+        bytes[] memory packArr = new bytes[](2);
+        packArr[0] = addr.encodeAddress();
+        packArr[1] = nonce.encodeUint();
+        bytes memory rlpVal = packArr.encodeList();
+        return address(uint160(uint256(keccak256(abi.encodePacked(rlpVal)))));
+    }
+
     /*
      * if they agree on `left` but not on `right`,
      * submitProof (on-chain) verification should be called by challenger and solver
@@ -355,12 +367,11 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             );
             return (hashes.isValid);
         } else {
-            // in the case of CALLStart and CALLEnd, check here.
-            require(proofs.stateRoot == executionState.stateRoot, 'they must be same state root ');
-            require(merkleProof.beforeRoot == proofs.stateRoot, 'they must be same state root ');
-                   
-            toAddress = address(uint160(uint256(executionState.stack[5])));
-
+            if (!executionState.isCREATE && (executionState.callStart || executionState.callEnd)) {
+                // in the case of CALLStart and CALLEnd, check here.
+                require(proofs.stateRoot == executionState.stateRoot, 'they must be same state root ');
+                require(merkleProof.beforeRoot == proofs.stateRoot, 'they must be same state root ');
+            }
             if (executionState.callStart) {
                 // check runtimeStackHash of after step
                 hashes.runtimeStackHash = MerkelizerStorage.runtimeStackHash(
@@ -376,7 +387,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.storageAccount.addr))) {
                         return (hashes.isValid);
                     }
-                } else if (executionState.isCALL) {
+                } else if (executionState.isCALL && !executionState.isCREATE) {
+                    toAddress = address(uint160(uint256(executionState.stack[5])));
                     if (merkleProof.callerKey != keccak256(abi.encodePacked(toAddress))) {
                         return (hashes.isValid);
                     }
@@ -398,38 +410,61 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     return (hashes.isValid);
                 }
             }
-            // check calleeKey
-            if (merkleProof.calleeKey != keccak256(abi.encodePacked(
-                executionState.bytecodeAccount.addr)
-            )) {
+            
+            if (executionState.isCREATE && executionState.callStart) {
+                MerkelizerStorage.Account memory storageAccount = decodeAccount(
+                    proofs.storageAccount
+                );
+                // check created address
+                if (merkleProof.callerKey != keccak256(abi.encodePacked(
+                    generateAddressForCREATE(
+                        proofs.storageAccount.addr, storageAccount.nonce
+                    ))
+                )) {
+                    return (hashes.isValid);
+                }
+                hashes.isValid = verifyCREATE (
+                    merkleProof.callerKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.callerAfterLeaf,
+                    proofs.stateRoot,
+                    executionState.stateRoot,
+                    merkleProof.callerSiblings
+                );
                 return (hashes.isValid);
-            }
+            } else {
+                // check calleeKey
+                if (merkleProof.calleeKey != keccak256(abi.encodePacked(
+                    executionState.bytecodeAccount.addr)
+                )) {
+                    return (hashes.isValid);
+                }
 
-            // check callerBeforeLeaf of merkle proof
-            hashes.callerBeforeLeaf = keccak256(abi.encodePacked(
-                executionState.storageAccount.rlpVal
-            ));
-            if (hashes.callerBeforeLeaf != merkleProof.callerBeforeLeaf) {
+                // check callerBeforeLeaf of merkle proof
+                hashes.callerBeforeLeaf = keccak256(abi.encodePacked(
+                    executionState.storageAccount.rlpVal
+                ));
+                if (hashes.callerBeforeLeaf != merkleProof.callerBeforeLeaf) {
+                    return (hashes.isValid);
+                }
+                // check calleeBeforeLeaf of merkle proof
+                hashes.calleeBeforeLeaf = keccak256(abi.encodePacked(
+                    executionState.bytecodeAccount.rlpVal
+                ));
+                if (hashes.calleeBeforeLeaf != merkleProof.calleeBeforeLeaf) {
+                    return (hashes.isValid);
+                }
+                hashes.isValid = verifyCALL(
+                    merkleProof.callerKey,
+                    merkleProof.calleeKey,
+                    merkleProof.callerBeforeLeaf,
+                    merkleProof.calleeBeforeLeaf,
+                    merkleProof.beforeRoot,
+                    merkleProof.callerSiblings,
+                    merkleProof.calleeSiblings
+                );
                 return (hashes.isValid);
             }
-            // check calleeBeforeLeaf of merkle proof
-            hashes.calleeBeforeLeaf = keccak256(abi.encodePacked(
-                executionState.bytecodeAccount.rlpVal
-            ));
-            if (hashes.calleeBeforeLeaf != merkleProof.calleeBeforeLeaf) {
-                return (hashes.isValid);
-            }
-
-            hashes.isValid = verifyCALL(
-                merkleProof.callerKey,
-                merkleProof.calleeKey,
-                merkleProof.callerBeforeLeaf,
-                merkleProof.calleeBeforeLeaf,
-                merkleProof.beforeRoot,
-                merkleProof.callerSiblings,
-                merkleProof.calleeSiblings
-            );
-            return (hashes.isValid);
         }
     }
 

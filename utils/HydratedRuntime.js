@@ -9,6 +9,8 @@ const ethers = require('ethers');
 const EVMRuntime = require('./EVMRuntime');
 const RangeProofHelper = require('./RangeProofHelper');
 const Merkelizer = require('./Merkelizer');
+const FragmentTree = require('./FragmentTree');
+const SMT = require('./smt/SparseMerkleTrie').SMT;
 
 const toHex = arr => arr.map(e => '0x' + e.toString(16).padStart(64, '0'));
 
@@ -39,23 +41,41 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     runState.callData = runState.callDataProof.proxy;
     runState.memory = runState.memProof.proxy;
     runState.code = runState.codeProof.proxy;
-    runState.tStorage = this.accounts[runState.depth].tStorage || [];
+    const currentRuntimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
+
+    runState.isCREATE = false;
+    // create 
+    for (let i = 0; i < this.accounts.length; i++) {
+      if (currentRuntimeAddress !== this.accounts[i].address) {
+        runState.isCREATE = true;
+        const createdAccount = {
+          address: currentRuntimeAddress,
+          code: runState.rawCode,
+          tStorage: [],
+          nonce: new BN(0x1, 16),
+          balance: new BN(0x1, 16),
+          storageRoot: OP.ZERO_HASH,
+          codeHash: OP.ZERO_HASH
+        }
+        await this.addCreatedAccount(runState, createdAccount);
+      }
+    }
+    
+    runState.tStorage = (this.accounts[runState.depth]) ? (this.accounts[runState.depth]).tStorage : [];
     runState.logHash = obj.logHash || OP.ZERO_HASH;
-   
     // TODO: to get storage of callee contract for now, 
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
     ? this.accounts[runState.depth + 1].tStorage : [];
-
-    runState.storageProof = {};
-    runState.storageRoot = this.accounts[runState.depth].storageRoot;
     
+   
     runState.isCALLValue = false;
     runState.isCALL = false;
     runState.isDELEGATECALL = false;
-    const currentRuntimeAddress = utils.toChecksumAddress(runState.address.toString('hex'));
-   
+      
     if (runState.depth === 0) {
+      runState.storageProof = {};
+      runState.storageRoot = this.accounts[runState.depth].storageRoot;
       this.previousRuntimeStackHash = OP.ZERO_HASH;
       this.addresses = [currentRuntimeAddress];
       // get stateRoot at FirstStep
@@ -64,10 +84,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       runState.bytecodeAccount = _.cloneDeep(this.accounts[0].stateProof);
       // get caller account but if there is callee account, get callee account too. 
       // if there isn't callee account, initialize with zero. 
-      runState.callerAccount = _.cloneDeep(this.accounts[runState.depth].stateProof);
+      runState.callerAccount = _.cloneDeep(this.accounts[0].stateProof);
       runState.calleeAccount = {};
-      if (this.accounts[runState.depth+1]) {
-        runState.calleeAccount = _.cloneDeep(this.accounts[runState.depth+1].stateProof);
+      
+      if (this.accounts[1]) {
+        runState.calleeAccount = _.cloneDeep(this.accounts[1].stateProof);
       } else {
         runState.calleeAccount.addr = '0x' + '0'.padStart(40,0);
         runState.calleeAccount.rlpVal = OP.ZERO_HASH;
@@ -75,6 +96,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         runState.calleeAccount.siblings = '0x';
       }
     } else {
+      runState.storageProof = {};
+      runState.storageRoot = this.accounts[runState.depth].storageRoot;
+
       const len = this.addressHashes.length;
       this.previousRuntimeStackHash = _.cloneDeep(this.addressHashes[len-1]);
       // update stateProof at CALLStart(runState.depth > 0).
@@ -102,7 +126,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
           }
         }
       }
-         
+
       const callerObj = {};
       callerObj.addr =  caller.address;
       callerObj.rlpVal = caller.stateProof.rlpVal;
@@ -260,8 +284,56 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       currentRuntimeAddress, runState.bytecodeAccount.addr, this.previousRuntimeStackHash
     );
     this.addressHashes.push(this.runtimeStackHash);
-       
     return runState;
+  }
+
+  async addCreatedAccount (runState, obj) {
+    const self = this;
+    return new Promise(async (resolve, reject) => {
+     
+      const stateTrie = self.stateTrie;
+             
+      let account = {};
+      account.address = obj.address;
+      account.storageTrie = new SMT();
+      account.tStorage = obj.tStorage;
+      const storageTrie = account.storageTrie;
+      const fragmentTree = new FragmentTree().run(obj.code.toString('hex'));
+      const codeHash = fragmentTree.root.hash;
+      
+      account.nonce = obj.nonce;
+      account.balance = obj.balance;
+      account.codeHash = codeHash;
+      account.storageRoot = _.cloneDeep(storageTrie.root);
+      
+
+      // stateTrie 
+      const bufAddress = HexToBuf(obj.address);
+      const hashedKey = stateTrie.hash(bufAddress);
+      
+      const rawVal = [];
+      rawVal.push(account.nonce);
+      rawVal.push(account.balance);
+      rawVal.push(account.codeHash);
+      rawVal.push(account.storageRoot);
+      
+      const rlpVal = utils.rlp.encode(rawVal);
+      stateTrie.putData(hashedKey, rlpVal);
+      
+      // get state proof for each account when to execute putData is done.
+      const elem = {};
+      const siblings = stateTrie.getProof(hashedKey);
+      elem.addr = account.address;
+      elem.rlpVal = rlpVal;
+      elem.stateRoot = _.cloneDeep(stateTrie.root);
+      elem.siblings = Buffer.concat(siblings);
+      account.stateProof = elem;
+
+      self.accounts.splice(runState.depth, 0, account);
+      self.stateRoot = _.cloneDeep(stateTrie.root);
+      // console.log('initHexaryTrie', stateTrie.root);
+      resolve();
+    })
   }
 
   async run (args) {
@@ -316,7 +388,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     let calleeCode;
     let calleeCallData;
     
-    if (runState.opName === 'CALL' || runState.opName === 'DELEGATECALL' || runState.opName === 'STATICCALL') {
+    if (runState.opName === 'CALL' || runState.opName === 'DELEGATECALL' || runState.opName === 'STATICCALL' || runState.opName === 'CREATE') {
       this.addressHashes.pop();
       const len = this.addressHashes.length;
       this.runtimeStackHash = _.cloneDeep(this.addressHashes[len-1]);
@@ -381,24 +453,29 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         stateTrie.getProof(stateTrie.hash(obj1.addr))
       );
 
-      const storageTrie2 = theOther.storageTrie;
+      let obj2;
+      if (runState.depth !== 0) {
+        const storageTrie2 = theOther.storageTrie;
       
-      const rawVal2 = [];
-      rawVal2.push(theOther.nonce);
-      rawVal2.push(theOther.balance);
-      rawVal2.push(theOther.codeHash);
-      rawVal2.push(_.cloneDeep(storageTrie2.root));
-            
-      const rlpVal2 = utils.rlp.encode(rawVal2);
-
-      const obj2 = {};
-      obj2.addr = theOther.address;
-      obj2.rlpVal = rlpVal2;
-      obj2.stateRoot = _.cloneDeep(stateTrie.root);
-      obj2.siblings = Buffer.concat(
-        stateTrie.getProof(stateTrie.hash(obj2.addr))
-      );
-
+        const rawVal2 = [];
+        rawVal2.push(theOther.nonce);
+        rawVal2.push(theOther.balance);
+        rawVal2.push(theOther.codeHash);
+        rawVal2.push(_.cloneDeep(storageTrie2.root));
+              
+        const rlpVal2 = utils.rlp.encode(rawVal2);
+  
+        obj2 = {};
+        obj2.addr = theOther.address;
+        obj2.rlpVal = rlpVal2;
+        obj2.stateRoot = _.cloneDeep(stateTrie.root);
+        obj2.siblings = Buffer.concat(
+          stateTrie.getProof(stateTrie.hash(obj2.addr))
+        );
+      } else {
+        obj2 = runState.calleeAccount;
+      }
+      
       runState.stateRoot = _.cloneDeep(stateTrie.root);
       runState.storageAccount = obj1;
 
@@ -465,6 +542,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       isCALLExecuted: isCALLExecuted,
       calleeSteps: calleeSteps,
       callDepth: runState.depth,
+      isCREATE: runState.isCREATE,
       isCALL: runState.isCALL,
       isDELEGATECALL: runState.isDELEGATECALL,
       isCALLValue: runState.isCALLValue,
@@ -500,7 +578,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
 
     // support checkSumAddress
     const storageAddress = utils.toChecksumAddress(runState.address.toString('hex'));
-    
+
     // get state trie for an account
     const stateTrie = this.stateTrie;
     
@@ -663,6 +741,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
          // CALL
         runState.callerAccount = obj2;
         runState.calleeAccount = obj1;
+        
         runState.storageAccount = obj1;
         runState.bytecodeAccount = obj1;
         // update account

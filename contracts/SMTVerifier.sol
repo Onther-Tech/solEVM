@@ -24,7 +24,22 @@ contract SMTVerifier {
         }
         return false;
     }
-
+    function verifyCREATE (
+        bytes32 key,
+        bytes32 beforeLeaf,
+        bytes32 afterLeaf,
+        bytes32 beforeRoot,
+        bytes32 afterRoot,
+        bytes memory proof
+    ) public view returns (bool) {
+        if (checkMembership(key, beforeLeaf, beforeRoot, proof)) {
+            if (checkMembership(key, afterLeaf, afterRoot, proof)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     function verifyCALL (
         bytes32 callerKey,
         bytes32 calleeKey,
