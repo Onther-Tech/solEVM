@@ -22,6 +22,7 @@ module.exports = class ProofHelper {
     const callValueProof = execState.callValueProof;
     const isCALLValue = execState.isCALLValue;
     const isCREATE = execState.isCREATE;
+    const isCREATE2 = execState.isCREATE2;
     
     const runtimeProof = execState.storageAccount;
     const runtimeKey = web3.utils.soliditySha3(runtimeProof.addr);
@@ -87,7 +88,7 @@ module.exports = class ProofHelper {
         callerSiblings: callValueProof.callerSiblings,
         calleeSiblings: callValueProof.calleeSiblings,
       }
-    } else if (isCREATE && callStart) {
+    } else if ((isCREATE || isCREATE2) && callStart) {
       merkleProof = {
         callerKey: runtimeKey,
         calleeKey: Buffer.alloc(32),
@@ -254,6 +255,8 @@ module.exports = class ProofHelper {
         stackSize: prevOutput.stackSize,
         memSize: prevOutput.memSize,
         isCREATE: execState.isCREATE,
+        isCREATE2: execState.isCREATE2,
+        initCodeHash: execState.initCodeHash,
         isCALL: execState.isCALL,
         isDELEGATECALL: execState.isDELEGATECALL,
         isStorageReset: execState.isStorageReset ? true : false,

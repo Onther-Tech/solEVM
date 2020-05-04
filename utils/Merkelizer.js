@@ -20,6 +20,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     bytecodeAddress,
     bytecodeAccount,
     isCREATE,
+    isCREATE2, 
+    initCodeHash,
     isCALL,
     isDELEGATECALL,
     isCALLValue, 
@@ -68,6 +70,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         calleeAccount: calleeAccount,
         callValueProof: callValueProof,
         isCREATE: isCREATE,
+        isCREATE2: isCREATE2,
+        initCodeHash: initCodeHash,
         isCALL: isCALL,
         isDELEGATECALL: isDELEGATECALL,
       },
@@ -256,6 +260,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const callValueProof = executions[0].callValueProof;
     const isCALLValue = executions[0].isCALLValue;
     const isCREATE = executions[0].isCREATE;
+    const isCREATE2 = executions[0].isCREATE2;
+    const initCodeHash = executions[0].initCodeHash;
     const isCALL = executions[0].isCALL;
     const isDELEGATECALL = executions[0].isDELEGATECALL;
     const beforeCalleeAccount = executions[0].beforeCalleeAccount;
@@ -264,13 +270,13 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     const bytecodeAddress = executions[0].bytecodeAccount.addr;
     const bytecodeAccount = executions[0].bytecodeAccount;
     const previousRuntimeStackHash = executions[0].previousRuntimeStackHash;
-
+    
     if (!this.tree) {
       this.tree = [[]];
     }
    
     const initialState = this.constructor.initialStateHash(
-      previousRuntimeStackHash, storageAddress, storageAccount, bytecodeAddress, bytecodeAccount, isCREATE, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
+      previousRuntimeStackHash, storageAddress, storageAccount, bytecodeAddress, bytecodeAccount, isCREATE, isCREATE2, initCodeHash, isCALL, isDELEGATECALL, isCALLValue, callValueProof, beforeCalleeAccount, callerAccount, calleeAccount, stateRoot, storageRoot, code, callData, tStorage
     );
 
     const leaves = this.tree[0];

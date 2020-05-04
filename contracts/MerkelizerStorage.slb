@@ -33,6 +33,8 @@ library MerkelizerStorage {
         bool isStorageReset;
         bytes32 logHash;
         bool isCREATE;
+        bool isCREATE2;
+        bytes32 initCodeHash;
         bool isCALL;
         bool isDELEGATECALL;
         bool isStorageDataChanged;
