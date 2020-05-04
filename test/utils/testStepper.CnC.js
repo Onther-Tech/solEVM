@@ -61,8 +61,8 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
-    console.log(steps[0].stateRoot.toString('hex'));
-    console.log(steps[0].runtimeStackHash);
+    // console.log(steps[0].stateRoot.toString('hex'));
+    // console.log(steps[0].runtimeStackHash);
     // console.log(steps[0].runtimeAccount);
     // console.log(steps[0].bytecodeAccount);
     for (let i = 0; i < steps.length - 1; i++){
