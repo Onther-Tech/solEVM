@@ -4,6 +4,7 @@ const HydratedRuntime = require('./../../utils/HydratedRuntime');
 const Merkelizer = require('../../utils/Merkelizer');
 const OP = require('../../utils/constants');
 const debug = require('debug')('dispute-test');
+const web3 = require('web3');
 
 // caller
 const code = '60806040526004361061003a5760003560e01c63ffffffff1680632e52d6061461003f57806367e404ce1461006a578063cf55fe38146100c1575b600080fd5b34801561004b57600080fd5b5061005461014e565b6040518082815260200191505060405180910390f35b34801561007657600080fd5b5061007f610154565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b3480156100cd57600080fd5b5061014c600480360381019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803573ffffffffffffffffffffffffffffffffffffffff169060200190929190803573ffffffffffffffffffffffffffffffffffffffff1690602001909291908035906020019092919050505061017a565b005b60005481565b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b8373ffffffffffffffffffffffffffffffffffffffff1660405180807f63616c6c5365744e28616464726573732c616464726573732c75696e7432353681526020017f29000000000000000000000000000000000000000000000000000000000000008152506021019050604051809103902060e01c8484846040518463ffffffff1660e01b8152600401808473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020018373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200182815260200193505050506000604051808303816000875af19250505050505050505600a165627a7a72305820ac6d613d72a5e72e4c72b7ae65ca6d5997ecc27f256d0688d99787301100e3ea0029';
@@ -29,25 +30,25 @@ const calleeTstorage3 = ['0x0000000000000000000000000000000000000000000000000000
 const accounts = [
     // caller
     {
-      address: '692a70D2e424a56D2C6C27aA97D1a86395877b3A',
+      address: web3.utils.toChecksumAddress('692a70D2e424a56D2C6C27aA97D1a86395877b3A'),
       code: code,
       tStorage: tStorage
     },
     // callee1
     {
-        address: 'bBF289D846208c16EDc8474705C748aff07732dB',
+        address: web3.utils.toChecksumAddress('bBF289D846208c16EDc8474705C748aff07732dB'),
         code: calleeCode1,
         tStorage: calleeTstorage1
     },
       // callee2
     {
-        address: '0DCd2F752394c41875e259e00bb44fd505297caF',
+        address: web3.utils.toChecksumAddress('0DCd2F752394c41875e259e00bb44fd505297caF'),
         code: calleeCode2,
         tStorage: calleeTstorage2
     },
     // callee3
     {
-        address: '5E72914535f202659083Db3a02C984188Fa26e9f',
+        address: web3.utils.toChecksumAddress('5E72914535f202659083Db3a02C984188Fa26e9f'),
         code: calleeCode3,
         tStorage: calleeTstorage3
     }
@@ -61,7 +62,9 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
+    console.log(steps[0].storageRoot.toString('hex'));
     console.log(steps[0].stateRoot.toString('hex'));
+    console.log(steps[0].runtimeStackHash.toString('hex'));
     for (let i = 0; i < steps.length - 1; i++){
        
         if (steps[i].opCodeName === 'CALL') {
@@ -88,6 +91,6 @@ const runtime = new HydratedRuntime();
     }
    
     // console.log(steps[176].calleeSteps)
-    // merkle = await new Merkelizer().run(steps, code, data, tStorage);
+    merkle = await new Merkelizer().run(steps, code, data, tStorage);
     // console.log(merkle.printLeave());
 })();

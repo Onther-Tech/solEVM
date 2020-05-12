@@ -19,11 +19,12 @@ const EVMParameters = {
   blockNumber: 123,
   time: 1560775755,
   txGasLimit: 0xffffffffff,
-  customEnvironmentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-  tStorageHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-  storageRoot: '0x0000000000000000000000000000000000000000000000000000000000000000'
+  storageRoot: '0x5777d8999beeb116f6150748e946b027f0b5e53203543882b57b9952f0e0f8a1',
+  stateRoot: '0x6e36464c99b46f9a62a888f8c3f068264ca3131d11337f777aebd1c7dc6859b7',
+  runtimeStackHash: '0x16b61fc146d2ee4fdf758b62c1a15c02b0d8f414dde1134f8f3b9617302b9cf9',
+  accountHash: '0x85a151fd723917ade84fbe2b9b3f20034e33f54cc8c4817c0de707d8431aeba6'
 };
 
 class MyExecutionPoker extends ExecutionPoker {
@@ -172,23 +173,23 @@ describe('Verifier', function () {
     execPokerChallenger.alwaysChallenge = true;
   });
 
-  describe('with contract bytecode deployed', () => {
-    disputeFixtures(
-      async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
-        // use merkle tree from fixture
-        execPokerSolver._merkle = solverMerkle;
-        execPokerSolver._steps = [];
-        execPokerChallenger._merkle = challengerMerkle;
-        execPokerChallenger._steps = [];
+  // describe('with contract bytecode deployed', () => {
+  //   disputeFixtures(
+  //     async (code, callData, tStorage, solverMerkle, challengerMerkle, expectedWinner) => {
+  //       // use merkle tree from fixture
+  //       execPokerSolver._merkle = solverMerkle;
+  //       execPokerSolver._steps = [];
+  //       execPokerChallenger._merkle = challengerMerkle;
+  //       execPokerChallenger._steps = [];
 
-        const winner = await doGame(
-          { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode: true }
-        );
-        assert.equal(winner, expectedWinner, 'winner should match fixture');
-        await onchainWait(10);
-      }
-    );
-  });
+  //       const winner = await doGame(
+  //         { verifier, code, callData, tStorage, execPokerSolver, execPokerChallenger, doDeployCode: true }
+  //       );
+  //       assert.equal(winner, expectedWinner, 'winner should match fixture');
+  //       await onchainWait(10);
+  //     }
+  //   );
+  // });
 
   describe('without contract bytecode deployed', () => {
     disputeFixtures(

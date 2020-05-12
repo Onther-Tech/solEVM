@@ -53,9 +53,11 @@ const runtime = new HydratedRuntime();
 
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
- 
+    console.log(steps[0].storageRoot.toString('hex'))
+    console.log(steps[0].stateRoot.toString('hex'))
+    console.log(steps[0].runtimeStackHash.toString('hex'))
     for (let i = 0; i < steps.length; i++){
-      // console.log('calldepth 0', steps[i].stateRoot.toString('hex'))
+      
       // console.log('calldepth 0', utils.rlp.decode(steps[i].calleeAccount.rlpVal)[3])
       // console.log('calldepth 0', steps[i].stateRoot.toString('hex'));
         if (steps[i].opCodeName === 'DELEGATECALL') {
