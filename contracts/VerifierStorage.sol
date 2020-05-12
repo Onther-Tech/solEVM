@@ -95,6 +95,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 afterLeaf;
         bytes siblings;
         bytes32 saltForCREATE2;
+        MerkelizerStorage.Account storageAccount;
     }
 
     /**
@@ -295,16 +296,37 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         hashes.isValid = false;
                    
         if (executionState.callValue) {
-            require(merkleProof.beforeRoot == proofs.stateRoot, 'they must be same state root ');
-            require(merkleProof.afterRoot == executionState.stateRoot, 'they must be same state root ');
-
+            // Question: we need to verify CREATE before transfer value?
+            if (!executionState.isCREATE && !executionState.isCREATE2) {
+                require(merkleProof.beforeRoot == proofs.stateRoot, 'they must be same state root ');
+                require(merkleProof.afterRoot == executionState.stateRoot, 'they must be same state root ');
+            }
+            
             // check callerKey of merkle proof
             if (merkleProof.callerKey != keccak256(abi.encodePacked(proofs.storageAccount.addr))) {
                 return (hashes.isValid);
             }
-            // get toAddress from the stack of before step
-            toAddress = address(uint160(uint256(executionState.stack[5])));
-             
+            hashes.storageAccount = decodeAccount(
+                    proofs.storageAccount
+            );
+            if (executionState.isCREATE) {
+                toAddress = generateAddressForCREATE(
+                    proofs.storageAccount.addr, hashes.storageAccount.nonce
+                );
+            } else if (executionState.isCREATE2) {
+                // get salt from stack of the before step
+                hashes.saltForCREATE2 = executionState.stack[0];
+                toAddress = generateAddressForCREATE2(
+                        proofs.storageAccount.addr,
+                        hashes.saltForCREATE2,
+                        // TODO: verifying initCodeHash
+                        executionState.initCodeHash
+                );
+            } else {
+                // get toAddress from the stack of before step
+                toAddress = address(uint160(uint256(executionState.stack[5])));
+            }
+         
             if (executionState.beforeCalleeAccount.addr != toAddress
                 || executionState.storageAccount.addr != toAddress) {
                 return (hashes.isValid);
@@ -313,9 +335,16 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (merkleProof.calleeKey != keccak256(abi.encodePacked(toAddress))) {
                 return (hashes.isValid);
             }
+            
             // get call value from the stack of before step
-            val = uint(executionState.stack[4]);
-
+            if (executionState.isCREATE) {
+                val = uint(executionState.stack[2]);
+            } else if (executionState.isCREATE2) {
+                val = uint(executionState.stack[3]);
+            } else {
+                val = uint(executionState.stack[4]);
+            }
+           
             callerBeforeLeaf = keccak256(abi.encodePacked(proofs.storageAccount.rlpVal));
             calleeBeforeLeaf = keccak256(abi.encodePacked(executionState.beforeCalleeAccount.rlpVal));
 
@@ -442,8 +471,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     }
                 } else if (executionState.isCREATE2) {
                     // get salt from stack of the before step
-                    salt = executionState.stack[3];
-                    hashes.saltForCREATE2 = executionState.stack[3];
+                    salt = executionState.stack[0];
+                    hashes.saltForCREATE2 = executionState.stack[0];
                     createdAddress = generateAddressForCREATE2(
                             proofs.storageAccount.addr,
                             hashes.saltForCREATE2,
@@ -493,7 +522,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 if (hashes.calleeBeforeLeaf != merkleProof.calleeBeforeLeaf) {
                     return (hashes.isValid);
                 }
-                salt = bytes32(uint256(1));
+                
                 hashes.isValid = verifyCALL(
                     merkleProof.callerKey,
                     merkleProof.calleeKey,
