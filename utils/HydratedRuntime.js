@@ -45,28 +45,9 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         
     runState.isCREATE = false;
     runState.isCREATE2 = false;
-    
-    // create 
-    for (let i = 0; i < this.accounts.length; i++) {
-      if (currentRuntimeAddress !== this.accounts[i].address) {
-        if (runState.salt === null) {
-          runState.isCREATE = true;
-        } else {
-          runState.isCREATE2 = true;
-        }
-        const createdAccount = {
-          address: currentRuntimeAddress,
-          code: runState.rawCode,
-          tStorage: [],
-          nonce: new BN(0x1, 16),
-          balance: new BN(0x1, 16),
-          storageRoot: OP.ZERO_HASH,
-          codeHash: OP.ZERO_HASH
-        }
-        await this.addCreatedAccount(runState, createdAccount);
-        console.log(this.accounts)
-      }
-    }
+    // console.log('currentRuntimeAddress', currentRuntimeAddress)
+    // console.log(this.accounts)
+      
     // TODO: verifying initCodeHash  
     runState.initCodeHash = ethers.utils.solidityKeccak256(
       ['bytes'],
@@ -78,11 +59,11 @@ module.exports = class HydratedRuntime extends EVMRuntime {
     // but it should be get storage from local db in future
     runState.calleeTstorage = (runState.depth < this.accounts.length - 1) 
     ? this.accounts[runState.depth + 1].tStorage : [];
-    
-   
+       
     runState.isCALLValue = false;
     runState.isCALL = false;
     runState.isDELEGATECALL = false;
+    runState.isSTATICCALL = false;
       
     if (runState.depth === 0) {
       runState.storageProof = {};
@@ -107,20 +88,51 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         runState.calleeAccount.siblings = '0x';
       }
     } else {
+      let addresses = [];
+      for (let i = 0; i < this.accounts.length; i++){
+        addresses.push(this.accounts[i].address);
+      }
+      // create 
+      if (addresses.indexOf(currentRuntimeAddress) === -1) {
+        if (runState.salt === null) {
+          runState.isCREATE = true;
+        } else {
+          runState.isCREATE2 = true;
+        }
+      }
+      if (runState.isCREATE || runState.isCREATE2) {
+        const createdAccount = {
+          address: currentRuntimeAddress,
+          code: runState.rawCode,
+          tStorage: [],
+          nonce: new BN(0x1, 16),
+          balance: new BN(0x1, 16),
+          storageRoot: OP.ZERO_HASH,
+          codeHash: OP.ZERO_HASH
+        }
+        await this.addCreatedAccount(runState, createdAccount);
+      }
       runState.storageProof = {};
       runState.storageRoot = this.accounts[runState.depth].storageRoot;
      
       const beforeRuntimeAddress = this.storageAddress;
       const len = this.addressHashes.length;
       this.previousRuntimeStackHash = _.cloneDeep(this.addressHashes[len-1]);
+     
       // update stateProof at CALLStart(runState.depth > 0).
       this.addresses.push(currentRuntimeAddress);
-
+      
       let caller;
       let callee;
       if (currentRuntimeAddress === beforeRuntimeAddress) {
-        // delegateCall
-        runState.isDELEGATECALL = true;
+        if (runState.static) {
+          // staticCall
+          runState.isSTATICCALL = true;
+        } else {
+          // delegateCall
+          runState.isDELEGATECALL = true;
+        }
+       
         for (let i = 0; i < this.accounts.length; i++) {
           if (currentRuntimeAddress === this.accounts[i].address) {
             caller = _.cloneDeep(this.accounts[i]);
@@ -173,17 +185,16 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       if (runState.isCALL) {
         runState.storageAccount = calleeObj;
         runState.bytecodeAccount = calleeObj;
-      } else if (runState.isDELEGATECALL) {
+      } else if (runState.isDELEGATECALL || runState.isSTATICCALL) {
         runState.storageAccount = callerObj;
         runState.bytecodeAccount = calleeObj;
       }
            
       runState.stateRoot = _.cloneDeep(this.stateTrie.root);
-
       // console.log('HydratedRuntime', runState.callerAccount);
       const callValue = new BN(runState.callValue, 16);
       const callValueProof = {};
-     
+
       if (!callValue.isZero()) {
         runState.isCALLValue = true;
         const stateTrie = this.stateTrie;
@@ -503,7 +514,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         }
         // this.accounts[runState.depth-1].stateProof = obj2;
         // this.accounts[runState.depth].stateProof = obj1;
-      } else if (runState.isDELEGATECALL) {
+      } else if (runState.isDELEGATECALL || runState.isSTATICCALL) {
         runState.callerAccount = obj1;
         runState.calleeAccount = obj2;
         runState.bytecodeAccount = obj2;
@@ -559,6 +570,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
       initCodeHash: runState.initCodeHash,
       isCALL: runState.isCALL,
       isDELEGATECALL: runState.isDELEGATECALL,
+      isSTATICCALL: runState.isSTATICCALL,
       isCALLValue: runState.isCALLValue,
       callValueProof: runState.callValueProof || {},
       storageProof: {},
@@ -685,7 +697,7 @@ module.exports = class HydratedRuntime extends EVMRuntime {
         one = callee;
         theOther = caller;
       }
-      console.log('theOther', theOther, runState.depth)
+
       one.storageRoot = _.cloneDeep(storageTrie.root);
       const bufAddress = HexToBuf(one.address);
       const oneHashedKey = stateTrie.hash(bufAddress);
