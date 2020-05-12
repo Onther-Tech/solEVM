@@ -240,12 +240,23 @@ module.exports = class ProofHelper {
     } else {
       beforeCalleeAccount = execState.beforeCalleeAccount;
     }
+
+    // @dev: in case of OPCODEs like CALL including CREATE, CREATE2, get stack 
+    // because there is callee steps between before CALL step after CALL step.
+    let stack;
+    if (isCREATE) {
+      stack = prevOutput.stack.reverse().slice(0,3).reverse();
+    } else if (isCREATE2) {
+      stack = prevOutput.stack.reverse().slice(0,4).reverse();
+    } else if (isCALLValue || callStart) {
+      stack = prevOutput.stack.reverse().slice(0,7).reverse();
+    }
   
     return {
       proofs,
       executionInput: {
         data: isCallDataRequired ? prevOutput.data : '0x',
-        stack: (isCALLValue || callStart) ? prevOutput.stack.reverse().slice(0,7).reverse() : execState.compactStack,
+        stack: (callStart) ? stack : execState.compactStack,
         mem: isMemoryRequired ? prevOutput.mem : [],
         tStorage: isStorageDataRequired ? prevOutput.tStorage : [],
         logHash: prevOutput.logHash,
