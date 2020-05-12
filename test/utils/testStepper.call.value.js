@@ -49,6 +49,7 @@ const runtime = new HydratedRuntime();
 (async function(){
     steps = await runtime.run({ accounts, code, data, tStorage: tStorage, pc: 0 });
     console.log(steps[0].stateRoot.toString('hex'));
+    console.log(steps[0].runtimeStackHash);
     // console.log(steps[0].callerAccount.rlpVal.toString('hex'));
     // console.log(steps[0].calleeAccount.rlpVal.toString('hex'));
     for (let i = 0; i < steps.length; i++){
@@ -56,7 +57,7 @@ const runtime = new HydratedRuntime();
       
       if (steps[i].opCodeName === 'CALL') {
         // console.log('CALL')
-        console.log(steps[i-1].pc);
+        // console.log(steps[i-1].pc);
         const calleeSteps = steps[i].calleeSteps;
         const len = calleeSteps.length;
               

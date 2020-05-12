@@ -39,7 +39,7 @@ const runtime = new HydratedRuntime();
     // console.log(steps[0].bytecodeAccount);
     for (let i = 0; i < steps.length - 1; i++){
       
-        // console.log(steps[i].storageRoot);
+        console.log(steps[i].stateRoot);
         if (steps[i].opCodeName === 'SLOAD') {
             console.log('depth 0 SLOAD', i);
           
@@ -48,7 +48,7 @@ const runtime = new HydratedRuntime();
             console.log('CREATE', i);
             let calleeSteps1 = steps[i].calleeSteps;
             for (let i = 0; i < calleeSteps1.length - 1; i++){
-                // console.log(calleeSteps1[i].storageRoot);
+                console.log(calleeSteps1[i].stateRoot);
                 if (calleeSteps1[i].opCodeName === 'SSTORE') {
                     console.log('depth 1 SSTORE', i);
                     // console.log(utils.rlp.decode(calleeSteps1[i].storageAccount.rlpVal));
