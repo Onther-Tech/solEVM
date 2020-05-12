@@ -301,6 +301,7 @@ module.exports = class ExecutionPoker {
     this.log('accountHash!!', await this.verifier.accountHash());
     this.log('salt!!', await this.verifier.salt());
     this.log('createdAddress!!', await this.verifier.createdAddress());
+    this.log('resultHash!!', await this.verifier.resultHash());
 
     this.log('submitting proof - gas used', tx.gasUsed.toString());
 

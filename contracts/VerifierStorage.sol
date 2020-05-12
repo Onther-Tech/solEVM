@@ -31,6 +31,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     bytes32 public callerAfterLeaf;
     bytes32 public calleeAfterLeaf;
     bytes32 public inputHash;
+    bytes32 public resultHash;
     bytes32 public callerKey;
     bytes32 public hashedKey;
     address public toAddress;
