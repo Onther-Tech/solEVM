@@ -1,4 +1,5 @@
 # CP challenge for Tokamak
+[![Discord](https://img.shields.io/badge/discord-join%20chat-blue.svg)](https://discord.gg/8wSpJKz)
 
 ## Implementation Status
 
