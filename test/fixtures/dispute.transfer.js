@@ -34,9 +34,9 @@ module.exports = (callback) => {
     let steps;
     let copy;
     let merkle;
-    const runtime = new HydratedRuntime();
-
+    
     beforeEach(async () => {
+      const runtime = new HydratedRuntime();
       steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, stepCount: 355 });
       copy = _.cloneDeep(steps);
       merkle = new Merkelizer().run(steps, code, data, tStorage);

@@ -62,7 +62,7 @@ const runtime = new HydratedRuntime();
               // console.log(i)
             }
             if (calleeSteps[i].opCodeName === 'SLOAD') {
-              // console.log('l', i)
+              console.log('sload', i)
             }
           }
        

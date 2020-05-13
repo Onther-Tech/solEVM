@@ -57,7 +57,7 @@ module.exports = (callback) => {
     
     beforeEach(async () => {
       const runtime = new HydratedRuntime();
-      steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage, pc: 0 });
+      steps = await runtime.run({ accounts, code, data, pc: 0, tStorage: tStorage });
       copy = _.cloneDeep(steps);
       // opcode CALL step
       calleeCopy = _.cloneDeep(steps[137].calleeSteps);

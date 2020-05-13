@@ -19,13 +19,12 @@ const EVMParameters = {
   blockNumber: 123,
   time: 1560775755,
   txGasLimit: 0xffffffffff,
-  customEnvironmentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   codeHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   dataHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
   storageRoot: '0x5777d8999beeb116f6150748e946b027f0b5e53203543882b57b9952f0e0f8a1',
-  stateRoot: '0xf78d9e3e4fcdcb60654ddd91fd5bb63288f97499749e146d29678080cfd0c601',
+  stateRoot: '0x303a343843395c0be700005cfe212ebda4d0a3bc0b2ae70fadd71cbc6fde2db0',
   runtimeStackHash: '0x1f4b1be0d0d0cad24921df161a5064519e1ac1f917d50ac4a307181a828f189d',
-  accountHash: '0xf334d20428bf34985258586cbfab2bdc4327623c23be73362d9897147eef28e5'
+  accountHash: '0x5615bfc3efb6c18ce20ac874c7a64077ed37534aed3a6e52121580537e46d6e3'
 };
 
 class MyExecutionPoker extends ExecutionPoker {
@@ -65,9 +64,7 @@ class MyExecutionPoker extends ExecutionPoker {
     }
 
     const dataHash = Merkelizer.dataHash(callData);
-    const tStorageHash = Merkelizer.storageHash(tStorage);
-    const storageRoot = await Merkelizer.getStorageRoot(tStorage);
-    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash, tStorageHash, storageRoot});
+    const evmParams = Object.assign(EVMParameters, { codeHash, dataHash });
 
     return super.requestExecution(evmParams, callData);
   }

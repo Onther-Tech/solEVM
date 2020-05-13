@@ -80,7 +80,7 @@ const runtime = new HydratedRuntime();
                             console.log('3', k);
                             for (let l = 0; l < calleeSteps3.length; l++) {
                                 if (calleeSteps3[l].opCodeName === 'SSTORE') {
-                                    console.log('4', l);
+                                    console.log('4', calleeSteps3[l-1], l);
                                 }
                             }
                         }

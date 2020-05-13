@@ -104,33 +104,33 @@ module.exports = (callback) => {
       smt.putData(hashedK2,v2);
     });
 
-    // it('solver manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
-    //   const wrongExecution = copy;
+    it('solver manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
+      const wrongExecution = copy;
       
-    //   // set wrong val
-    //   wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
+      // set wrong val
+      wrongExecution[5].compactStack[0] = '0x0000000000000000000000000000000000000000000000000000000000000fff';
       
-    //   // get hashedKey
-    //   let key = wrongExecution[5].compactStack[1];
-    //   key = HexToBuf(key);
-    //   const hashedKey = smt.hash(key);
+      // get hashedKey
+      let key = wrongExecution[5].compactStack[1];
+      key = HexToBuf(key);
+      const hashedKey = smt.hash(key);
 
-    //   // get wrong val
-    //   let val = wrongExecution[5].compactStack[0];
-    //   val = HexToBuf(val);
+      // get wrong val
+      let val = wrongExecution[5].compactStack[0];
+      val = HexToBuf(val);
      
-    //   // put wrong val
-    //   smt.putData(hashedKey, val);
+      // put wrong val
+      smt.putData(hashedKey, val);
 
-    //   // get wrong rootHash
-    //   const rootHash = smt.root;
+      // get wrong rootHash
+      const rootHash = smt.root;
 
-    //   wrongExecution[5].storageRoot = rootHash;
-    //   wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
+      wrongExecution[5].storageRoot = rootHash;
+      wrongExecution[5].storageProof.afterLeaf = smt.hash(val);
 
-    //   const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
-    //   await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
-    // });
+      const solverMerkle = new Merkelizer().run(wrongExecution, code, data, tStorage);
+      await callback(code, data, tStorage, solverMerkle, merkle, 'challenger');
+    });
 
     it('challenger manipulate stateRoot #1 - replace with wrong value at SSTORE 5', async () => {
       const wrongExecution = copy;
