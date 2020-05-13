@@ -206,7 +206,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       [
         'bytes32',
         'uint256',
-        // trick for CALL
+        // @dev trick for test in case of CALLEnd
+        // TODO: calculating gasRemaining after CALLEnd
         // 'uint256',
         'uint256',
         'uint256',
@@ -214,7 +215,8 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       [
         execution.logHash,
         execution.pc,
-        // trick for CALL
+        // @dev trick for test in case of CALLEnd
+        // TODO: calculating gasRemaining after CALLEnd
         // execution.gasRemaining,
         execution.stackSize,
         execution.memSize,
@@ -248,7 +250,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
     );
   }
 
-  makeLeave (executions, code, callData, tStorage/*, customEnvironmentHash*/) {
+  makeLeave (executions, code, callData, tStorage) {
     if (!executions || !executions.length) {
       throw new Error('You need to pass at least one execution step');
     }
@@ -351,6 +353,7 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         );
       }
 
+      // @dev put callee steps between caller steps
       const recalLeaf = (left, right, isFirstExecutionStep = false, isEndExecutionStep = false) => {
         const obj = {
           left: left,
@@ -370,19 +373,19 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
       
       if (exec.callDepth !== 0 && isFirstExecutionStep) {
         afterCallTemp = leaves[leaves.length-1];
+        
         const beforeCall = recalLeaf(leaves[leaves.length-1].left, prevLeaf.right);
         beforeCall.callStart = true;
-        // console.log('makeLeave', beforeCall)
+       
         leaves[leaves.length-1] = beforeCall;
         const llen = pushLeaf(prevLeaf);
+       
         prevLeaf = leaves[llen - 1];
-        // console.log('makeLeave', prevLeaf)
       } else if (exec.callDepth !== 0 && isEndExecutionStep) {
         let llen = pushLeaf(prevLeaf);
         prevLeaf = leaves[llen - 1];
+
         const afterCall = recalLeaf(prevLeaf.right, afterCallTemp.right, false, true);
-        // console.log('makeLeave prevLeaf', prevLeaf.right)
-        // console.log('makeLeave afterCall', afterCallTemp.right);
         afterCall.callEnd = true;
         llen = leaves.push(afterCall);
         prevLeaf = leaves[llen - 1];
@@ -390,20 +393,20 @@ module.exports = class MerkelizerStorage extends AbstractMerkleTree {
         const llen = pushLeaf(prevLeaf);
         prevLeaf = leaves[llen - 1];
       }
-     
+      
       if (exec.isCALLExecuted) {
         const steps = exec.calleeSteps;
         const code = exec.calleeCode;
         const callData = exec.calleeCallData;
         const tStorage = exec.calleeTstorage;
              
-        this.makeLeave(steps, code, callData, tStorage/*, customEnvironmentHash*/);    
+        this.makeLeave(steps, code, callData, tStorage);    
       }
     }
   }
 
-  run (executions, code, callData, tStorage/*, customEnvironmentHash*/) {
-    this.makeLeave(executions, code, callData, tStorage/*, customEnvironmentHash*/);
+  run (executions, code, callData, tStorage) {
+    this.makeLeave(executions, code, callData, tStorage);
     this.recal(0);
 
     return this;

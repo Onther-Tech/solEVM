@@ -278,7 +278,7 @@ module.exports = class ExecutionPoker {
     this.log('submitting proof - proofs', args.proofs);
     this.log('submitting proof - executionState', args.executionInput);
     this.log('submitting proof - merkleProof', args.merkleProof);
-    console.log('codeHash', args.proofs.calleeCodeHash)
+    
     let tx = await this.verifier.submitProof(
       disputeId,
       args.proofs,
@@ -288,6 +288,8 @@ module.exports = class ExecutionPoker {
     );
 
     tx = await tx.wait();
+    
+    // for debug
     this.log('callerKey!', await this.verifier.callerKey());
     this.log('inputHash!', await this.verifier.inputHash());
     this.log('val!', await this.verifier.val());

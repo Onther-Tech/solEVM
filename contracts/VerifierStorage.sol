@@ -20,6 +20,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     using RLPDecode for bytes;
     using RLPEncode for *;
 
+    // @dev for debug
     uint public val;
     uint public callerBalance;
     uint public calleeBalance;
@@ -70,6 +71,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         bytes32 calleeCodeHash;
     }
 
+    // @dev for solving stack too deep issue. 
+    // it's useful to collect local variables in struct
     struct Hashes {
         bytes32 dataHash;
         bytes32 memHash;
@@ -236,6 +239,8 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         );
     }
 
+    // TODO: add complement in case of encoding zero in array
+    // it evaluate different value on chain and off chain
     function encodeAccount (
         MerkelizerStorage.Account memory account
     ) internal pure returns (bytes memory out) {
@@ -274,18 +279,22 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
     }
 
     /*
-     * if they agree on `left` but not on `right`,
-     * submitProof (on-chain) verification should be called by challenger and solver
-     * to decide on the outcome.
-     *
-     * Requirements:
-     *  - last execution step must end with either REVERT, RETURN or STOP to be considered complete
-     *  - any execution step which does not have errno = 0 or errno = 0x07 (REVERT)
-     *    is considered invalid
-     *  - the left-most (first) execution step must be a `Merkelizer.initialStateHash`
-     *
-     * Note: if that doesnt happen, this will finally timeout and a final decision is made
-     *       in `claimTimeout`.
+     * verify accounts of merkle proof in the case of CALLStart, CALLEnd, CALL with value, CREATE
+     * CALL with value:
+     *  - get rlp encodings of before step
+     *  - rlp decode rlp encodings of before step
+     *  - get value
+     *  - calculate balances of caller account and callee account with value
+     *  - rlp encode accounts
+     *  - verify with merkle proof
+     * CALLStart, CALLEnd:
+     *  - check runtimeStackHash
+     *  - verify with merkle proof
+     * CREATE, CREATE2:
+     *  - generate address based on whether CREATE or CREATE2
+     *  - verify generated address
+     *  - verify with merkle proof
+     * Note: it is separated from submitProof due to stack too deep issue
      */
     // solhint-disable-next-line code-complexity
     function verifyAccount (
@@ -538,6 +547,21 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
         }
     }
 
+    /*
+     * if they agree on `left` but not on `right`,
+     * submitProof (on-chain) verification should be called by challenger and solver
+     * to decide on the outcome.
+     *
+     * Requirements:
+     *  - last execution step must end with either REVERT, RETURN or STOP to be considered complete
+     *  - any execution step which does not have errno = 0 or errno = 0x07 (REVERT)
+     *    is considered invalid
+     *  - the left-most (first) execution step must be a `Merkelizer.initialStateHash`
+     *
+     * Note: if that doesnt happen, this will finally timeout and a final decision is made
+     *       in `claimTimeout`.
+     */
+    // solhint-disable-next-line code-complexity
     function submitProof(
         bytes32 disputeId,
         Proofs memory proofs,
@@ -583,6 +607,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 executionState,
                 merkleProof
             );
+            // @dev if failed to verifyAccount, it is judged immediately.
             if (hashes.isValid) {
                 if (msg.sender == address(dispute.challengerAddr)) {
                     dispute.state |= CHALLENGER_VERIFIED;
@@ -609,6 +634,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
             if (merkleProof.callerAfterLeaf != keccak256(abi.encodePacked(executionState.stack[0]))) {
                 return;
             }
+            // verify storageRoot
             hashes.isStorageValid = verifySSTORE (
                 merkleProof.callerKey,
                 merkleProof.callerBeforeLeaf,
@@ -631,7 +657,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                 
                 hashes.afterLeaf = keccak256(abi.encodePacked(runtimeRlpVal));
                 hashes.siblings = proofs.storageAccount.siblings;
-                 
+                // verify stateRoot
                 hashes.isValid = verifySSTORE (
                     hashedKey,
                     hashes.beforeLeaf,

@@ -101,6 +101,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
     super({ hardfork: 'petersburg' });
   }
 
+  // TODO: integrate into client
+  // @dev make Sparse Merkle Tree per accounts here. it should be integrate into client.
+  // ie. replace Hexary Trie with Sparse Merkle Tree.
   async initSMTTrie (accounts) {
     const self = this;
     return new Promise(async (resolve, reject) => {
@@ -132,6 +135,9 @@ module.exports = class EVMRuntime extends VM.MetaVM {
           }
         }
 
+        // @dev: make the codeHash here. the codeHash is not simple keccak-256 hash value
+        // for verifying bytecode with merkle proof on chain. 
+        // we have to use the root hash of merkle tree.
         const fragmentTree = new FragmentTree().run(obj.code);
         const codeHash = fragmentTree.root.hash;
         
@@ -141,7 +147,7 @@ module.exports = class EVMRuntime extends VM.MetaVM {
         account.storageRoot = _.cloneDeep(storageTrie.root);
         self.accounts.push(account);
 
-        // stateTrie 
+        // put data in stateTrie 
         const bufAddress = HexToBuf(obj.address);
         const hashedkey = stateTrie.hash(bufAddress);
         
@@ -353,7 +359,10 @@ module.exports = class EVMRuntime extends VM.MetaVM {
 
     await this.initSMTTrie(accounts);
     
-    // init addressHashes
+    // init addressHashes(runtimeStackHash)
+    // @dev init addressHashes here. 
+    // runtimeStackHash is the hash that addresses of storage account and bytecode account.
+    // runtimeStackHash is used for verification of that it loaded contract correctly at CALLStart, CALLEnd
     this.addressHashes = [];
 
     // TODO: Support EVMParameters

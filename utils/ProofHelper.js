@@ -59,7 +59,6 @@ module.exports = class ProofHelper {
         callerSiblings: runtimeProof.siblings,
         calleeSiblings:  Buffer.alloc(32),
       }
-      // console.log('beforeStateProof', beforeStateProof)
     } else if (isStorageDataChanged) {
       merkleProof = {
         callerKey: storageProof.hashedKey,
@@ -118,7 +117,6 @@ module.exports = class ProofHelper {
       }
     } 
     
-    // console.log('Proof Helper', merkleProof);
     let isMemoryRequired = false;
     if (execState.memReadHigh !== -1 || execState.memWriteHigh !== -1) {
       isMemoryRequired = true;
