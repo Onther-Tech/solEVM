@@ -113,7 +113,6 @@ contract EnforcerStorage is IEnforcerStorage {
             _solverPathRoot,
             _challengerPathRoot,
             executionResult.executionDepth,
-            // _parameters.customEnvironmentHash,
             _parameters.codeHash,
             _parameters.dataHash,
             _parameters.storageRoot,

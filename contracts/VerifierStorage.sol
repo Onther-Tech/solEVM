@@ -641,7 +641,7 @@ contract VerifierStorage is IVerifierStorage, HydratedRuntimeStorage, SMTVerifie
                     hashes.siblings
                 );
             } else {
-                hashes.isValid = false;
+                return;
             }
             if (hashes.isValid) {
                 if (msg.sender == address(dispute.challengerAddr)) {
