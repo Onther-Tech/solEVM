@@ -18,16 +18,17 @@
 - [x]  verification of ERC-20 contract method(transfer)
 
 ### Support Stateful
-- [ ]  support Account
+- [x]  support Account
+- [x] support transfer ETH in contract
 - [ ]  support ETH transfer
 
 
 ### Support CALL like OPCODES
 - [x]  implementation of arranging execution steps of CALLER and CALLEE
-- [ ]  implementation of submitting merkle proof for state
-- [ ]  support OPcode CALL 
-- [ ]  support OPcode DELEGATECALL 
-- [ ]  support OPcode STATICCALL 
+- [x]  implementation of submitting merkle proof for state
+- [x]  support OPcode CALL 
+- [x]  support OPcode DELEGATECALL 
+- [x]  support OPcode STATICCALL 
 
 ### Support State Transition Function  
 - [ ]  support charging UPFRONT COST
